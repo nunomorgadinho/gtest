@@ -1,0 +1,11 @@
+{
+  "name": "GTest My First Extension",
+  "version": "1.0",
+  "description": "The first extension that I made.",
+  "background_page": "background.html",
+  "browser_action": {
+    "default_icon": "icon.png",
+	"default_title": "Take a screen shot!"
+  },
+  "permissions": ["tabs", "http://api.flickr.com/"]
+}
