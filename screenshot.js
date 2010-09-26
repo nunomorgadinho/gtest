@@ -42,21 +42,37 @@ function takeScreenshot() {
   });
 }
 
-
-
 var shareSurfURL = function(tabId, changedProps) {
-	// get the current url being surfed
+	// get the current url being surfed	
 	if (changedProps.url != undefined) {
-	//	alert("url = " + changedProps.url );	
+		//alert("url = " + changedProps.url );	
+
+		// http://www.openjs.com/articles/ajax_xmlhttp_using_post.php
+		var req = new XMLHttpRequest();
+		var params = "gvar="+changedProps.url;
+		req.open("POST", "http://tech.morgadinho.org/gtest.php", true);
+
+		//Send the proper header information along with the request
+		req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		req.setRequestHeader("Content-length", params.length);
+		req.setRequestHeader("Connection", "close");
+	
+		req.onreadystatechange = function() {//Call a function when the state changes.
+					alert(req.responseText);
+		}
+		req.send(params);
 	}
 	
 	// take screenshot
-	chrome.tabs.captureVisibleTab(null, function(img) {
-	    var screenshotUrl = img;
-		//alert("img = " + img);
-	});
+	// chrome.tabs.captureVisibleTab(null, function(img) {
+	//     var screenshotUrl = img;
+	// });
 }
 chrome.tabs.onUpdated.addListener(shareSurfURL);
+
+function showPhotos() {
+	alert("got here");
+}
 
 // Listen for a click on the camera icon.  On that click, take a screenshot.
 chrome.browserAction.onClicked.addListener(function(tab) {
