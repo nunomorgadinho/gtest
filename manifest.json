@@ -7,5 +7,5 @@
     "default_icon": "icon.png",
 	"default_title": "Share!"
   },
-  "permissions": ["tabs", "http://api.flickr.com/", "http://tech.morgadinho.org/gtest.php"]
+  "permissions": ["tabs", "http://tech.morgadinho.org/gtest.php"]
 }
