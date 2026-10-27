@@ -85,6 +85,7 @@
     padding: 32px 0 28px;
     margin-bottom: 24px;
   }
+  .hero .wrap { padding-bottom: 0; }
   .hero h1 { font-size: 1.7rem; letter-spacing: -0.01em; }
   .hero p { margin: 6px 0 0; color: #cfe3e6; }
 
@@ -105,6 +106,29 @@
   .stop .lbl.up { bottom: 26px; }
   .stop .lbl.down { top: 26px; color: #cfe3e6; }
   .stop .lbl b { display: block; font-size: 0.95rem; color: var(--hero-text); }
+
+  /* Corrida de barcos */
+  .race { position: relative; margin: 0 0 4px; }
+  .race-head { display: flex; justify-content: space-between; font-size: 0.75rem; color: #cfe3e6; margin-bottom: 2px; }
+  .lane { position: relative; height: 56px; }
+  .lane::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 14px;
+    border-bottom: 2px dashed rgba(255,255,255,0.12);
+  }
+  .finish { position: absolute; right: 0; top: 6px; bottom: 8px; width: 3px; background: repeating-linear-gradient(#fff 0 5px, var(--hero-bg) 5px 10px); opacity: 0.7; }
+  .boat {
+    position: absolute; bottom: 8px; transform: translateX(-50%);
+    transition: left 1.2s cubic-bezier(.2,.8,.2,1); z-index: 1;
+  }
+  .boat svg { display: block; animation: bob 2.4s ease-in-out infinite; }
+  .boat .who {
+    position: absolute; bottom: 6px; left: 100%; margin-left: 6px;
+    white-space: nowrap; font-size: 0.8rem; color: #cfe3e6; line-height: 1.2;
+  }
+  .boat.flip .who { left: auto; right: 100%; margin: 0 6px 0 0; text-align: right; }
+  .boat .who b { color: var(--hero-text); }
+  @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-3px) rotate(2deg); } }
+  @media (prefers-reduced-motion: reduce) { .boat { transition: none; } .boat svg { animation: none; } }
 
   /* Cards */
   .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
@@ -142,6 +166,10 @@
 
   /* Forms */
   form.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  select {
+    font: inherit; color: var(--text); background: var(--card);
+    border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; min-width: 0;
+  }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--muted); flex: 1 1 140px; }
   input {
     font: inherit; color: var(--text); background: var(--card);
@@ -161,7 +189,7 @@
   .table-wrap { overflow-x: auto; margin-top: 16px; }
   table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
   th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
-  th:first-child, td:first-child { text-align: left; }
+  th:nth-child(-n+2), td:nth-child(-n+2) { text-align: left; }
   th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
   .empty { padding: 28px; text-align: center; color: var(--muted); }
 
@@ -206,12 +234,19 @@
     <h2>Registos mensais</h2>
     <div class="card">
       <form class="row" id="entry-form">
+        <label>Jogador
+          <select name="player">
+            <option value="Nuno">Nuno</option>
+            <option value="Tiago">Tiago</option>
+            <option value="">Equipa (sem jogador)</option>
+          </select>
+        </label>
         <label>Mês <input type="month" name="month" required></label>
         <label>Faturação (€) <input type="number" name="revenue" step="any" min="0" required inputmode="decimal"></label>
         <label>Lucro (€) <input type="number" name="profit" step="any" inputmode="decimal" placeholder="opcional"></label>
         <button type="submit">Guardar mês</button>
       </form>
-      <p class="note">Se já existir um registo para o mês escolhido, é substituído. Os dados ficam apenas neste browser.</p>
+      <p class="note">Cada jogador tem um registo por mês: se já existir, é substituído. Os totais somam os dois jogadores (e a equipa). Os dados ficam apenas neste browser.</p>
       <div class="table-wrap" id="table"></div>
     </div>
   </section>
@@ -226,9 +261,11 @@
         <label>B: lucro anual (€) <input type="number" name="bTarget" step="any" min="1"></label>
         <label>C: lucro anual (€) <input type="number" name="cTarget" step="any" min="1"></label>
         <label>Início da contagem B/C <input type="date" name="baseDate"></label>
+        <label>Corrida: início <input type="month" name="raceStart"></label>
+        <label>Corrida: meta por jogador (€) <input type="number" name="raceGoal" step="any" min="1"></label>
         <button type="submit">Guardar definições</button>
       </form>
-      <p class="note">B conta 5 anos e C conta 10 anos a partir da data de início.</p>
+      <p class="note">B conta 5 anos e C conta 10 anos a partir da data de início. Na corrida, cada barco avança com a faturação acumulada do jogador desde o mês de início; chega à bandeira quando atinge a meta por jogador.</p>
       <div class="actions">
         <button type="button" class="secondary" id="export">Exportar backup (JSON)</button>
         <button type="button" class="secondary" id="import">Importar backup</button>
@@ -250,8 +287,11 @@
     dcbkk: "2027-10-15",
     bTarget: 300000,
     cTarget: 1000000,
-    baseDate: null
+    baseDate: null,
+    raceStart: null,
+    raceGoal: 250000
   };
+  var PLAYERS = ["Nuno", "Tiago"];
 
   function todayISO() {
     var d = new Date();
@@ -266,6 +306,8 @@
     state.entries = Array.isArray(state.entries) ? state.entries : [];
     state.settings = Object.assign({}, DEFAULTS, state.settings || {});
     if (!state.settings.baseDate) state.settings.baseDate = todayISO();
+    if (!state.settings.raceStart) state.settings.raceStart = new Date().getFullYear() + "-01";
+    state.entries.forEach(function (e) { e.player = e.player || ""; });
     return state;
   }
   function save() {
@@ -303,8 +345,15 @@
   function yearsBetween(a, b) { return (b - a) / (1000 * 60 * 60 * 24 * 365.25); }
 
   // ---------- Métricas ----------
-  function sorted() {
-    return state.entries.slice().sort(function (a, b) { return a.month < b.month ? -1 : 1; });
+  // Totais por mês (soma dos jogadores e da equipa)
+  function monthly() {
+    var by = {};
+    state.entries.forEach(function (e) {
+      var a = by[e.month] || (by[e.month] = { month: e.month, revenue: 0, profit: null });
+      a.revenue += e.revenue;
+      if (e.profit != null) a.profit = (a.profit || 0) + e.profit;
+    });
+    return Object.keys(by).sort().map(function (k) { return by[k]; });
   }
 
   // Soma dos últimos 12 meses (até ao último mês registado). Com menos de 12 meses, anualiza.
@@ -322,7 +371,7 @@
 
   function compute() {
     var s = state.settings;
-    var entries = sorted();
+    var entries = monthly();
     var now = new Date();
     var m = {
       entries: entries,
@@ -335,6 +384,10 @@
     var y = now.getFullYear();
     m.ytdRev = entries.filter(function (e) { return e.month.slice(0, 4) == String(y); })
       .reduce(function (t, e) { return t + e.revenue; }, 0);
+    m.ytdBy = PLAYERS.map(function (p) {
+      return [p, state.entries.filter(function (e) { return e.player === p && e.month.slice(0, 4) == String(y); })
+        .reduce(function (t, e) { return t + e.revenue; }, 0)];
+    });
     m.lastMonth = entries.length ? entries[entries.length - 1].month : null;
 
     // A.1
@@ -386,6 +439,11 @@
       g.reached = ttmP != null && ttmP >= target;
       return g;
     }
+    m.race = PLAYERS.map(function (p) {
+      var total = state.entries.filter(function (e) { return e.player === p && e.month >= s.raceStart; })
+        .reduce(function (t, e) { return t + e.revenue; }, 0);
+      return { name: p, total: total, progress: total / s.raceGoal };
+    });
     m.b = profitGoal(s.bTarget, 5);
     m.c = profitGoal(s.cTarget, 10);
     return m;
@@ -421,12 +479,12 @@
     html += '<article class="card"><span class="tag">Ponto A · Hoje</span><h2>Faturação até ao momento</h2>' +
       '<div class="big num">' + money(m.ytdRev) + "</div>" +
       '<small class="muted">Faturação de ' + m.now.getFullYear() + (m.lastMonth ? " (até " + monthLabel(m.lastMonth) + ")" : "") + "</small>" +
-      facts([
+      facts(m.ytdBy.map(function (r) { return [esc(r[0]) + " em " + m.now.getFullYear(), money(r[1])]; }).concat([
         ["Faturação últimos 12 meses" + (m.ttmRev && m.ttmRev.count < 12 ? "*" : ""), m.ttmRev ? money(m.ttmRev.annual) : "—"],
         ["Lucro últimos 12 meses" + (m.ttmProfit && m.ttmProfit.count < 12 ? "*" : ""), m.ttmProfit ? money(m.ttmProfit.annual) : "—"],
         ["Margem", margin != null ? pct1.format(margin) : "—"],
         ["Run-rate (últimos 3 meses × 12)", m.rr3Rev ? money(m.rr3Rev.annual) : "—"]
-      ]) +
+      ])) +
       ((m.ttmRev && m.ttmRev.count < 12) || (m.ttmProfit && m.ttmProfit.count < 12)
         ? '<p class="note">* Menos de 12 meses registados: valor anualizado.</p>' : "") +
       "</article>";
@@ -507,12 +565,36 @@
         return '<div class="stop ' + (st.cls || "") + '" style="left:' + st.x + '%">' +
           '<div class="lbl ' + (i % 2 ? "down" : "up") + '"><b>' + esc(st.name) + "</b>" + esc(st.sub) + "</div>" +
           '<div class="dot"></div></div>';
-      }).join("") + "</div>";
+      }).join("") + "</div>" + renderRace(m);
     // Rótulos alternados acima e abaixo; os da ponta alinhados para não sair do ecrã
     var lbls = el("journey").querySelectorAll(".lbl");
     lbls[0].style.left = "0"; lbls[0].style.transform = "none";
     lbls[lbls.length - 1].style.left = "auto"; lbls[lbls.length - 1].style.right = "0"; lbls[lbls.length - 1].style.transform = "none";
     lbls[lbls.length - 1].style.textAlign = "right"; lbls[0].style.textAlign = "left";
+  }
+
+  var BOAT_COLORS = { Nuno: "var(--wl-green-light)", Tiago: "var(--wl-green-medium)" };
+  function boatSvg(color) {
+    return '<svg viewBox="0 0 40 34" width="40" height="34" aria-hidden="true">' +
+      '<path d="M20 2V24" stroke="#fff" stroke-width="1.5"/>' +
+      '<path d="M21.5 3L35 22H21.5Z" fill="' + color + '"/>' +
+      '<path d="M18.5 7L8 22H18.5Z" fill="' + color + '" opacity=".75"/>' +
+      '<path d="M3 25H37L31.5 32H8.5Z" fill="#fff"/></svg>';
+  }
+  function renderRace(m) {
+    var leader = m.race.reduce(function (a, r) { return r.total > a.total ? r : a; }, m.race[0]);
+    var tie = m.race.every(function (r) { return r.total === leader.total; });
+    return '<div class="race" aria-label="Corrida de faturação">' +
+      '<div class="race-head"><span>Corrida desde ' + monthLabel(state.settings.raceStart) +
+      (tie ? "" : " · lidera " + esc(leader.name)) + "</span><span>🏁 " + short(state.settings.raceGoal) + "</span></div>" +
+      m.race.map(function (r) {
+        var x = Math.min(Math.max(r.progress, 0), 1) * 100;
+        return '<div class="lane"><div class="finish"></div>' +
+          '<div class="boat' + (x > 65 ? " flip" : "") + '" style="left:calc(20px + (100% - 40px) * ' + (x / 100) + ')" title="' +
+          esc(r.name + ": " + money(r.total) + " (" + pct.format(r.progress) + ")") + '">' +
+          boatSvg(BOAT_COLORS[r.name] || "#fff") +
+          '<div class="who"><b>' + esc(r.name) + "</b><br>" + short(r.total) + " · " + pct.format(r.progress) + "</div></div></div>";
+      }).join("") + "</div>";
   }
 
   function renderChart(m) {
@@ -565,17 +647,20 @@
   }
 
   function renderTable(m) {
-    var rows = m.entries.slice().reverse();
+    var rows = state.entries.slice().sort(function (a, b) {
+      return a.month !== b.month ? (a.month < b.month ? 1 : -1) : (a.player < b.player ? -1 : 1);
+    });
     if (!rows.length) {
       el("table").innerHTML = '<div class="empty">Ainda não há registos. Começa por adicionar a faturação (e o lucro) dos meses deste ano.</div>';
       return;
     }
-    el("table").innerHTML = "<table><thead><tr><th>Mês</th><th>Faturação</th><th>Lucro</th><th>Margem</th><th></th></tr></thead><tbody>" +
+    el("table").innerHTML = "<table><thead><tr><th>Mês</th><th>Jogador</th><th>Faturação</th><th>Lucro</th><th>Margem</th><th></th></tr></thead><tbody>" +
       rows.map(function (e) {
-        return "<tr><td>" + monthLabel(e.month) + '</td><td class="num">' + money(e.revenue) + '</td><td class="num">' + money(e.profit) +
+        var key = esc(e.month + "|" + e.player);
+        return "<tr><td>" + monthLabel(e.month) + "</td><td>" + (e.player ? esc(e.player) : "Equipa") + '</td><td class="num">' + money(e.revenue) + '</td><td class="num">' + money(e.profit) +
           '</td><td class="num">' + (e.profit != null && e.revenue ? pct1.format(e.profit / e.revenue) : "—") + "</td>" +
-          '<td><button type="button" class="link" data-edit="' + e.month + '">Editar</button>' +
-          '<button type="button" class="link danger" data-del="' + e.month + '">Apagar</button></td></tr>';
+          '<td><button type="button" class="link" data-edit="' + key + '">Editar</button>' +
+          '<button type="button" class="link danger" data-del="' + key + '">Apagar</button></td></tr>';
       }).join("") + "</tbody></table>";
   }
 
@@ -597,25 +682,32 @@
     ev.preventDefault();
     var f = ev.target;
     var month = f.elements.month.value;
+    var player = f.elements.player.value;
     var revenue = parseFloat(f.elements.revenue.value);
     var profitRaw = f.elements.profit.value.trim();
     if (!month || isNaN(revenue)) return;
-    var entry = { month: month, revenue: revenue, profit: profitRaw === "" ? null : parseFloat(profitRaw) };
-    state.entries = state.entries.filter(function (e) { return e.month !== month; }).concat(entry);
+    var entry = { month: month, player: player, revenue: revenue, profit: profitRaw === "" ? null : parseFloat(profitRaw) };
+    state.entries = state.entries.filter(function (e) { return !(e.month === month && e.player === player); }).concat(entry);
     save();
     f.reset();
+    f.elements.player.value = player;
     render();
   });
 
   el("table").addEventListener("click", function (ev) {
     var t = ev.target;
+    var key = t.dataset.del || t.dataset.edit;
+    if (!key) return;
+    var month = key.split("|")[0], player = key.split("|")[1];
+    function same(e) { return e.month === month && e.player === player; }
     if (t.dataset.del) {
-      if (!confirm("Apagar o registo de " + monthLabel(t.dataset.del) + "?")) return;
-      state.entries = state.entries.filter(function (e) { return e.month !== t.dataset.del; });
+      if (!confirm("Apagar o registo de " + (player || "Equipa") + " em " + monthLabel(month) + "?")) return;
+      state.entries = state.entries.filter(function (e) { return !same(e); });
       save(); render();
-    } else if (t.dataset.edit) {
-      var e = state.entries.find(function (x) { return x.month === t.dataset.edit; });
+    } else {
+      var e = state.entries.find(same);
       var f = el("entry-form");
+      f.elements.player.value = e.player;
       f.elements.month.value = e.month;
       f.elements.revenue.value = e.revenue;
       f.elements.profit.value = e.profit == null ? "" : e.profit;
@@ -626,11 +718,11 @@
   el("settings-form").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var f = ev.target, s = state.settings;
-    ["a1Target", "a1Year", "bTarget", "cTarget"].forEach(function (k) {
+    ["a1Target", "a1Year", "bTarget", "cTarget", "raceGoal"].forEach(function (k) {
       var v = parseFloat(f.elements[k].value);
       if (!isNaN(v) && v > 0) s[k] = v;
     });
-    ["dcbkk", "baseDate"].forEach(function (k) { if (f.elements[k].value) s[k] = f.elements[k].value; });
+    ["dcbkk", "baseDate", "raceStart"].forEach(function (k) { if (f.elements[k].value) s[k] = f.elements[k].value; });
     save(); render();
   });
 
@@ -649,8 +741,9 @@
     file.text().then(function (txt) {
       var data = JSON.parse(txt);
       if (!data || !Array.isArray(data.entries)) throw new Error("formato");
-      state.entries = data.entries.filter(function (e) { return e && /^\d{4}-\d{2}$/.test(e.month) && typeof e.revenue === "number"; });
-      state.settings = Object.assign({}, DEFAULTS, { baseDate: state.settings.baseDate }, data.settings || {});
+      state.entries = data.entries.filter(function (e) { return e && /^\d{4}-\d{2}$/.test(e.month) && typeof e.revenue === "number"; })
+        .map(function (e) { return { month: e.month, player: PLAYERS.indexOf(e.player) >= 0 ? e.player : "", revenue: e.revenue, profit: typeof e.profit === "number" ? e.profit : null }; });
+      state.settings = Object.assign({}, DEFAULTS, { baseDate: state.settings.baseDate, raceStart: state.settings.raceStart }, data.settings || {});
       save(); renderSettings(); render();
     }).catch(function () { alert("Não foi possível importar: ficheiro inválido."); });
     ev.target.value = "";
