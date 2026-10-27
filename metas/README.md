@@ -9,6 +9,6 @@ Web app de uma só página que mostra a distância entre a situação atual e as
 
 **Corrida:** dois barcos (Nuno e Tiago) navegam por baixo da linha. Cada um avança com a faturação acumulada do jogador desde o mês de início da corrida e chega à bandeira quando atinge a meta por jogador (250k€ por defeito, editável nas Definições). Cada registo mensal é de um jogador (ou da equipa) e os totais da empresa somam todos.
 
-Os dados ficam só no browser (`localStorage`). Usa "Exportar backup" para guardar um JSON e "Importar backup" para os recuperar noutro browser.
+Os dados ficam só no browser (`localStorage`). Usa "Exportar backup" para guardar um JSON e "Importar (JSON)" para os recuperar noutro browser. A importação junta os registos aos que já existem: só substitui o mesmo mês e jogador, e mantém o lucro já registado quando o ficheiro não o traz.
 
 Para usar, abre `index.html` no browser. Não precisa de servidor nem de dependências. Metas, data do DCBKK e data de início da contagem de B/C são editáveis em "Definições".

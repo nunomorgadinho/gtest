@@ -278,7 +278,7 @@
       <p class="note">Na corrida, cada barco avança com a faturação acumulada do jogador desde o mês de início; chega à bandeira quando atinge a meta por jogador.</p>
       <div class="actions">
         <button type="button" class="secondary" id="export">Exportar backup (JSON)</button>
-        <button type="button" class="secondary" id="import">Importar backup</button>
+        <button type="button" class="secondary" id="import">Importar (JSON)</button>
         <input type="file" id="import-file" accept="application/json,.json" hidden>
         <button type="button" class="link danger" id="reset">Apagar todos os dados</button>
       </div>
@@ -704,10 +704,17 @@
     file.text().then(function (txt) {
       var data = JSON.parse(txt);
       if (!data || !Array.isArray(data.entries)) throw new Error("formato");
-      state.entries = data.entries.filter(function (e) { return e && /^\d{4}-\d{2}$/.test(e.month) && typeof e.revenue === "number"; })
+      var incoming = data.entries.filter(function (e) { return e && /^\d{4}-\d{2}$/.test(e.month) && typeof e.revenue === "number"; })
         .map(function (e) { return { month: e.month, player: PLAYERS.indexOf(e.player) >= 0 ? e.player : "", revenue: e.revenue, profit: typeof e.profit === "number" ? e.profit : null }; });
-      state.settings = Object.assign({}, DEFAULTS, { raceStart: state.settings.raceStart }, data.settings || {});
+      // Junta aos registos atuais: substitui só o mesmo mês e jogador, e mantém o lucro já registado se o ficheiro não o trouxer
+      incoming.forEach(function (n) {
+        var old = state.entries.find(function (e) { return e.month === n.month && e.player === n.player; });
+        if (old && n.profit == null) n.profit = old.profit;
+        state.entries = state.entries.filter(function (e) { return e !== old; }).concat(n);
+      });
+      if (data.settings) state.settings = Object.assign({}, state.settings, data.settings);
       save(); renderSettings(); render();
+      alert(incoming.length + " registos importados.");
     }).catch(function () { alert("Não foi possível importar: ficheiro inválido."); });
     ev.target.value = "";
   });
