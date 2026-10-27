@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rumo às Metas</title>
+<style>
+  :root {
+    --wl-gray-100: #333745;
+    --wl-gray-10: #EBEBEB;
+    --wl-gray-5: #F5F5F5;
+    --wl-white: #FFFFFF;
+    --wl-green-dark: #287D7D;
+    --wl-green-medium: #14B6A9;
+    --wl-green-light: #85F09D;
+    --wl-green-light-40: #CEF9D8;
+    --wl-green-light-20: #E7FCEB;
+    --wl-green-light-10: #F3FEF5;
+    --wl-teal: #084654;
+
+    --text: var(--wl-gray-100);
+    --muted: #6b7080;
+    --bg: var(--wl-gray-5);
+    --card: var(--wl-white);
+    --border: var(--wl-gray-10);
+    --primary: var(--wl-green-dark);
+    --primary-hov: var(--wl-green-medium);
+    --accent: var(--wl-green-light);
+    --soft: var(--wl-green-light-20);
+    --track: var(--wl-gray-10);
+    --warn: #b4562a;
+    --warn-bg: #fbeee6;
+    --hero-bg: var(--wl-teal);
+    --hero-text: var(--wl-white);
+    --font: "Gilroy", "Montserrat", "Poppins", "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --text: #e8eaee;
+      --muted: #a2a8b4;
+      --bg: #061f26;
+      --card: #0b2d36;
+      --border: #17414c;
+      --primary: var(--wl-green-medium);
+      --primary-hov: var(--wl-green-light);
+      --soft: #0f3a40;
+      --track: #17414c;
+      --warn: #f0a07a;
+      --warn-bg: #3a2418;
+      --hero-bg: #04161b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --text: #e8eaee;
+    --muted: #a2a8b4;
+    --bg: #061f26;
+    --card: #0b2d36;
+    --border: #17414c;
+    --primary: var(--wl-green-medium);
+    --primary-hov: var(--wl-green-light);
+    --soft: #0f3a40;
+    --track: #17414c;
+    --warn: #f0a07a;
+    --warn-bg: #3a2418;
+    --hero-bg: #04161b;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height: 1.45;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px 64px; }
+  h1, h2, h3 { margin: 0; font-weight: 700; }
+  .num { font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  small { font-size: 0.82rem; }
+
+  header.hero {
+    background: var(--hero-bg);
+    color: var(--hero-text);
+    padding: 32px 0 28px;
+    margin-bottom: 24px;
+  }
+  .hero h1 { font-size: 1.7rem; letter-spacing: -0.01em; }
+  .hero p { margin: 6px 0 0; color: #cfe3e6; }
+
+  /* Journey */
+  .journey { margin-top: 8px; position: relative; padding: 0 8px; }
+  .journey-line {
+    position: relative; height: 6px; border-radius: 3px;
+    background: rgba(255,255,255,0.15); margin: 84px 0 56px;
+  }
+  .journey-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--wl-green-light); }
+  .stop { position: absolute; top: 50%; transform: translate(-50%, -50%); text-align: center; }
+  .stop .dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--hero-bg); border: 3px solid var(--wl-green-light); margin: 0 auto;
+  }
+  .stop.today .dot { background: var(--wl-green-light); }
+  .stop .lbl { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 0.8rem; }
+  .stop .lbl.up { bottom: 26px; }
+  .stop .lbl.down { top: 26px; color: #cfe3e6; }
+  .stop .lbl b { display: block; font-size: 0.95rem; color: var(--hero-text); }
+
+  /* Cards */
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; min-width: 0;
+  }
+  .card h2 { font-size: 1.05rem; }
+  .tag {
+    display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--primary); margin-bottom: 4px;
+  }
+  .big { font-size: 1.9rem; font-weight: 700; margin: 10px 0 2px; }
+  .status {
+    display: inline-block; font-size: 0.78rem; font-weight: 700; padding: 3px 10px;
+    border-radius: 999px; background: var(--soft); color: var(--primary); margin-top: 8px;
+  }
+  .status.off { background: var(--warn-bg); color: var(--warn); }
+  .bar { position: relative; height: 10px; border-radius: 5px; background: var(--track); margin: 14px 0 6px; overflow: visible; }
+  .bar > span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--primary); }
+  .bar > i { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); opacity: 0.6; }
+  dl.facts { margin: 14px 0 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 0.88rem; }
+  dl.facts dt { color: var(--muted); }
+  dl.facts dd { margin: 0; text-align: right; font-weight: 600; }
+
+  section { margin-top: 28px; }
+  section > h2 { font-size: 1.15rem; margin-bottom: 12px; }
+
+  /* Chart */
+  .chart-card { padding: 16px 16px 8px; }
+  .chart-scroll { overflow-x: auto; }
+  .chart { width: 100%; min-width: 640px; height: auto; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.82rem; color: var(--muted); margin: 4px 4px 8px; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+
+  /* Forms */
+  form.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--muted); flex: 1 1 140px; }
+  input {
+    font: inherit; color: var(--text); background: var(--card);
+    border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; min-width: 0;
+  }
+  input:focus { outline: 2px solid var(--primary-hov); outline-offset: 0; }
+  button {
+    font: inherit; font-weight: 700; cursor: pointer; border: 0; border-radius: 8px;
+    padding: 10px 16px; background: var(--primary); color: #fff;
+  }
+  button:hover { background: var(--primary-hov); }
+  button.secondary { background: var(--soft); color: var(--text); }
+  button.secondary:hover { background: var(--wl-green-light-40); color: var(--wl-teal); }
+  button.link { background: none; color: var(--primary); padding: 4px 6px; font-weight: 600; }
+  button.link.danger { color: var(--warn); }
+
+  .table-wrap { overflow-x: auto; margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
+  .empty { padding: 28px; text-align: center; color: var(--muted); }
+
+  details.card summary { cursor: pointer; font-weight: 700; }
+  details.card[open] summary { margin-bottom: 14px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .note { font-size: 0.82rem; color: var(--muted); margin-top: 10px; }
+
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 1.35rem; }
+    .stop .lbl { font-size: 0.7rem; }
+    .stop .lbl b { font-size: 0.8rem; }
+    .big { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <h1>Rumo às Metas</h1>
+    <p>Onde estou (A), e quão longe estou do DCBKK '27 (A.1), da meta a 5 anos (B) e da BHAG a 10 anos (C).</p>
+    <div class="journey" id="journey"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="grid" id="cards"></div>
+
+  <section>
+    <h2>Evolução mensal</h2>
+    <div class="card chart-card">
+      <div class="legend">
+        <span style="--c: var(--wl-green-dark)">Faturação</span>
+        <span style="--c: var(--wl-green-medium)">Lucro</span>
+        <span style="--c: var(--muted)">Ritmo mensal p/ 500k/ano</span>
+      </div>
+      <div class="chart-scroll" id="chart"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Registos mensais</h2>
+    <div class="card">
+      <form class="row" id="entry-form">
+        <label>Mês <input type="month" name="month" required></label>
+        <label>Faturação (€) <input type="number" name="revenue" step="any" min="0" required inputmode="decimal"></label>
+        <label>Lucro (€) <input type="number" name="profit" step="any" inputmode="decimal" placeholder="opcional"></label>
+        <button type="submit">Guardar mês</button>
+      </form>
+      <p class="note">Se já existir um registo para o mês escolhido, é substituído. Os dados ficam apenas neste browser.</p>
+      <div class="table-wrap" id="table"></div>
+    </div>
+  </section>
+
+  <section>
+    <details class="card">
+      <summary>Definições das metas e dados</summary>
+      <form class="row" id="settings-form">
+        <label>A.1: faturação anual (€) <input type="number" name="a1Target" step="any" min="1"></label>
+        <label>Ano da meta A.1 <input type="number" name="a1Year" step="1" min="2000"></label>
+        <label>Data do DCBKK '27 <input type="date" name="dcbkk"></label>
+        <label>B: lucro anual (€) <input type="number" name="bTarget" step="any" min="1"></label>
+        <label>C: lucro anual (€) <input type="number" name="cTarget" step="any" min="1"></label>
+        <label>Início da contagem B/C <input type="date" name="baseDate"></label>
+        <button type="submit">Guardar definições</button>
+      </form>
+      <p class="note">B conta 5 anos e C conta 10 anos a partir da data de início.</p>
+      <div class="actions">
+        <button type="button" class="secondary" id="export">Exportar backup (JSON)</button>
+        <button type="button" class="secondary" id="import">Importar backup</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+        <button type="button" class="link danger" id="reset">Apagar todos os dados</button>
+      </div>
+    </details>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var KEY = "rumo-metas-v1";
+  var DEFAULTS = {
+    a1Target: 500000,
+    a1Year: 2027,
+    dcbkk: "2027-10-15",
+    bTarget: 300000,
+    cTarget: 1000000,
+    baseDate: null
+  };
+
+  function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+  function load() {
+    var state = null;
+    try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
+    if (!state || typeof state !== "object") state = {};
+    state.entries = Array.isArray(state.entries) ? state.entries : [];
+    state.settings = Object.assign({}, DEFAULTS, state.settings || {});
+    if (!state.settings.baseDate) state.settings.baseDate = todayISO();
+    return state;
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* armazenamento indisponível */ }
+  }
+
+  var state = load();
+  save();
+
+  // ---------- Formatação ----------
+  var eur = new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+  var pct = new Intl.NumberFormat("pt-PT", { style: "percent", maximumFractionDigits: 0 });
+  var pct1 = new Intl.NumberFormat("pt-PT", { style: "percent", maximumFractionDigits: 1 });
+  function money(v) { return v == null || isNaN(v) ? "—" : eur.format(v); }
+  function short(v) {
+    if (v == null || isNaN(v)) return "—";
+    var a = Math.abs(v);
+    if (a >= 1e6) return (v / 1e6).toLocaleString("pt-PT", { maximumFractionDigits: 2 }) + " M€";
+    if (a >= 1e3) return (v / 1e3).toLocaleString("pt-PT", { maximumFractionDigits: 1 }) + " k€";
+    return Math.round(v) + " €";
+  }
+  var MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  function monthLabel(key) { var p = key.split("-"); return MONTHS[+p[1] - 1] + " " + p[0]; }
+  function dateLabel(d) { return d.toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" }); }
+
+  // ---------- Datas ----------
+  function parseDate(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function monthIndex(key) { var p = key.split("-"); return +p[0] * 12 + (+p[1] - 1); }
+  function addYears(d, n) { var r = new Date(d); r.setFullYear(r.getFullYear() + n); return r; }
+  function yearFraction(d) {
+    var start = new Date(d.getFullYear(), 0, 1), end = new Date(d.getFullYear() + 1, 0, 1);
+    return (d - start) / (end - start);
+  }
+  function monthsBetween(a, b) { return (b - a) / (1000 * 60 * 60 * 24 * 30.4375); }
+  function yearsBetween(a, b) { return (b - a) / (1000 * 60 * 60 * 24 * 365.25); }
+
+  // ---------- Métricas ----------
+  function sorted() {
+    return state.entries.slice().sort(function (a, b) { return a.month < b.month ? -1 : 1; });
+  }
+
+  // Soma dos últimos 12 meses (até ao último mês registado). Com menos de 12 meses, anualiza.
+  function trailing(entries, field, months) {
+    if (!entries.length) return null;
+    var last = monthIndex(entries[entries.length - 1].month);
+    var win = entries.filter(function (e) {
+      var i = monthIndex(e.month);
+      return i > last - months && i <= last && e[field] != null;
+    });
+    if (!win.length) return null;
+    var sum = win.reduce(function (s, e) { return s + e[field]; }, 0);
+    return { sum: sum, count: win.length, annual: sum / win.length * 12, monthly: sum / win.length };
+  }
+
+  function compute() {
+    var s = state.settings;
+    var entries = sorted();
+    var now = new Date();
+    var m = {
+      entries: entries,
+      now: now,
+      ttmRev: trailing(entries, "revenue", 12),
+      ttmProfit: trailing(entries, "profit", 12),
+      rr3Rev: trailing(entries, "revenue", 3),
+      rr3Profit: trailing(entries, "profit", 3)
+    };
+    var y = now.getFullYear();
+    m.ytdRev = entries.filter(function (e) { return e.month.slice(0, 4) == String(y); })
+      .reduce(function (t, e) { return t + e.revenue; }, 0);
+    m.lastMonth = entries.length ? entries[entries.length - 1].month : null;
+
+    // A.1
+    var dc = parseDate(s.dcbkk);
+    var a1 = { target: s.a1Target, date: dc, year: s.a1Year };
+    a1.checkpoint = s.a1Target * (dc.getFullYear() === s.a1Year ? yearFraction(dc) : 1);
+    a1.yearRev = entries.filter(function (e) { return e.month.slice(0, 4) == String(s.a1Year); })
+      .reduce(function (t, e) { return t + e.revenue; }, 0);
+    a1.monthlyNeeded = s.a1Target / 12;
+    a1.runRate = m.rr3Rev ? m.rr3Rev.annual : null;
+    if (y < s.a1Year) {
+      a1.phase = "before";
+      a1.value = a1.runRate;
+      a1.progress = a1.runRate != null ? a1.runRate / s.a1Target : 0;
+      a1.onTrack = a1.runRate != null && a1.runRate >= s.a1Target;
+    } else if (now <= dc) {
+      a1.phase = "during";
+      // Esperado até ao fim do último mês registado do ano da meta
+      var lastIn = entries.filter(function (e) { return e.month.slice(0, 4) == String(s.a1Year); }).pop();
+      var upTo = lastIn ? new Date(s.a1Year, +lastIn.month.slice(5, 7), 0, 23, 59) : new Date(s.a1Year, 0, 1);
+      a1.expectedToDate = s.a1Target * yearFraction(upTo);
+      a1.value = a1.yearRev;
+      a1.progress = a1.yearRev / a1.checkpoint;
+      a1.marker = a1.expectedToDate / a1.checkpoint;
+      a1.onTrack = a1.yearRev >= a1.expectedToDate;
+      var left = Math.max(monthsBetween(upTo, dc), 0.5);
+      a1.neededPerMonthLeft = Math.max(a1.checkpoint - a1.yearRev, 0) / left;
+    } else {
+      a1.phase = "after";
+      a1.value = a1.yearRev;
+      a1.progress = a1.yearRev / a1.checkpoint;
+      a1.onTrack = a1.yearRev >= a1.checkpoint;
+    }
+    m.a1 = a1;
+
+    // B e C (lucro anual, TTM)
+    var base = parseDate(s.baseDate);
+    var ttmP = m.ttmProfit ? m.ttmProfit.annual : null;
+    function profitGoal(target, years) {
+      var g = { target: target, date: addYears(base, years), value: ttmP };
+      g.progress = ttmP != null ? Math.max(ttmP, 0) / target : 0;
+      g.gap = ttmP != null ? Math.max(target - ttmP, 0) : target;
+      g.yearsLeft = yearsBetween(now, g.date);
+      g.elapsed = Math.min(Math.max(yearsBetween(base, now) / years, 0), 1);
+      if (ttmP != null && ttmP > 0 && g.yearsLeft > 0) {
+        g.cagr = ttmP >= target ? 0 : Math.pow(target / ttmP, 1 / g.yearsLeft) - 1;
+        g.nextYear = Math.min(ttmP * (1 + g.cagr), target);
+      }
+      g.reached = ttmP != null && ttmP >= target;
+      return g;
+    }
+    m.b = profitGoal(s.bTarget, 5);
+    m.c = profitGoal(s.cTarget, 10);
+    return m;
+  }
+
+  // ---------- Render ----------
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function bar(progress, marker) {
+    var w = Math.min(Math.max(progress, 0), 1) * 100;
+    var mk = marker != null ? '<i style="left:' + Math.min(marker, 1) * 100 + '%" title="Onde devia estar hoje"></i>' : "";
+    return '<div class="bar"><span style="width:' + w + '%"></span>' + mk + "</div>";
+  }
+  function facts(rows) {
+    return '<dl class="facts">' + rows.filter(Boolean).map(function (r) {
+      return "<dt>" + r[0] + '</dt><dd class="num">' + r[1] + "</dd>";
+    }).join("") + "</dl>";
+  }
+  function timeLeft(years) {
+    if (years <= 0) return "prazo atingido";
+    var months = Math.round(years * 12);
+    if (months < 24) return months + " meses";
+    return years.toLocaleString("pt-PT", { maximumFractionDigits: 1 }) + " anos";
+  }
+
+  function renderCards(m) {
+    var s = state.settings;
+    var has = m.entries.length > 0;
+    var html = "";
+
+    // A
+    var margin = m.ttmRev && m.ttmProfit && m.ttmRev.sum ? m.ttmProfit.sum / m.ttmRev.sum : null;
+    html += '<article class="card"><span class="tag">Ponto A · Hoje</span><h2>Faturação até ao momento</h2>' +
+      '<div class="big num">' + money(m.ytdRev) + "</div>" +
+      '<small class="muted">Faturação de ' + m.now.getFullYear() + (m.lastMonth ? " (até " + monthLabel(m.lastMonth) + ")" : "") + "</small>" +
+      facts([
+        ["Faturação últimos 12 meses" + (m.ttmRev && m.ttmRev.count < 12 ? "*" : ""), m.ttmRev ? money(m.ttmRev.annual) : "—"],
+        ["Lucro últimos 12 meses" + (m.ttmProfit && m.ttmProfit.count < 12 ? "*" : ""), m.ttmProfit ? money(m.ttmProfit.annual) : "—"],
+        ["Margem", margin != null ? pct1.format(margin) : "—"],
+        ["Run-rate (últimos 3 meses × 12)", m.rr3Rev ? money(m.rr3Rev.annual) : "—"]
+      ]) +
+      ((m.ttmRev && m.ttmRev.count < 12) || (m.ttmProfit && m.ttmProfit.count < 12)
+        ? '<p class="note">* Menos de 12 meses registados: valor anualizado.</p>' : "") +
+      "</article>";
+
+    // A.1
+    var a1 = m.a1;
+    var a1Body;
+    if (a1.phase === "before") {
+      a1Body = '<div class="big num">' + (has ? pct.format(a1.progress) : "—") + "</div>" +
+        '<small class="muted">do ritmo anual de ' + short(a1.target) + " (run-rate atual)</small>" +
+        bar(a1.progress) +
+        facts([
+          ["Run-rate atual", money(a1.runRate)],
+          ["Falta no ritmo anual", a1.runRate != null ? money(Math.max(a1.target - a1.runRate, 0)) : money(a1.target)],
+          ["Faturação mensal necessária", money(a1.monthlyNeeded)],
+          ["Média mensal atual (3 meses)", m.rr3Rev ? money(m.rr3Rev.monthly) : "—"],
+          ["Meta acumulada " + a1.year + " até ao DCBKK", money(a1.checkpoint)]
+        ]);
+    } else if (a1.phase === "during") {
+      a1Body = '<div class="big num">' + pct.format(a1.progress) + "</div>" +
+        '<small class="muted">da meta acumulada até ao DCBKK (' + short(a1.checkpoint) + ")</small>" +
+        bar(a1.progress, a1.marker) +
+        facts([
+          ["Faturação " + a1.year, money(a1.yearRev)],
+          ["Devia estar em", money(a1.expectedToDate)],
+          ["Diferença", money(a1.yearRev - a1.expectedToDate)],
+          ["Necessário por mês até ao DCBKK", money(a1.neededPerMonthLeft)]
+        ]);
+    } else {
+      a1Body = '<div class="big num">' + pct.format(a1.progress) + "</div>" +
+        '<small class="muted">da meta acumulada no DCBKK (' + short(a1.checkpoint) + ")</small>" +
+        bar(a1.progress) +
+        facts([["Faturação " + a1.year, money(a1.yearRev)]]);
+    }
+    html += '<article class="card"><span class="tag">Ponto A.1 · DCBKK \'27</span>' +
+      "<h2>On-track para " + short(a1.target) + " em " + a1.year + "</h2>" + a1Body +
+      (has ? '<span class="status' + (a1.onTrack ? "" : " off") + '">' + (a1.onTrack ? "On-track" : "Abaixo do ritmo") + "</span>" : "") +
+      '<p class="note">' + dateLabel(a1.date) + " · faltam " + timeLeft(yearsBetween(m.now, a1.date)) + "</p></article>";
+
+    // B e C
+    function goalCard(tag, title, g) {
+      var hasP = g.value != null;
+      var onPace = hasP && (g.reached || g.progress >= g.elapsed);
+      return '<article class="card"><span class="tag">' + tag + "</span><h2>" + title + "</h2>" +
+        '<div class="big num">' + (hasP ? pct.format(g.progress) : "—") + "</div>" +
+        '<small class="muted">do lucro anual de ' + short(g.target) + "</small>" +
+        bar(g.progress) +
+        facts([
+          ["Lucro últimos 12 meses", money(g.value)],
+          ["Falta", money(g.gap)],
+          g.cagr != null ? ["Crescimento anual necessário", pct.format(g.cagr)] : null,
+          g.nextYear != null && !g.reached ? ["Lucro a atingir daqui a 1 ano", money(g.nextYear)] : null,
+          ["Lucro mensal necessário", money(g.target / 12)]
+        ]) +
+        (hasP ? '<span class="status' + (onPace ? "" : " off") + '">' + (g.reached ? "Atingido" : g.cagr != null ? "Precisa de +" + pct.format(g.cagr) + "/ano" : "Sem lucro positivo") + "</span>" : "") +
+        '<p class="note">' + dateLabel(g.date) + " · faltam " + timeLeft(g.yearsLeft) + "</p></article>";
+    }
+    html += goalCard("Ponto B · 5 anos", "Long goal: " + short(s.bTarget) + " de lucro", m.b);
+    html += goalCard("Ponto C · 10 anos", "BHAG: " + short(s.cTarget) + " de lucro", m.c);
+
+    el("cards").innerHTML = html;
+  }
+
+  function renderJourney(m) {
+    var start = m.now, end = m.c.date;
+    var span = end - start;
+    function pos(d) { return Math.min(Math.max((d - start) / span, 0), 1) * 100; }
+    var stops = [
+      { cls: "today", x: 0, name: "A · Hoje", sub: m.ttmRev ? short(m.ttmRev.annual) + " fat." : "sem dados" },
+      { x: pos(m.a1.date), name: "A.1 · DCBKK", sub: pct.format(m.a1.progress) },
+      { x: pos(m.b.date), name: "B · " + m.b.date.getFullYear(), sub: pct.format(m.b.progress) },
+      { x: pos(m.c.date), name: "C · " + m.c.date.getFullYear(), sub: pct.format(m.c.progress) }
+    ];
+    // Progresso geral rumo à BHAG, pelo lucro
+    var fill = Math.min(m.c.progress, 1) * 100;
+    el("journey").innerHTML = '<div class="journey-line"><div class="journey-fill" title="Progresso rumo à BHAG (lucro)" style="width:' + fill + '%"></div>' +
+      stops.map(function (st, i) {
+        return '<div class="stop ' + (st.cls || "") + '" style="left:' + st.x + '%">' +
+          '<div class="lbl ' + (i % 2 ? "down" : "up") + '"><b>' + esc(st.name) + "</b>" + esc(st.sub) + "</div>" +
+          '<div class="dot"></div></div>';
+      }).join("") + "</div>";
+    // Rótulos alternados acima e abaixo; os da ponta alinhados para não sair do ecrã
+    var lbls = el("journey").querySelectorAll(".lbl");
+    lbls[0].style.left = "0"; lbls[0].style.transform = "none";
+    lbls[lbls.length - 1].style.left = "auto"; lbls[lbls.length - 1].style.right = "0"; lbls[lbls.length - 1].style.transform = "none";
+    lbls[lbls.length - 1].style.textAlign = "right"; lbls[0].style.textAlign = "left";
+  }
+
+  function renderChart(m) {
+    var data = m.entries.slice(-24);
+    if (!data.length) {
+      el("chart").innerHTML = '<div class="empty">Adiciona o primeiro mês para ver o gráfico.</div>';
+      return;
+    }
+    var W = 960, H = 280, pl = 56, pr = 12, pt = 12, pb = 28;
+    var ref = state.settings.a1Target / 12;
+    var max = Math.max(ref, d3max(data.map(function (e) { return e.revenue; })), d3max(data.map(function (e) { return e.profit || 0; })));
+    var min = Math.min(0, Math.min.apply(null, data.map(function (e) { return e.profit || 0; })));
+    max = niceCeil(max);
+    function y(v) { return pt + (max - v) / (max - min) * (H - pt - pb); }
+    var bw = (W - pl - pr) / data.length;
+    var gw = Math.min(bw * 0.8, 44), w1 = gw / 2 - 1;
+    var svg = '<svg class="chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Faturação e lucro mensais">';
+    // grelha
+    for (var i = 0; i <= 4; i++) {
+      var v = min + (max - min) * i / 4, yy = y(v);
+      svg += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--border)"/>' +
+        '<text x="' + (pl - 8) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="11" fill="var(--muted)">' + short(v) + "</text>";
+    }
+    var y0 = y(0);
+    data.forEach(function (e, i) {
+      var cx = pl + bw * i + bw / 2, x = cx - gw / 2;
+      var tip = monthLabel(e.month) + ": faturação " + money(e.revenue) + (e.profit != null ? ", lucro " + money(e.profit) : "");
+      svg += "<g><title>" + esc(tip) + "</title>";
+      svg += '<rect x="' + x + '" y="' + y(e.revenue) + '" width="' + w1 + '" height="' + Math.max(y0 - y(e.revenue), 0) + '" rx="2" fill="var(--wl-green-dark)"/>';
+      if (e.profit != null) {
+        var top = Math.min(y(e.profit), y0), hgt = Math.abs(y0 - y(e.profit));
+        svg += '<rect x="' + (x + w1 + 2) + '" y="' + top + '" width="' + w1 + '" height="' + hgt + '" rx="2" fill="var(--wl-green-medium)"/>';
+      }
+      svg += "</g>";
+      var every = Math.ceil(data.length / 12);
+      if (i % every === 0) {
+        svg += '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="var(--muted)">' + monthLabel(e.month) + "</text>";
+      }
+    });
+    var yr = y(ref);
+    svg += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yr + '" y2="' + yr + '" stroke="var(--muted)" stroke-dasharray="5 4" stroke-width="1.5"/>';
+    svg += "</svg>";
+    el("chart").innerHTML = svg;
+  }
+  function d3max(arr) { return arr.length ? Math.max.apply(null, arr) : 0; }
+  function niceCeil(v) {
+    if (v <= 0) return 1;
+    var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+  }
+
+  function renderTable(m) {
+    var rows = m.entries.slice().reverse();
+    if (!rows.length) {
+      el("table").innerHTML = '<div class="empty">Ainda não há registos. Começa por adicionar a faturação (e o lucro) dos meses deste ano.</div>';
+      return;
+    }
+    el("table").innerHTML = "<table><thead><tr><th>Mês</th><th>Faturação</th><th>Lucro</th><th>Margem</th><th></th></tr></thead><tbody>" +
+      rows.map(function (e) {
+        return "<tr><td>" + monthLabel(e.month) + '</td><td class="num">' + money(e.revenue) + '</td><td class="num">' + money(e.profit) +
+          '</td><td class="num">' + (e.profit != null && e.revenue ? pct1.format(e.profit / e.revenue) : "—") + "</td>" +
+          '<td><button type="button" class="link" data-edit="' + e.month + '">Editar</button>' +
+          '<button type="button" class="link danger" data-del="' + e.month + '">Apagar</button></td></tr>';
+      }).join("") + "</tbody></table>";
+  }
+
+  function renderSettings() {
+    var f = el("settings-form"), s = state.settings;
+    Object.keys(DEFAULTS).forEach(function (k) { if (f.elements[k]) f.elements[k].value = s[k]; });
+  }
+
+  function render() {
+    var m = compute();
+    renderJourney(m);
+    renderCards(m);
+    renderChart(m);
+    renderTable(m);
+  }
+
+  // ---------- Eventos ----------
+  el("entry-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var f = ev.target;
+    var month = f.elements.month.value;
+    var revenue = parseFloat(f.elements.revenue.value);
+    var profitRaw = f.elements.profit.value.trim();
+    if (!month || isNaN(revenue)) return;
+    var entry = { month: month, revenue: revenue, profit: profitRaw === "" ? null : parseFloat(profitRaw) };
+    state.entries = state.entries.filter(function (e) { return e.month !== month; }).concat(entry);
+    save();
+    f.reset();
+    render();
+  });
+
+  el("table").addEventListener("click", function (ev) {
+    var t = ev.target;
+    if (t.dataset.del) {
+      if (!confirm("Apagar o registo de " + monthLabel(t.dataset.del) + "?")) return;
+      state.entries = state.entries.filter(function (e) { return e.month !== t.dataset.del; });
+      save(); render();
+    } else if (t.dataset.edit) {
+      var e = state.entries.find(function (x) { return x.month === t.dataset.edit; });
+      var f = el("entry-form");
+      f.elements.month.value = e.month;
+      f.elements.revenue.value = e.revenue;
+      f.elements.profit.value = e.profit == null ? "" : e.profit;
+      f.elements.revenue.focus();
+    }
+  });
+
+  el("settings-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var f = ev.target, s = state.settings;
+    ["a1Target", "a1Year", "bTarget", "cTarget"].forEach(function (k) {
+      var v = parseFloat(f.elements[k].value);
+      if (!isNaN(v) && v > 0) s[k] = v;
+    });
+    ["dcbkk", "baseDate"].forEach(function (k) { if (f.elements[k].value) s[k] = f.elements[k].value; });
+    save(); render();
+  });
+
+  el("export").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "rumo-metas-" + todayISO() + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+  el("import").addEventListener("click", function () { el("import-file").click(); });
+  el("import-file").addEventListener("change", function (ev) {
+    var file = ev.target.files[0];
+    if (!file) return;
+    file.text().then(function (txt) {
+      var data = JSON.parse(txt);
+      if (!data || !Array.isArray(data.entries)) throw new Error("formato");
+      state.entries = data.entries.filter(function (e) { return e && /^\d{4}-\d{2}$/.test(e.month) && typeof e.revenue === "number"; });
+      state.settings = Object.assign({}, DEFAULTS, { baseDate: state.settings.baseDate }, data.settings || {});
+      save(); renderSettings(); render();
+    }).catch(function () { alert("Não foi possível importar: ficheiro inválido."); });
+    ev.target.value = "";
+  });
+  el("reset").addEventListener("click", function () {
+    if (!confirm("Apagar todos os registos e definições deste browser? Exporta um backup antes, se quiseres guardar.")) return;
+    try { localStorage.removeItem(KEY); } catch (e) { /* ignorar */ }
+    state = load(); save(); renderSettings(); render();
+  });
+
+  renderSettings();
+  render();
+})();
+</script>
+</body>
+</html>
