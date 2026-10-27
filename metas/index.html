@@ -210,7 +210,7 @@
 <header class="hero">
   <div class="wrap">
     <h1>Rumo às Metas</h1>
-    <p>Onde estou (A), e quão longe estou do DCBKK '27 (A.1), da meta a 5 anos (B) e da BHAG a 10 anos (C).</p>
+    <p>Onde estou (A), e quão longe estou do DCBKK '27 (A.1) e da meta a 5 anos (B).</p>
     <div class="journey" id="journey"></div>
   </div>
 </header>
@@ -259,13 +259,12 @@
         <label>Ano da meta A.1 <input type="number" name="a1Year" step="1" min="2000"></label>
         <label>Data do DCBKK '27 <input type="date" name="dcbkk"></label>
         <label>B: lucro anual (€) <input type="number" name="bTarget" step="any" min="1"></label>
-        <label>C: lucro anual (€) <input type="number" name="cTarget" step="any" min="1"></label>
         <label>Início da contagem B/C <input type="date" name="baseDate"></label>
         <label>Corrida: início <input type="month" name="raceStart"></label>
         <label>Corrida: meta por jogador (€) <input type="number" name="raceGoal" step="any" min="1"></label>
         <button type="submit">Guardar definições</button>
       </form>
-      <p class="note">B conta 5 anos e C conta 10 anos a partir da data de início. Na corrida, cada barco avança com a faturação acumulada do jogador desde o mês de início; chega à bandeira quando atinge a meta por jogador.</p>
+      <p class="note">B conta 5 anos a partir da data de início. Na corrida, cada barco avança com a faturação acumulada do jogador desde o mês de início; chega à bandeira quando atinge a meta por jogador.</p>
       <div class="actions">
         <button type="button" class="secondary" id="export">Exportar backup (JSON)</button>
         <button type="button" class="secondary" id="import">Importar backup</button>
@@ -286,7 +285,6 @@
     a1Year: 2027,
     dcbkk: "2027-10-15",
     bTarget: 300000,
-    cTarget: 1000000,
     baseDate: null,
     raceStart: null,
     raceGoal: 250000
@@ -445,7 +443,6 @@
       return { name: p, total: total, progress: total / s.raceGoal };
     });
     m.b = profitGoal(s.bTarget, 5);
-    m.c = profitGoal(s.cTarget, 10);
     return m;
   }
 
@@ -543,24 +540,22 @@
         '<p class="note">' + dateLabel(g.date) + " · faltam " + timeLeft(g.yearsLeft) + "</p></article>";
     }
     html += goalCard("Ponto B · 5 anos", "Long goal: " + short(s.bTarget) + " de lucro", m.b);
-    html += goalCard("Ponto C · 10 anos", "BHAG: " + short(s.cTarget) + " de lucro", m.c);
 
     el("cards").innerHTML = html;
   }
 
   function renderJourney(m) {
-    var start = m.now, end = m.c.date;
+    var start = m.now, end = m.b.date;
     var span = end - start;
     function pos(d) { return Math.min(Math.max((d - start) / span, 0), 1) * 100; }
     var stops = [
       { cls: "today", x: 0, name: "A · Hoje", sub: m.ttmRev ? short(m.ttmRev.annual) + " fat." : "sem dados" },
       { x: pos(m.a1.date), name: "A.1 · DCBKK", sub: pct.format(m.a1.progress) },
-      { x: pos(m.b.date), name: "B · " + m.b.date.getFullYear(), sub: pct.format(m.b.progress) },
-      { x: pos(m.c.date), name: "C · " + m.c.date.getFullYear(), sub: pct.format(m.c.progress) }
+      { x: pos(m.b.date), name: "B · " + m.b.date.getFullYear(), sub: pct.format(m.b.progress) }
     ];
-    // Progresso geral rumo à BHAG, pelo lucro
-    var fill = Math.min(m.c.progress, 1) * 100;
-    el("journey").innerHTML = '<div class="journey-line"><div class="journey-fill" title="Progresso rumo à BHAG (lucro)" style="width:' + fill + '%"></div>' +
+    // Progresso geral rumo a B, pelo lucro
+    var fill = Math.min(m.b.progress, 1) * 100;
+    el("journey").innerHTML = '<div class="journey-line"><div class="journey-fill" title="Progresso rumo a B (lucro)" style="width:' + fill + '%"></div>' +
       stops.map(function (st, i) {
         return '<div class="stop ' + (st.cls || "") + '" style="left:' + st.x + '%">' +
           '<div class="lbl ' + (i % 2 ? "down" : "up") + '"><b>' + esc(st.name) + "</b>" + esc(st.sub) + "</div>" +
@@ -718,7 +713,7 @@
   el("settings-form").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var f = ev.target, s = state.settings;
-    ["a1Target", "a1Year", "bTarget", "cTarget", "raceGoal"].forEach(function (k) {
+    ["a1Target", "a1Year", "bTarget", "raceGoal"].forEach(function (k) {
       var v = parseFloat(f.elements[k].value);
       if (!isNaN(v) && v > 0) s[k] = v;
     });
