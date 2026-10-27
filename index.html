@@ -93,7 +93,7 @@
   .journey { margin-top: 8px; position: relative; padding: 0 8px; }
   .journey-line {
     position: relative; height: 6px; border-radius: 3px;
-    background: rgba(255,255,255,0.15); margin: 84px 0 56px;
+    background: rgba(255,255,255,0.15); margin: 84px 0 76px;
   }
   .journey-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--wl-green-light); }
   .stop { position: absolute; top: 50%; transform: translate(-50%, -50%); text-align: center; }
@@ -101,7 +101,19 @@
     width: 18px; height: 18px; border-radius: 50%;
     background: var(--hero-bg); border: 3px solid var(--wl-green-light); margin: 0 auto;
   }
-  .stop.today .dot { background: var(--wl-green-light); }
+  .stop.done .dot { background: var(--wl-green-light); }
+  .now-mark { position: absolute; top: 50%; z-index: 2; transition: left 1.2s ease; }
+  .now-mark .pin {
+    position: absolute; left: -1.5px; top: -16px; width: 3px; height: 32px; border-radius: 2px; background: var(--hero-text);
+  }
+  .now-mark .pin::after {
+    content: ""; position: absolute; left: -4.5px; top: -6px; width: 12px; height: 12px; border-radius: 50%;
+    background: var(--hero-text); box-shadow: 0 0 0 0 rgba(255,255,255,0.6); animation: pulse 2s infinite;
+  }
+  .now-mark .lbl { position: absolute; top: 24px; transform: translateX(-50%); white-space: nowrap; font-size: 0.8rem; color: #cfe3e6; text-align: center; }
+  .now-mark .lbl b { display: block; font-size: 0.95rem; color: var(--hero-text); }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.55); } 70% { box-shadow: 0 0 0 10px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+  @media (prefers-reduced-motion: reduce) { .now-mark .pin::after { animation: none; } }
   .stop .lbl { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 0.8rem; }
   .stop .lbl.up { bottom: 26px; }
   .stop .lbl.down { top: 26px; color: #cfe3e6; }
@@ -210,7 +222,7 @@
 <header class="hero">
   <div class="wrap">
     <h1>Rumo às Metas</h1>
-    <p>Onde estou (A), e quão longe estou do DCBKK '27 (A.1) e da meta a 5 anos (B).</p>
+    <p>Do ponto A (27 out 2026) ao DCBKK '27 (A.1): onde estamos hoje e quanto falta.</p>
     <div class="journey" id="journey"></div>
   </div>
 </header>
@@ -258,13 +270,12 @@
         <label>A.1: faturação anual (€) <input type="number" name="a1Target" step="any" min="1"></label>
         <label>Ano da meta A.1 <input type="number" name="a1Year" step="1" min="2000"></label>
         <label>Data do DCBKK '27 <input type="date" name="dcbkk"></label>
-        <label>B: lucro anual (€) <input type="number" name="bTarget" step="any" min="1"></label>
-        <label>Início da contagem B/C <input type="date" name="baseDate"></label>
+        <label>Data do ponto A <input type="date" name="aDate"></label>
         <label>Corrida: início <input type="month" name="raceStart"></label>
         <label>Corrida: meta por jogador (€) <input type="number" name="raceGoal" step="any" min="1"></label>
         <button type="submit">Guardar definições</button>
       </form>
-      <p class="note">B conta 5 anos a partir da data de início. Na corrida, cada barco avança com a faturação acumulada do jogador desde o mês de início; chega à bandeira quando atinge a meta por jogador.</p>
+      <p class="note">Na corrida, cada barco avança com a faturação acumulada do jogador desde o mês de início; chega à bandeira quando atinge a meta por jogador.</p>
       <div class="actions">
         <button type="button" class="secondary" id="export">Exportar backup (JSON)</button>
         <button type="button" class="secondary" id="import">Importar backup</button>
@@ -284,8 +295,7 @@
     a1Target: 500000,
     a1Year: 2027,
     dcbkk: "2027-10-15",
-    bTarget: 300000,
-    baseDate: null,
+    aDate: "2026-10-27",
     raceStart: null,
     raceGoal: 250000
   };
@@ -303,7 +313,6 @@
     if (!state || typeof state !== "object") state = {};
     state.entries = Array.isArray(state.entries) ? state.entries : [];
     state.settings = Object.assign({}, DEFAULTS, state.settings || {});
-    if (!state.settings.baseDate) state.settings.baseDate = todayISO();
     if (!state.settings.raceStart) state.settings.raceStart = new Date().getFullYear() + "-01";
     state.entries.forEach(function (e) { e.player = e.player || ""; });
     return state;
@@ -334,7 +343,6 @@
   // ---------- Datas ----------
   function parseDate(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function monthIndex(key) { var p = key.split("-"); return +p[0] * 12 + (+p[1] - 1); }
-  function addYears(d, n) { var r = new Date(d); r.setFullYear(r.getFullYear() + n); return r; }
   function yearFraction(d) {
     var start = new Date(d.getFullYear(), 0, 1), end = new Date(d.getFullYear() + 1, 0, 1);
     return (d - start) / (end - start);
@@ -403,9 +411,12 @@
       a1.onTrack = a1.runRate != null && a1.runRate >= s.a1Target;
     } else if (now <= dc) {
       a1.phase = "during";
-      // Esperado até ao fim do último mês registado do ano da meta
+      // Esperado até ao fim do último mês fechado (ou do último mês registado, se for mais recente)
       var lastIn = entries.filter(function (e) { return e.month.slice(0, 4) == String(s.a1Year); }).pop();
-      var upTo = lastIn ? new Date(s.a1Year, +lastIn.month.slice(5, 7), 0, 23, 59) : new Date(s.a1Year, 0, 1);
+      var upTo = new Date(Math.max(
+        new Date(s.a1Year, 0, 1),
+        new Date(now.getFullYear(), now.getMonth(), 0, 23, 59),
+        lastIn ? new Date(s.a1Year, +lastIn.month.slice(5, 7), 0, 23, 59) : 0));
       a1.expectedToDate = s.a1Target * yearFraction(upTo);
       a1.value = a1.yearRev;
       a1.progress = a1.yearRev / a1.checkpoint;
@@ -421,28 +432,11 @@
     }
     m.a1 = a1;
 
-    // B e C (lucro anual, TTM)
-    var base = parseDate(s.baseDate);
-    var ttmP = m.ttmProfit ? m.ttmProfit.annual : null;
-    function profitGoal(target, years) {
-      var g = { target: target, date: addYears(base, years), value: ttmP };
-      g.progress = ttmP != null ? Math.max(ttmP, 0) / target : 0;
-      g.gap = ttmP != null ? Math.max(target - ttmP, 0) : target;
-      g.yearsLeft = yearsBetween(now, g.date);
-      g.elapsed = Math.min(Math.max(yearsBetween(base, now) / years, 0), 1);
-      if (ttmP != null && ttmP > 0 && g.yearsLeft > 0) {
-        g.cagr = ttmP >= target ? 0 : Math.pow(target / ttmP, 1 / g.yearsLeft) - 1;
-        g.nextYear = Math.min(ttmP * (1 + g.cagr), target);
-      }
-      g.reached = ttmP != null && ttmP >= target;
-      return g;
-    }
     m.race = PLAYERS.map(function (p) {
       var total = state.entries.filter(function (e) { return e.player === p && e.month >= s.raceStart; })
         .reduce(function (t, e) { return t + e.revenue; }, 0);
       return { name: p, total: total, progress: total / s.raceGoal };
     });
-    m.b = profitGoal(s.bTarget, 5);
     return m;
   }
 
@@ -473,7 +467,7 @@
 
     // A
     var margin = m.ttmRev && m.ttmProfit && m.ttmRev.sum ? m.ttmProfit.sum / m.ttmRev.sum : null;
-    html += '<article class="card"><span class="tag">Ponto A · Hoje</span><h2>Faturação até ao momento</h2>' +
+    html += '<article class="card"><span class="tag">Ponto A · ' + dateLabel(parseDate(s.aDate)) + '</span><h2>Faturação até ao momento</h2>' +
       '<div class="big num">' + money(m.ytdRev) + "</div>" +
       '<small class="muted">Faturação de ' + m.now.getFullYear() + (m.lastMonth ? " (até " + monthLabel(m.lastMonth) + ")" : "") + "</small>" +
       facts(m.ytdBy.map(function (r) { return [esc(r[0]) + " em " + m.now.getFullYear(), money(r[1])]; }).concat([
@@ -521,51 +515,25 @@
       (has ? '<span class="status' + (a1.onTrack ? "" : " off") + '">' + (a1.onTrack ? "On-track" : "Abaixo do ritmo") + "</span>" : "") +
       '<p class="note">' + dateLabel(a1.date) + " · faltam " + timeLeft(yearsBetween(m.now, a1.date)) + "</p></article>";
 
-    // B e C
-    function goalCard(tag, title, g) {
-      var hasP = g.value != null;
-      var onPace = hasP && (g.reached || g.progress >= g.elapsed);
-      return '<article class="card"><span class="tag">' + tag + "</span><h2>" + title + "</h2>" +
-        '<div class="big num">' + (hasP ? pct.format(g.progress) : "—") + "</div>" +
-        '<small class="muted">do lucro anual de ' + short(g.target) + "</small>" +
-        bar(g.progress) +
-        facts([
-          ["Lucro últimos 12 meses", money(g.value)],
-          ["Falta", money(g.gap)],
-          g.cagr != null ? ["Crescimento anual necessário", pct.format(g.cagr)] : null,
-          g.nextYear != null && !g.reached ? ["Lucro a atingir daqui a 1 ano", money(g.nextYear)] : null,
-          ["Lucro mensal necessário", money(g.target / 12)]
-        ]) +
-        (hasP ? '<span class="status' + (onPace ? "" : " off") + '">' + (g.reached ? "Atingido" : g.cagr != null ? "Precisa de +" + pct.format(g.cagr) + "/ano" : "Sem lucro positivo") + "</span>" : "") +
-        '<p class="note">' + dateLabel(g.date) + " · faltam " + timeLeft(g.yearsLeft) + "</p></article>";
-    }
-    html += goalCard("Ponto B · 5 anos", "Long goal: " + short(s.bTarget) + " de lucro", m.b);
-
     el("cards").innerHTML = html;
   }
 
   function renderJourney(m) {
-    var start = m.now, end = m.b.date;
-    var span = end - start;
-    function pos(d) { return Math.min(Math.max((d - start) / span, 0), 1) * 100; }
-    var stops = [
-      { cls: "today", x: 0, name: "A · Hoje", sub: m.ttmRev ? short(m.ttmRev.annual) + " fat." : "sem dados" },
-      { x: pos(m.a1.date), name: "A.1 · DCBKK", sub: pct.format(m.a1.progress) },
-      { x: pos(m.b.date), name: "B · " + m.b.date.getFullYear(), sub: pct.format(m.b.progress) }
-    ];
-    // Progresso geral rumo a B, pelo lucro
-    var fill = Math.min(m.b.progress, 1) * 100;
-    el("journey").innerHTML = '<div class="journey-line"><div class="journey-fill" title="Progresso rumo a B (lucro)" style="width:' + fill + '%"></div>' +
-      stops.map(function (st, i) {
-        return '<div class="stop ' + (st.cls || "") + '" style="left:' + st.x + '%">' +
-          '<div class="lbl ' + (i % 2 ? "down" : "up") + '"><b>' + esc(st.name) + "</b>" + esc(st.sub) + "</div>" +
-          '<div class="dot"></div></div>';
-      }).join("") + "</div>" + renderRace(m);
-    // Rótulos alternados acima e abaixo; os da ponta alinhados para não sair do ecrã
-    var lbls = el("journey").querySelectorAll(".lbl");
-    lbls[0].style.left = "0"; lbls[0].style.transform = "none";
-    lbls[lbls.length - 1].style.left = "auto"; lbls[lbls.length - 1].style.right = "0"; lbls[lbls.length - 1].style.transform = "none";
-    lbls[lbls.length - 1].style.textAlign = "right"; lbls[0].style.textAlign = "left";
+    var start = parseDate(state.settings.aDate), end = m.a1.date;
+    var x = Math.min(Math.max((m.now - start) / (end - start), 0), 1) * 100;
+    var daysLeft = Math.max(Math.ceil((end - m.now) / 864e5), 0);
+    var align = x < 12 ? "translateX(-12px)" : x > 88 ? "translateX(calc(-100% + 12px))" : "translateX(-50%)";
+    var tAlign = x < 12 ? "left" : x > 88 ? "right" : "center";
+    el("journey").innerHTML = '<div class="journey-line">' +
+      '<div class="journey-fill" title="Tempo decorrido entre A e A.1" style="width:' + x + '%"></div>' +
+      '<div class="stop done" style="left:0"><div class="lbl up" style="left:0;transform:none;text-align:left"><b>A · ' +
+        esc(dateLabel(start)) + "</b>" + (m.ttmRev ? short(m.ttmRev.annual) + " fat. (12 meses)" : "sem dados") + '</div><div class="dot"></div></div>' +
+      '<div class="stop" style="left:100%"><div class="lbl up" style="left:auto;right:0;transform:none;text-align:right"><b>A.1 · DCBKK ' +
+        esc(dateLabel(end)) + "</b>" + pct.format(m.a1.progress) + (m.a1.onTrack ? " · on-track" : " · abaixo do ritmo") + '</div><div class="dot"></div></div>' +
+      '<div class="now-mark" style="left:' + x + '%" title="Hoje"><div class="pin"></div>' +
+        '<div class="lbl" style="transform:' + align + ";text-align:" + tAlign + '"><b>Hoje · ' + esc(dateLabel(m.now)) + "</b>" +
+        (daysLeft ? "faltam " + daysLeft + " dias" : "chegámos ao DCBKK") + "</div></div>" +
+      "</div>" + renderRace(m);
   }
 
   var BOAT_COLORS = { Nuno: "var(--wl-green-light)", Tiago: "var(--wl-green-medium)" };
@@ -713,11 +681,11 @@
   el("settings-form").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var f = ev.target, s = state.settings;
-    ["a1Target", "a1Year", "bTarget", "raceGoal"].forEach(function (k) {
+    ["a1Target", "a1Year", "raceGoal"].forEach(function (k) {
       var v = parseFloat(f.elements[k].value);
       if (!isNaN(v) && v > 0) s[k] = v;
     });
-    ["dcbkk", "baseDate", "raceStart"].forEach(function (k) { if (f.elements[k].value) s[k] = f.elements[k].value; });
+    ["dcbkk", "aDate", "raceStart"].forEach(function (k) { if (f.elements[k].value) s[k] = f.elements[k].value; });
     save(); render();
   });
 
@@ -738,7 +706,7 @@
       if (!data || !Array.isArray(data.entries)) throw new Error("formato");
       state.entries = data.entries.filter(function (e) { return e && /^\d{4}-\d{2}$/.test(e.month) && typeof e.revenue === "number"; })
         .map(function (e) { return { month: e.month, player: PLAYERS.indexOf(e.player) >= 0 ? e.player : "", revenue: e.revenue, profit: typeof e.profit === "number" ? e.profit : null }; });
-      state.settings = Object.assign({}, DEFAULTS, { baseDate: state.settings.baseDate, raceStart: state.settings.raceStart }, data.settings || {});
+      state.settings = Object.assign({}, DEFAULTS, { raceStart: state.settings.raceStart }, data.settings || {});
       save(); renderSettings(); render();
     }).catch(function () { alert("Não foi possível importar: ficheiro inválido."); });
     ev.target.value = "";
@@ -751,6 +719,9 @@
 
   renderSettings();
   render();
+  // O marcador "Hoje" avança sozinho com a página aberta
+  setInterval(render, 60 * 60 * 1000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) render(); });
 })();
 </script>
 </body>
