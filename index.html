@@ -297,7 +297,7 @@
     dcbkk: "2027-10-15",
     aDate: "2026-10-27",
     raceStart: null,
-    raceGoal: 250000
+    raceGoal: 500000
   };
   var PLAYERS = ["Nuno", "Tiago"];
 
@@ -313,6 +313,8 @@
     if (!state || typeof state !== "object") state = {};
     state.entries = Array.isArray(state.entries) ? state.entries : [];
     state.settings = Object.assign({}, DEFAULTS, state.settings || {});
+    // A meta antiga por defeito (250k) passou a 500k
+    if (state.settings.raceGoal === 250000) state.settings.raceGoal = 500000;
     if (!state.settings.raceStart) state.settings.raceStart = new Date().getFullYear() + "-01";
     state.entries.forEach(function (e) { e.player = e.player || ""; });
     return state;
