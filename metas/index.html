@@ -658,13 +658,17 @@
     var s = state.settings;
     var entries = monthly();
     var now = new Date();
+    // O mês em curso ainda não fechou: fica fora do ritmo e dos últimos 12 meses
+    var curKey = now.getFullYear() + "-" + pad(now.getMonth() + 1);
+    var closed = entries.filter(function (e) { return e.month < curKey; });
     var m = {
       entries: entries,
+      closed: closed,
       now: now,
-      ttmRev: trailing(entries, "revenue", 12),
-      ttmProfit: trailing(entries, "profit", 12),
-      rr3Rev: trailing(entries, "revenue", 3),
-      rr3Profit: trailing(entries, "profit", 3)
+      ttmRev: trailing(closed, "revenue", 12),
+      ttmProfit: trailing(closed, "profit", 12),
+      rr3Rev: trailing(closed, "revenue", 3),
+      rr3Profit: trailing(closed, "profit", 3)
     };
     var y = now.getFullYear();
     m.ytdRev = entries.filter(function (e) { return e.month.slice(0, 4) == String(y); })
@@ -690,17 +694,15 @@
       a1.onTrack = a1.runRate != null && a1.runRate >= s.a1Target;
     } else if (now <= dc) {
       a1.phase = "during";
-      // Esperado até ao fim do último mês fechado (ou do último mês registado, se for mais recente)
-      var lastIn = entries.filter(function (e) { return e.month.slice(0, 4) == String(s.a1Year); }).pop();
-      var upTo = new Date(Math.max(
-        new Date(s.a1Year, 0, 1),
-        new Date(now.getFullYear(), now.getMonth(), 0, 23, 59),
-        lastIn ? new Date(s.a1Year, +lastIn.month.slice(5, 7), 0, 23, 59) : 0));
+      // Compara só meses fechados: o esperado e o faturado até ao fim do mês anterior
+      var upTo = new Date(Math.max(new Date(s.a1Year, 0, 1), new Date(now.getFullYear(), now.getMonth(), 0, 23, 59)));
+      a1.closedYearRev = closed.filter(function (e) { return e.month.slice(0, 4) == String(s.a1Year); })
+        .reduce(function (t, e) { return t + e.revenue; }, 0);
       a1.expectedToDate = s.a1Target * yearFraction(upTo);
       a1.value = a1.yearRev;
       a1.progress = a1.yearRev / a1.checkpoint;
       a1.marker = a1.expectedToDate / a1.checkpoint;
-      a1.onTrack = a1.yearRev >= a1.expectedToDate;
+      a1.onTrack = a1.closedYearRev >= a1.expectedToDate;
       var left = Math.max(monthsBetween(upTo, dc), 0.5);
       a1.neededPerMonthLeft = Math.max(a1.checkpoint - a1.yearRev, 0) / left;
     } else {
@@ -753,10 +755,11 @@
         ["Faturação últimos 12 meses" + (m.ttmRev && m.ttmRev.count < 12 ? "*" : ""), m.ttmRev ? money(m.ttmRev.annual) : "—"],
         ["Lucro últimos 12 meses" + (m.ttmProfit && m.ttmProfit.count < 12 ? "*" : ""), m.ttmProfit ? money(m.ttmProfit.annual) : "—"],
         ["Margem", margin != null ? pct1.format(margin) : "—"],
-        ["Run-rate (últimos 3 meses × 12)", m.rr3Rev ? money(m.rr3Rev.annual) : "—"]
+        ["Run-rate (3 meses fechados × 12)", m.rr3Rev ? money(m.rr3Rev.annual) : "—"]
       ])) +
       ((m.ttmRev && m.ttmRev.count < 12) || (m.ttmProfit && m.ttmProfit.count < 12)
         ? '<p class="note">* Menos de 12 meses registados: valor anualizado.</p>' : "") +
+      '<p class="note">O ritmo e os últimos 12 meses contam só meses fechados. O mês em curso entra quando acabar.</p>' +
       "</article>";
 
     // A.1
@@ -770,7 +773,7 @@
           ["Run-rate atual", money(a1.runRate)],
           ["Falta no ritmo anual", a1.runRate != null ? money(Math.max(a1.target - a1.runRate, 0)) : money(a1.target)],
           ["Faturação mensal necessária", money(a1.monthlyNeeded)],
-          ["Média mensal atual (3 meses)", m.rr3Rev ? money(m.rr3Rev.monthly) : "—"],
+          ["Média mensal (3 meses fechados)", m.rr3Rev ? money(m.rr3Rev.monthly) : "—"],
           ["Meta acumulada " + a1.year + " até ao DCBKK", money(a1.checkpoint)]
         ]);
     } else if (a1.phase === "during") {
@@ -779,8 +782,9 @@
         bar(a1.progress, a1.marker) +
         facts([
           ["Faturação " + a1.year, money(a1.yearRev)],
+          ["Faturado até ao fim do mês anterior", money(a1.closedYearRev)],
           ["Devia estar em", money(a1.expectedToDate)],
-          ["Diferença", money(a1.yearRev - a1.expectedToDate)],
+          ["Diferença", money(a1.closedYearRev - a1.expectedToDate)],
           ["Necessário por mês até ao DCBKK", money(a1.neededPerMonthLeft)]
         ]);
     } else {
@@ -921,8 +925,8 @@
     var items = [];
     if (cur != null) {
       items.push([money(gap) + " / mês",
-        gap > 0 ? "É quanto falta por mês para o ritmo dos " + short(a1.target) + " (precisam de " + money(need) + ", a média dos últimos 3 meses é " + money(cur) + ")."
-                : "Estão acima do ritmo dos " + short(a1.target) + ". Média dos últimos 3 meses: " + money(cur) + ". Mantenham."]);
+        gap > 0 ? "É quanto falta por mês para o ritmo dos " + short(a1.target) + " (precisam de " + money(need) + ", a média dos últimos 3 meses fechados é " + money(cur) + ")."
+                : "Estão acima do ritmo dos " + short(a1.target) + ". Média dos últimos 3 meses fechados: " + money(cur) + ". Mantenham."]);
     } else {
       items.push([money(need) + " / mês", "É o ritmo mensal para os " + short(a1.target) + " por ano. Registem os meses para ver quanto falta."]);
     }
@@ -940,7 +944,7 @@
         left ? "Para o barco chegar à bandeira (" + short(state.settings.raceGoal) + ") até ao DCBKK, daqui a " + weeksLeft + " semanas."
              : "Já chegou à meta da corrida. Hora de puxar pelo outro barco."]);
     });
-    var last12 = m.entries.slice(-12);
+    var last12 = m.closed.slice(-12);
     if (last12.length >= 3) {
       var best = last12.reduce(function (a, e) { return e.revenue > a.revenue ? e : a; });
       var worst = last12.reduce(function (a, e) { return e.revenue < a.revenue ? e : a; });
