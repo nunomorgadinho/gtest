@@ -205,6 +205,43 @@
   th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
   .empty { padding: 28px; text-align: center; color: var(--muted); }
 
+  /* Frase do dia */
+  .hero blockquote { margin: 14px 0 0; padding-left: 12px; border-left: 3px solid var(--wl-green-light); color: var(--hero-text); font-style: italic; }
+  .hero blockquote cite { display: block; font-style: normal; font-size: 0.8rem; color: #cfe3e6; margin-top: 2px; }
+
+  /* Insights e dicas */
+  .section-intro { margin: -6px 0 14px; color: var(--muted); font-size: 0.9rem; }
+  .insights { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-bottom: 16px; }
+  .insight { background: var(--soft); border-radius: 12px; padding: 14px 16px; }
+  .insight b { display: block; font-size: 1.15rem; margin-bottom: 2px; }
+  .insight span { font-size: 0.88rem; }
+  .tips { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .tip h3 { font-size: 0.98rem; margin-bottom: 4px; }
+  .tip p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+  .tip .n { color: var(--primary); font-weight: 700; margin-right: 6px; }
+
+  /* Mensagens */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chip { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-weight: 600; }
+  .chip:hover { background: var(--soft); }
+  .chip[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .messages { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .msg { display: flex; flex-direction: column; }
+  .msg header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .msg h3 { font-size: 0.98rem; }
+  .msg .tag { margin: 0; white-space: nowrap; }
+  .msg pre {
+    flex: 1; margin: 0 0 12px; white-space: pre-wrap; word-wrap: break-word; font: inherit; font-size: 0.88rem;
+    background: var(--bg); border-radius: 8px; padding: 12px; max-height: 260px; overflow: auto;
+  }
+  .msg button { align-self: flex-start; }
+
+  /* Frases */
+  .quotes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .quote { margin: 0; border-left: 4px solid var(--primary); }
+  .quote p { margin: 0 0 8px; font-size: 1rem; font-weight: 600; white-space: pre-line; }
+  .quote cite { font-style: normal; font-size: 0.82rem; color: var(--muted); }
+
   details.card summary { cursor: pointer; font-weight: 700; }
   details.card[open] summary { margin-bottom: 14px; }
   .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
@@ -223,12 +260,37 @@
   <div class="wrap">
     <h1>Rumo às Metas</h1>
     <p>Do ponto A (27 out 2026) ao DCBKK '27 (A.1): onde estamos hoje e quanto falta.</p>
+    <blockquote id="quote-of-day"></blockquote>
     <div class="journey" id="journey"></div>
   </div>
 </header>
 
 <main class="wrap">
   <div class="grid" id="cards"></div>
+
+  <section>
+    <h2>Dicas e insights para lá chegar</h2>
+    <p class="section-intro">Os números abaixo atualizam-se com os vossos registos.</p>
+    <div class="insights" id="insights"></div>
+    <div class="tips" id="tips"></div>
+  </section>
+
+  <section>
+    <h2>Mensagens para gerar oportunidades</h2>
+    <p class="section-intro">Copiem, troquem o que está entre [parênteses] e enviem. Uma mensagem enviada vale mais do que dez pensadas.</p>
+    <div class="chips" id="msg-filter" role="group" aria-label="Filtrar mensagens">
+      <button type="button" class="chip" data-ch="" aria-pressed="true">Todas</button>
+      <button type="button" class="chip" data-ch="WhatsApp" aria-pressed="false">WhatsApp</button>
+      <button type="button" class="chip" data-ch="Email" aria-pressed="false">Email</button>
+    </div>
+    <div class="messages" id="messages"></div>
+  </section>
+
+  <section>
+    <h2>Frases lendárias</h2>
+    <p class="section-intro">Para a caça, a ação, a conquista e a construção do império.</p>
+    <div class="quotes" id="quotes"></div>
+  </section>
 
   <section>
     <h2>Evolução mensal</h2>
@@ -300,6 +362,221 @@
     raceGoal: 500000
   };
   var PLAYERS = ["Nuno", "Tiago"];
+  var TIPS = [
+  [
+    "Receita recorrente primeiro",
+    "Cada plano de manutenção de 1 000 €/mês vale 12 000 €/ano sem voltar a vender. Proponham um plano mensal a todos os clientes no fecho de cada projeto."
+  ],
+  [
+    "Vender mais a quem já confia",
+    "Os clientes atuais já vos conhecem. Façam uma revisão trimestral com os 10 maiores e levem sempre uma proposta concreta de melhoria."
+  ],
+  [
+    "Follow-up é onde está o dinheiro",
+    "A maioria das propostas não morre com um não, morre por falta de seguimento. Façam follow-up aos 3, 7 e 14 dias, e fechem com o email de despedida."
+  ],
+  [
+    "Ritmo semanal de caça",
+    "Bloqueiem 2 manhãs por semana só para gerar oportunidades: 10 mensagens, 3 follow-ups e 1 pedido de referência por pessoa."
+  ],
+  [
+    "Ofertas com nome e preço",
+    "Produtos fechados (auditoria de performance, auditoria de acessibilidade, migração para WordPress) vendem-se mais depressa do que orçamentos à medida."
+  ],
+  [
+    "Subir preços todos os anos",
+    "Revejam a tabela anualmente. Um aumento pequeno em toda a base de clientes vale tanto como vários clientes novos (vejam o cálculo acima)."
+  ],
+  [
+    "Projetos maiores, menos clientes",
+    "Para chegar aos 500k é mais fácil somar 10 projetos de 20k do que 100 de 2k. Qualifiquem cedo e digam não ao que é demasiado pequeno."
+  ],
+  [
+    "Contratação pública",
+    "As entidades públicas compram sites todos os anos. Acompanhem as plataformas de contratação pública e preparem um dossier de candidatura reutilizável."
+  ],
+  [
+    "Parcerias que trazem projetos",
+    "Agências de design, marketing e comunicação têm mais pedidos de WordPress do que capacidade. Uma boa parceria em white label pode valer um cliente grande por ano."
+  ],
+  [
+    "Casos de estudo com números",
+    "Cada projeto entregue deve gerar um caso de estudo com resultados (velocidade, visitas, conversões, donativos). É a melhor arma de venda que têm."
+  ],
+  [
+    "A rede do Dynamite Circle",
+    "Usem a comunidade antes do DCBKK: marquem chamadas com membros que vendem ao mesmo tipo de cliente e cheguem a Banguecoque com parcerias em cima da mesa."
+  ],
+  [
+    "Um número, todas as semanas",
+    "Segunda-feira, 15 minutos, Nuno e Tiago: o que entrou, o que está em proposta, quem vai ser contactado esta semana. Esta página é o placar."
+  ]
+];
+  var MESSAGES = [
+  {
+    "ch": "WhatsApp",
+    "title": "Reativar um cliente antigo",
+    "text": "Olá [Nome], tudo bem? Estive a rever alguns projetos que fizemos juntos e lembrei-me do [projeto]. Como está a correr o site?\n\nTenho duas ou três ideias rápidas para melhorar [velocidade / conversões / SEO] e gostava de as partilhar contigo. Tens 15 minutos esta semana para um café ou uma chamada?"
+  },
+  {
+    "ch": "WhatsApp",
+    "title": "Pedir uma referência",
+    "text": "Olá [Nome]! Obrigado mais uma vez pela confiança no [projeto].\n\nUma pergunta rápida: conheces alguém (outra organização, um parceiro, um colega) que esteja a pensar renovar o site ou que ande com dores de cabeça com WordPress? Uma apresentação tua vale ouro para nós. 🙏"
+  },
+  {
+    "ch": "WhatsApp",
+    "title": "Follow-up de proposta",
+    "text": "Olá [Nome], espero que esteja tudo bem. Queria saber se já conseguiste ver a proposta para o [projeto].\n\nSe ajudar, posso ajustar o âmbito ou dividir em fases para caber no orçamento deste ano. Faz sentido falarmos 10 minutos amanhã?"
+  },
+  {
+    "ch": "WhatsApp",
+    "title": "Depois de um evento",
+    "text": "Olá [Nome], foi um prazer conhecer-te no [evento]! Fiquei a pensar no que disseste sobre [desafio].\n\nNa WidgiLabs fazemos exatamente isso com WordPress para [tipo de clientes]. Que tal um café na próxima semana para trocarmos ideias?"
+  },
+  {
+    "ch": "WhatsApp",
+    "title": "Propor plano de manutenção",
+    "text": "Olá [Nome]! Reparei que o site ainda não tem [backups diários / atualizações seguras / monitorização]. Temos um plano mensal que trata disso tudo e vos dá prioridade no suporte.\n\nQueres que te envie os detalhes? São 2 minutos de leitura."
+  },
+  {
+    "ch": "WhatsApp",
+    "title": "Reconexão rápida",
+    "text": "Olá [Nome], há quanto tempo! Como estão as coisas na [empresa]?\n\nEstamos a abrir agenda para novos projetos em [mês/trimestre] e lembrei-me de vocês. Há alguma coisa no digital que vos esteja a travar este ano?"
+  },
+  {
+    "ch": "Email",
+    "title": "Contacto a frio com valor",
+    "text": "Assunto: Três ideias para o site da [Organização]\n\nOlá [Nome],\n\nChamo-me [O teu nome] e sou [cargo] na WidgiLabs, uma agência especializada em WordPress que trabalha com organizações como [exemplo de cliente semelhante].\n\nEstive a ver o site da [Organização] e identifiquei três melhorias rápidas:\n1. [melhoria 1]\n2. [melhoria 2]\n3. [melhoria 3]\n\nPosso enviar-lhe uma análise gratuita de uma página com estas e outras sugestões? Se fizer sentido, marcamos 20 minutos para conversar.\n\nCumprimentos,\n[O teu nome]\nWidgiLabs"
+  },
+  {
+    "ch": "Email",
+    "title": "Auditoria de acessibilidade",
+    "text": "Assunto: O site da [Empresa] cumpre os requisitos de acessibilidade?\n\nOlá [Nome],\n\nDesde 28 de junho de 2025, com o Ato Europeu da Acessibilidade, muitos sites e lojas online passaram a ter de cumprir requisitos de acessibilidade.\n\nFizemos uma verificação rápida ao [site] e encontrámos alguns pontos a corrigir, como [exemplo: contraste, imagens sem texto alternativo, formulários].\n\nPropomos uma auditoria completa, com relatório e plano de correção, por [valor] €. Quer que lhe envie um exemplo de relatório?\n\nCumprimentos,\n[O teu nome]\nWidgiLabs"
+  },
+  {
+    "ch": "Email",
+    "title": "Reativar cliente antigo",
+    "text": "Assunto: [Nome], uma ideia para o [site] em [ano]\n\nOlá [Nome],\n\nJá passaram [X] meses desde que lançámos o [projeto] e tenho acompanhado o vosso trabalho com interesse.\n\nHoje há ferramentas que não existiam quando fizemos o site e que podiam ajudar-vos a [objetivo: angariar mais donativos / gerar mais contactos / vender mais]. Preparei três sugestões concretas.\n\nPodemos falar 20 minutos na [dia]?\n\nAbraço,\n[O teu nome]"
+  },
+  {
+    "ch": "Email",
+    "title": "Último follow-up (email de despedida)",
+    "text": "Assunto: Fecho o processo?\n\nOlá [Nome],\n\nComo não tive notícias sobre a proposta para o [projeto], assumo que não é prioridade neste momento, e está tudo bem.\n\nFecho o processo do meu lado? Se alguma coisa mudar, basta responder a este email e retomamos de onde ficámos.\n\nCumprimentos,\n[O teu nome]"
+  },
+  {
+    "ch": "Email",
+    "title": "Parceria com agência (white label)",
+    "text": "Assunto: Parceria WordPress para a [Agência]\n\nOlá [Nome],\n\nMuitas agências de design e marketing têm mais pedidos de WordPress do que capacidade para os entregar. É aí que entramos.\n\nA WidgiLabs desenvolve e mantém sites WordPress em white label: vocês ficam com a relação com o cliente, nós tratamos da parte técnica, com prazos e qualidade garantidos.\n\nFaz sentido conversarmos 20 minutos sobre como podemos ajudar nos vossos próximos projetos?\n\nCumprimentos,\n[O teu nome]\nWidgiLabs"
+  },
+  {
+    "ch": "Email",
+    "title": "Pedir um caso de estudo",
+    "text": "Assunto: Podemos contar a vossa história?\n\nOlá [Nome],\n\nOs resultados do [projeto] deixaram-nos muito orgulhosos: [resultado, por exemplo: +40% de visitas ou o dobro dos donativos online].\n\nGostávamos de os partilhar num pequeno caso de estudo no nosso site e no LinkedIn, com a vossa aprovação final. Seriam só 15 minutos de conversa.\n\nE se conhecer alguém que possa beneficiar de um trabalho semelhante, teremos todo o gosto em ajudar.\n\nObrigado,\n[O teu nome]"
+  },
+  {
+    "ch": "Email",
+    "title": "Passar de projetos a contrato mensal",
+    "text": "Assunto: Proposta: evolução contínua do [site]\n\nOlá [Nome],\n\nNos últimos meses fizemos vários pedidos pontuais juntos. Para vos dar mais previsibilidade (e a nós mais tempo para pensar no vosso site), proponho um plano mensal:\n\n- [X] horas por mês de desenvolvimento e melhorias\n- Manutenção, segurança e backups incluídos\n- Reunião mensal de prioridades\n\nInvestimento: [valor] €/mês, sem fidelização mínima nos primeiros 3 meses.\n\nPodemos falar sobre isto esta semana?\n\nCumprimentos,\n[O teu nome]"
+  }
+];
+  var QUOTES = [
+  [
+    "Navegar é preciso; viver não é preciso.",
+    "Pompeu, segundo Plutarco (e Fernando Pessoa)"
+  ],
+  [
+    "Deus quer, o homem sonha, a obra nasce.",
+    "Fernando Pessoa, Mensagem"
+  ],
+  [
+    "Valeu a pena? Tudo vale a pena / Se a alma não é pequena.",
+    "Fernando Pessoa, Mar Português"
+  ],
+  [
+    "Quem quer passar além do Bojador / Tem que passar além da dor.",
+    "Fernando Pessoa, Mar Português"
+  ],
+  [
+    "Por mares nunca de antes navegados.",
+    "Luís Vaz de Camões, Os Lusíadas"
+  ],
+  [
+    "E se mais mundo houvera, lá chegara.",
+    "Luís Vaz de Camões, Os Lusíadas"
+  ],
+  [
+    "Vim, vi, venci. (Veni, vidi, vici)",
+    "Júlio César"
+  ],
+  [
+    "A sorte está lançada. (Alea iacta est)",
+    "Júlio César"
+  ],
+  [
+    "A fortuna favorece os audazes. (Audentes fortuna iuvat)",
+    "Virgílio, Eneida"
+  ],
+  [
+    "Os guerreiros vitoriosos vencem primeiro e só depois vão para a guerra; os derrotados vão para a guerra e só depois procuram vencer.",
+    "Sun Tzu, A Arte da Guerra"
+  ],
+  [
+    "Falhas 100% dos remates que não fazes.",
+    "Wayne Gretzky"
+  ],
+  [
+    "Um navio no porto está seguro, mas não é para isso que se constroem navios.",
+    "John A. Shedd"
+  ],
+  [
+    "Sou o senhor do meu destino, sou o capitão da minha alma.",
+    "William Ernest Henley, Invictus"
+  ],
+  [
+    "O mérito pertence a quem está de facto na arena, com o rosto coberto de pó, suor e sangue.",
+    "Theodore Roosevelt"
+  ],
+  [
+    "A inspiração é para amadores. O resto de nós aparece e põe-se a trabalhar.",
+    "Chuck Close"
+  ],
+  [
+    "Sê tão bom que não te possam ignorar.",
+    "Steve Martin"
+  ],
+  [
+    "Os planos não valem nada, mas planear é tudo.",
+    "Dwight D. Eisenhower"
+  ],
+  [
+    "Cai sete vezes, levanta-te oito.",
+    "Provérbio japonês"
+  ],
+  [
+    "Até às estrelas, pelas dificuldades. (Per aspera ad astra)",
+    "Lema latino"
+  ],
+  [
+    "Persiste e aguenta: um dia esta dor ser-te-á útil. (Perfer et obdura)",
+    "Ovídio"
+  ],
+  [
+    "Always be closing.",
+    "Glengarry Glen Ross, de David Mamet"
+  ],
+  [
+    "Mantém-te faminto, mantém-te louco. (Stay hungry, stay foolish)",
+    "Steve Jobs, citando o Whole Earth Catalog"
+  ],
+  [
+    "Toda a gente tem um plano até levar um murro na boca.",
+    "Mike Tyson"
+  ],
+  [
+    "A pressão é um privilégio.",
+    "Billie Jean King"
+  ]
+];
 
   function todayISO() {
     var d = new Date();
@@ -634,15 +911,110 @@
     Object.keys(DEFAULTS).forEach(function (k) { if (f.elements[k]) f.elements[k].value = s[k]; });
   }
 
+  function renderInsights(m) {
+    var a1 = m.a1, now = m.now;
+    var monthsLeft = Math.max(monthsBetween(now, a1.date), 1);
+    var weeksLeft = Math.max(Math.ceil((a1.date - now) / (7 * 864e5)), 1);
+    var need = a1.monthlyNeeded;
+    var cur = m.rr3Rev ? m.rr3Rev.monthly : null;
+    var gap = cur != null ? Math.max(need - cur, 0) : need;
+    var items = [];
+    if (cur != null) {
+      items.push([money(gap) + " / mês",
+        gap > 0 ? "É quanto falta por mês para o ritmo dos " + short(a1.target) + " (precisam de " + money(need) + ", a média dos últimos 3 meses é " + money(cur) + ")."
+                : "Estão acima do ritmo dos " + short(a1.target) + ". Média dos últimos 3 meses: " + money(cur) + ". Mantenham."]);
+    } else {
+      items.push([money(need) + " / mês", "É o ritmo mensal para os " + short(a1.target) + " por ano. Registem os meses para ver quanto falta."]);
+    }
+    if (gap > 0) {
+      items.push([money(gap * 12 / 52) + " / semana", "Faturação extra por semana para fechar a diferença. Dividido pelos dois, " + money(gap * 6 / 52) + " cada."]);
+      items.push([Math.ceil(gap / 1000) + " planos de 1 000 €/mês", "Ou, em alternativa, um projeto novo de " + money(gap * 3) + " por trimestre."]);
+      items.push([money(gap * 3) + " em propostas", "Pipeline aberto a manter todos os meses, contando que se fecha 1 em cada 3 propostas."]);
+    }
+    if (m.ttmRev) {
+      items.push(["+" + money(m.ttmRev.annual * 0.1) + " / ano", "É o que vale subir os preços 10% em toda a faturação atual, sem nenhum cliente novo."]);
+    }
+    m.race.forEach(function (r) {
+      var left = Math.max(state.settings.raceGoal - r.total, 0);
+      items.push([r.name + ": " + (left ? money(left / monthsLeft) + " / mês" : "na bandeira 🏁"),
+        left ? "Para o barco chegar à bandeira (" + short(state.settings.raceGoal) + ") até ao DCBKK, daqui a " + weeksLeft + " semanas."
+             : "Já chegou à meta da corrida. Hora de puxar pelo outro barco."]);
+    });
+    var last12 = m.entries.slice(-12);
+    if (last12.length >= 3) {
+      var best = last12.reduce(function (a, e) { return e.revenue > a.revenue ? e : a; });
+      var worst = last12.reduce(function (a, e) { return e.revenue < a.revenue ? e : a; });
+      items.push([short(best.revenue) + " vs " + short(worst.revenue),
+        "Melhor mês (" + monthLabel(best.month) + ") contra o pior (" + monthLabel(worst.month) + "). Quanto maior a diferença, mais vale apostar em receita recorrente."]);
+    }
+    el("insights").innerHTML = items.map(function (it) {
+      return '<div class="insight"><b class="num">' + esc(it[0]) + "</b><span>" + esc(it[1]) + "</span></div>";
+    }).join("");
+  }
+
+  function renderStatic() {
+    el("tips").innerHTML = TIPS.map(function (t, i) {
+      return '<article class="card tip"><h3><span class="n">' + (i + 1) + "</span>" + esc(t[0]) + "</h3><p>" + esc(t[1]) + "</p></article>";
+    }).join("");
+    el("quotes").innerHTML = QUOTES.map(function (q) {
+      return '<figure class="card quote"><p>' + esc(q[0]) + "</p><cite>" + esc(q[1]) + "</cite></figure>";
+    }).join("");
+    renderMessages("");
+  }
+
+  function renderQuoteOfDay(now) {
+    var day = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(2026, 0, 1)) / 864e5);
+    var q = QUOTES[((day % QUOTES.length) + QUOTES.length) % QUOTES.length];
+    el("quote-of-day").innerHTML = "«" + esc(q[0]) + "»<cite>" + esc(q[1]) + "</cite>";
+  }
+
+  function renderMessages(ch) {
+    el("messages").innerHTML = MESSAGES.map(function (msg, i) {
+      if (ch && msg.ch !== ch) return "";
+      return '<article class="card msg"><header><h3>' + esc(msg.title) + '</h3><span class="tag">' + esc(msg.ch) + "</span></header>" +
+        "<pre>" + esc(msg.text) + '</pre><button type="button" class="secondary" data-copy="' + i + '">Copiar</button></article>';
+    }).join("");
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(); } catch (e) { reject(e); }
+      ta.remove();
+    });
+  }
+
   function render() {
     var m = compute();
+    renderQuoteOfDay(m.now);
     renderJourney(m);
     renderCards(m);
+    renderInsights(m);
     renderChart(m);
     renderTable(m);
   }
 
   // ---------- Eventos ----------
+  el("msg-filter").addEventListener("click", function (ev) {
+    var b = ev.target.closest(".chip");
+    if (!b) return;
+    el("msg-filter").querySelectorAll(".chip").forEach(function (c) { c.setAttribute("aria-pressed", c === b ? "true" : "false"); });
+    renderMessages(b.dataset.ch);
+  });
+  el("messages").addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-copy]");
+    if (!b) return;
+    copyText(MESSAGES[+b.dataset.copy].text).then(function () {
+      b.textContent = "Copiado ✓";
+    }, function () {
+      b.textContent = "Seleciona e copia à mão";
+    });
+    setTimeout(function () { b.textContent = "Copiar"; }, 2000);
+  });
+
   el("entry-form").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var f = ev.target;
@@ -727,6 +1099,7 @@
   });
 
   renderSettings();
+  renderStatic();
   render();
   // O marcador "Hoje" avança sozinho com a página aberta
   setInterval(render, 60 * 60 * 1000);
