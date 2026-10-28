@@ -7,7 +7,7 @@ Web app de uma só página que mostra a distância entre a situação atual e as
 
 **Linha:** vai de A a A.1. Um marcador "Hoje" mostra a data atual e avança sozinho com o passar dos dias.
 
-**Corrida:** dois barcos (Nuno e Tiago) navegam por baixo da linha. Cada um avança com a faturação acumulada do jogador desde o mês de início da corrida e chega à bandeira quando atinge a meta por jogador (500k€ por defeito, editável nas Definições). Cada registo mensal é de um jogador (ou da equipa) e os totais da empresa somam todos.
+**Corrida:** dois barcos (Nuno e Tiago) navegam por baixo da linha. Cada um avança com a faturação acumulada do jogador desde o mês de início da corrida e chega à bandeira quando atinge a meta por jogador (500k€ por defeito, editável nas Definições). Cada registo mensal é de um jogador (ou da equipa) e os totais da empresa somam todos. Por baixo dos barcos há duas caixas para escrever à mão a faturação acumulada do Nuno e do Tiago: ao gravar, os barcos navegam até à nova posição. Um valor escrito tem prioridade sobre os registos; vazio, o barco volta a usar os registos.
 
 **Dicas e insights:** números calculados a partir dos registos (quanto falta por mês e por semana, equivalência em planos mensais, pipeline necessário, efeito de subir preços, ritmo de cada barco) e 12 dicas fixas.
 
