@@ -235,6 +235,24 @@
   .tip p { margin: 0; font-size: 0.9rem; color: var(--muted); }
   .tip .n { color: var(--primary); font-weight: 700; margin-right: 6px; }
 
+  /* O que move a agulha */
+  .week-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-bottom: 14px; }
+  .week-bar button { padding: 6px 14px; font-size: 1.1rem; line-height: 1; }
+  .week-bar button:disabled { opacity: 0.35; cursor: default; background: var(--soft); }
+  .week-score { flex-basis: 100%; font-size: 0.9rem; color: var(--muted); }
+  .week-score b { color: var(--text); }
+  .activities { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+  .act { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
+  .act.done { border-color: var(--primary); }
+  .act h3 { font-size: 0.98rem; display: flex; justify-content: space-between; gap: 8px; }
+  .act h3 small { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  .act p { margin: 0; font-size: 0.85rem; color: var(--muted); flex: 1; }
+  .counter { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+  .counter .who { flex: 1; font-weight: 600; }
+  .counter button { padding: 4px 12px; font-size: 1rem; line-height: 1.2; }
+  .counter output { min-width: 2.2em; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .counter output.hit { color: var(--primary); }
+
   /* Mensagens */
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .chip { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-weight: 600; }
@@ -352,6 +370,18 @@
   </section>
 
   <section>
+    <h2>O que move a agulha?</h2>
+    <p class="section-intro">As atividades que trazem faturação. Contem o que fazem cada semana: o placar diz quem está a caçar.</p>
+    <div class="week-bar">
+      <button type="button" class="secondary" id="week-prev" aria-label="Semana anterior">‹</button>
+      <strong id="week-label"></strong>
+      <button type="button" class="secondary" id="week-next" aria-label="Semana seguinte">›</button>
+      <span class="week-score" id="week-score"></span>
+    </div>
+    <div class="activities" id="activities"></div>
+  </section>
+
+  <section>
     <h2>Mensagens para gerar oportunidades</h2>
     <p class="section-intro">Copiem, troquem o que está entre [parênteses] e enviem. Uma mensagem enviada vale mais do que dez pensadas.</p>
     <div class="chips" id="msg-filter" role="group" aria-label="Filtrar mensagens">
@@ -452,6 +482,92 @@
     raceManual: {}
   };
   var PLAYERS = ["Nuno", "Tiago"];
+  var ACTIVITIES = [
+  {
+    "id": "novos",
+    "title": "Fazer novos contactos",
+    "why": "Pessoas que ainda não vos conhecem. Sem topo de funil não há faturação daqui a 3 meses.",
+    "goal": 10
+  },
+  {
+    "id": "antigos",
+    "title": "Reach out a contacto antigo",
+    "why": "Ex-clientes e contactos dormentes já confiam em vocês: é o caminho mais curto para uma venda.",
+    "goal": 5
+  },
+  {
+    "id": "propostas",
+    "title": "Escrever propostas",
+    "why": "Cada proposta enviada é uma aposta real em cima da mesa.",
+    "goal": 2
+  },
+  {
+    "id": "diagnosticos",
+    "title": "Diagnósticos",
+    "why": "Auditorias e análises que mostram o problema antes de vender a solução.",
+    "goal": 2
+  },
+  {
+    "id": "followups",
+    "title": "Follow-ups de propostas",
+    "why": "A maioria das vendas fecha depois do 2.º ou 3.º contacto.",
+    "goal": 5
+  },
+  {
+    "id": "referencias",
+    "title": "Pedir referências",
+    "why": "Um cliente satisfeito que vos apresenta vale mais do que cem contactos a frio.",
+    "goal": 2
+  },
+  {
+    "id": "reunioes",
+    "title": "Reuniões de descoberta",
+    "why": "Conversas para perceber dores, orçamento e decisor. É aqui que nascem as propostas.",
+    "goal": 3
+  },
+  {
+    "id": "upsell",
+    "title": "Propor mais a clientes atuais",
+    "why": "Novas fases, melhorias e serviços a quem já paga.",
+    "goal": 2
+  },
+  {
+    "id": "mensal",
+    "title": "Converter em plano mensal",
+    "why": "Cada contrato recorrente soma todos os meses sem voltar a vender.",
+    "goal": 1
+  },
+  {
+    "id": "parceiros",
+    "title": "Contactar parceiros",
+    "why": "Agências e freelancers que vos podem passar projetos (white label).",
+    "goal": 2
+  },
+  {
+    "id": "conteudo",
+    "title": "Publicar no LinkedIn",
+    "why": "Conteúdo com casos e opiniões mantém-vos na cabeça de quem vai comprar.",
+    "goal": 2
+  },
+  {
+    "id": "casos",
+    "title": "Casos de estudo e testemunhos",
+    "why": "Pedir, escrever ou publicar provas com resultados.",
+    "goal": 1
+  },
+  {
+    "id": "concursos",
+    "title": "Concursos e consultas públicas",
+    "why": "Procurar e responder a oportunidades de entidades públicas.",
+    "goal": 1
+  },
+  {
+    "id": "eventos",
+    "title": "Eventos e networking",
+    "why": "Estar onde estão os decisores, e seguir cada contacto em 48 horas.",
+    "goal": 1
+  }
+];
   var TIPS = [
   [
     "Receita recorrente primeiro",
@@ -679,6 +795,7 @@
     try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
     if (!state || typeof state !== "object") state = {};
     state.entries = Array.isArray(state.entries) ? state.entries : [];
+    state.activity = state.activity && typeof state.activity === "object" ? state.activity : {};
     state.settings = Object.assign({}, DEFAULTS, state.settings || {});
     // A meta antiga por defeito (250k) passou a 500k
     if (state.settings.raceGoal === 250000) state.settings.raceGoal = 500000;
@@ -1075,6 +1192,53 @@
     }).join("");
   }
 
+  // ---------- O que move a agulha (contagem semanal) ----------
+  // Semana ISO: "2026-W44", de segunda a domingo
+  function isoWeek(d) {
+    var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    var day = t.getUTCDay() || 7;
+    t.setUTCDate(t.getUTCDate() + 4 - day);
+    var y = t.getUTCFullYear();
+    var w = Math.ceil(((t - Date.UTC(y, 0, 1)) / 864e5 + 1) / 7);
+    return y + "-W" + pad(w);
+  }
+  var weekOffset = 0;
+  function weekStart(offset) {
+    var d = new Date(); d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + offset * 7);
+    return d;
+  }
+  function weekData(key) {
+    var w = state.activity[key] || (state.activity[key] = {});
+    PLAYERS.forEach(function (p) { w[p] = w[p] || {}; });
+    return w;
+  }
+  function renderActivities() {
+    var start = weekStart(weekOffset), end = new Date(start); end.setDate(end.getDate() + 6);
+    var key = isoWeek(start), w = weekData(key);
+    var fmt = function (d) { return d.toLocaleDateString("pt-PT", { day: "numeric", month: "short" }); };
+    el("week-label").textContent = "Semana " + +key.slice(6) + " · " + fmt(start) + " a " + fmt(end);
+    el("week-next").disabled = weekOffset >= 0;
+    // Pontos: cada atividade conta até à meta, para não valer tudo numa só
+    var score = PLAYERS.map(function (p) {
+      var got = 0, max = 0;
+      ACTIVITIES.forEach(function (a) { max += a.goal; got += Math.min(w[p][a.id] || 0, a.goal); });
+      return "<b>" + esc(p) + "</b> " + pct.format(got / max) + " das metas";
+    });
+    el("week-score").innerHTML = (weekOffset === 0 ? "Placar desta semana: " : "Placar dessa semana: ") + score.join(" · ");
+    el("activities").innerHTML = ACTIVITIES.map(function (a) {
+      var allHit = PLAYERS.every(function (p) { return (w[p][a.id] || 0) >= a.goal; });
+      return '<article class="card act' + (allHit ? " done" : "") + '"><h3>' + esc(a.title) + "<small>meta " + a.goal + "/sem.</small></h3><p>" + esc(a.why) + "</p>" +
+        PLAYERS.map(function (p) {
+          var n = w[p][a.id] || 0;
+          return '<div class="counter"><span class="who">' + esc(p) + "</span>" +
+            '<button type="button" class="secondary" data-act="' + a.id + '" data-p="' + esc(p) + '" data-d="-1" aria-label="' + esc(p + ": menos " + a.title) + '">−</button>' +
+            "<output" + (n >= a.goal ? ' class="hit"' : "") + ">" + n + "</output>" +
+            '<button type="button" class="secondary" data-act="' + a.id + '" data-p="' + esc(p) + '" data-d="1" aria-label="' + esc(p + ": mais " + a.title) + '">+</button></div>';
+        }).join("") + "</article>";
+    }).join("");
+  }
+
   function renderStatic() {
     el("tips").innerHTML = TIPS.map(function (t, i) {
       return '<article class="card tip"><h3><span class="n">' + (i + 1) + "</span>" + esc(t[0]) + "</h3><p>" + esc(t[1]) + "</p></article>";
@@ -1119,6 +1283,7 @@
     renderJourney(m);
     renderCards(m);
     renderInsights(m);
+    renderActivities();
     renderChart(m);
     renderTable(m);
   }
@@ -1221,6 +1386,16 @@
     f.elements.token.placeholder = c.token ? "guardado" : "";
     ixSync(false);
   });
+  el("activities").addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-act]");
+    if (!b) return;
+    var w = weekData(isoWeek(weekStart(weekOffset)));
+    w[b.dataset.p][b.dataset.act] = Math.max((w[b.dataset.p][b.dataset.act] || 0) + +b.dataset.d, 0);
+    save();
+    renderActivities();
+  });
+  el("week-prev").addEventListener("click", function () { weekOffset--; renderActivities(); });
+  el("week-next").addEventListener("click", function () { if (weekOffset < 0) { weekOffset++; renderActivities(); } });
   el("msg-filter").addEventListener("click", function (ev) {
     var b = ev.target.closest(".chip");
     if (!b) return;
@@ -1310,6 +1485,7 @@
         state.entries = state.entries.filter(function (e) { return e !== old; }).concat(n);
       });
       if (data.settings) state.settings = Object.assign({}, state.settings, data.settings);
+      if (data.activity && typeof data.activity === "object") Object.assign(state.activity, data.activity);
       save(); renderSettings(); render();
       alert(incoming.length + " registos importados.");
     }).catch(function () { alert("Não foi possível importar: ficheiro inválido."); });
