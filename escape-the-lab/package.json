@@ -1,0 +1,14 @@
+{
+  "name": "escape-the-lab",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:web": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --outfile=web/game.js"
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0"
+  }
+}
