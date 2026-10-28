@@ -35,6 +35,21 @@ telemóveis mais fracos.
 
 ![corredor](dist/screenshots/2-corredor.png)
 
+## Som
+
+Todo o som é sintetizado em tempo real (Web Audio), sem ficheiros de som de terceiros. Ouve-se melhor com auscultadores.
+
+- **Som 3D:** cada fonte tem posição; ouves de que lado vem e o volume cai com a distância.
+- **Reverberação** de espaço de betão e **oclusão:** sons de outra sala ouvem-se abafados através das paredes.
+- **Ambiente:** zumbido grave do edifício, ventilação, lâmpadas fluorescentes, servidores (mais fortes quando
+  a energia volta), bombas e bolhas dos tanques, alarme de emergência no corredor até repores a energia, e
+  sons aleatórios (gotas, metal a ranger, pancadas distantes).
+- **Ações:** passos, portas hidráulicas, leitor de cartões, recusa, apanhar cartões, papel, teclado do cofre
+  com tons DTMF, abertura do cofre, disjuntores, arranque da energia, cacifo e a saída para o exterior.
+- **SOM: LIGADO / DESLIGADO** no menu e na pausa; o som para quando o jogo está em pausa ou em segundo plano.
+
+Uma amostra gravada de uma partida está em [`dist/som-demo.m4a`](dist/som-demo.m4a).
+
 ## Instalar
 
 O APK está em [`dist/EscapeTheLab-1.0.apk`](dist/EscapeTheLab-1.0.apk). Android 5.0 ou superior com WebGL.
@@ -64,6 +79,7 @@ KEYSTORE=~/escapethelab.jks KS_ALIAS=escape KS_PASS='a-tua-password' ./build.sh
 | Caminho | Conteúdo |
 |---|---|
 | `src/main.js` | Todo o jogo: mapa, salas, puzzles, controlos, física |
+| `src/audio.js` | Motor de som sintetizado (3D, reverberação, ambiente, efeitos) |
 | `web/index.html` | Interface (menus, inventário, teclado do cofre) |
 | `android/` | App Android (WebView em ecrã inteiro, horizontal) |
 | `tools/make_icon.py` | Gera os ícones |

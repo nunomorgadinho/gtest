@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { snd } from './audio.js';
 
 // ---------- Utilidades ----------
 const $ = (id) => document.getElementById(id);
@@ -10,39 +11,8 @@ function shuffle(a) {
 }
 function fmtTime(s) { s = Math.floor(s); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }
 
-// ---------- Som (sintetizado, sem ficheiros) ----------
-let actx = null;
-function audio() {
-  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; } }
-  if (actx && actx.state === 'suspended') actx.resume();
-}
-function tone(freq, dur, type, vol, slide, delay) {
-  if (!actx) return;
-  const t0 = actx.currentTime + (delay || 0);
-  const o = actx.createOscillator(), g = actx.createGain();
-  o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t0);
-  if (slide) o.frequency.exponentialRampToValueAtTime(slide, t0 + dur);
-  g.gain.setValueAtTime(vol || 0.1, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  o.connect(g); g.connect(actx.destination); o.start(t0); o.stop(t0 + dur + 0.05);
-}
-function noise(dur, vol, freq) {
-  if (!actx) return;
-  const len = Math.floor(actx.sampleRate * dur), buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / len);
-  const src = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
-  f.type = 'lowpass'; f.frequency.value = freq || 600; g.gain.value = vol || 0.2;
-  src.buffer = buf; src.connect(f); f.connect(g); g.connect(actx.destination); src.start();
-}
-const sfx = {
-  pick() { tone(660, 0.12, 'sine', 0.12); tone(990, 0.2, 'sine', 0.1, 0, 0.08); },
-  door() { noise(0.9, 0.25, 500); tone(110, 0.8, 'sawtooth', 0.03, 70); },
-  deny() { tone(180, 0.15, 'square', 0.06); tone(140, 0.25, 'square', 0.06, 0, 0.12); },
-  key() { tone(900, 0.06, 'square', 0.04); },
-  ok() { [523, 784, 1046].forEach((f, i) => tone(f, 0.18, 'triangle', 0.08, 0, i * 0.08)); },
-  click() { noise(0.05, 0.3, 2500); tone(240, 0.05, 'square', 0.04); },
-  power() { tone(60, 1.5, 'sawtooth', 0.06, 120); noise(0.4, 0.3, 300); [392, 523, 659, 784].forEach((f, i) => tone(f, 0.3, 'sine', 0.07, 0, 0.6 + i * 0.1)); },
-  win() { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, 0.45, 'triangle', 0.08, 0, i * 0.11)); }
-};
+// ---------- Som (ver audio.js) ----------
+function audio() { snd.init(roomOf, SOUND_WORLD, load('etl_mute') === '1'); }
 
 // ---------- Mapa (cada casa = 2,5 m) ----------
 // # parede · chão · G porta verde · B porta azul · D porta automática · X saída
@@ -60,6 +30,19 @@ const MAP = [
   '      #.....#      ',
   '      #######      '
 ];
+// Sala onde está um ponto (para abafar sons de outras salas)
+function roomOf(x, z) {
+  const c = Math.floor(x / S), r = Math.floor(z / S);
+  if (r <= 3) return c <= 5 ? 'q' : c <= 11 ? 'o' : 's';
+  if (r >= 7) return 'l';
+  return 'c';
+}
+// Fontes de som fixas do mapa
+const SOUND_WORLD = {
+  server: [15.5 * S, 1.5, 1.8 * S],
+  lights: [[3.5 * S, 2.5 * S, 'q'], [9.5 * S, 2.5 * S, 'o'], [9.5 * S, 8.5 * S, 'l'], [15.5 * S, 2.5 * S, 's'], [3 * S, 5.5 * S, 'c'], [9 * S, 5.5 * S, 'c'], [15 * S, 5.5 * S, 'c']],
+  tanks: [[16.6 * S, 6 * S - 0.45, 'c'], [17.15 * S, 6 * S - 0.45, 'c'], [7 * S + 0.6, 8.7 * S, 'l'], [7 * S + 0.6, 9.55 * S, 'l'], [1 * S + 0.5, 3.7 * S, 'q']]
+};
 function cell(c, r) { return r < 0 || r >= MAP.length || c < 0 || c >= MAP[r].length ? ' ' : MAP[r][c]; }
 const DOORS = {
   G: { key: 'green', name: 'verde', color: '#2ecc71', label: 'ACESSO VERDE' },
@@ -125,6 +108,10 @@ function applyQuality() {
   $('qBtn').textContent = 'GRÁFICOS: ' + (quality === 'alta' ? 'ALTA' : 'LEVE');
   resize();
 }
+function drawSnd() { const t = 'SOM: ' + (load('etl_mute') === '1' ? 'DESLIGADO' : 'LIGADO'); $('sndBtn').textContent = t; $('sndBtn2').textContent = t; }
+function toggleSnd() { const m = load('etl_mute') !== '1'; save('etl_mute', m ? '1' : '0'); snd.setMuted(m); drawSnd(); }
+$('sndBtn').addEventListener('click', toggleSnd); $('sndBtn2').addEventListener('click', toggleSnd);
+drawSnd();
 $('qBtn').addEventListener('click', () => { quality = quality === 'alta' ? 'leve' : 'alta'; save('etl_q', quality); applyQuality(); });
 applyQuality();
 
@@ -383,6 +370,7 @@ function newGame() {
   buildServers();
   buildCorridor();
   buildDetails();
+  snd.reset();
 }
 
 function buildStructure() {
@@ -588,8 +576,8 @@ function buildServers() {
   G.locker = { pivot, x: lx, z: lz };
   interact(ldoor, () => G.lockerOpen ? 'Cacifo aberto' : 'Abrir o cacifo eletrónico', () => {
     if (G.lockerOpen) return;
-    if (!G.power) { sfx.deny(); toast('O cacifo eletrónico não tem energia.'); return; }
-    G.lockerOpen = true; sfx.door();
+    if (!G.power) { snd.deny(lx, lz); toast('O cacifo eletrónico não tem energia.'); return; }
+    G.lockerOpen = true; snd.locker(lx, lz);
     G.anim.push({ obj: pivot, prop: 'y', to: Math.PI * 0.6 });
     addCard('red', lx, 0.92, lz);
     toast('O cacifo abriu. Há um cartão lá dentro!');
@@ -723,7 +711,7 @@ function addCard(kind, x, y, z) {
   scene.add(g);
   const names = { green: 'verde', blue: 'azul', red: 'vermelho' };
   interact(g, () => 'Apanhar o cartão ' + names[kind], () => {
-    G.inv[kind] = true; scene.remove(g); sfx.pick();
+    G.inv[kind] = true; scene.remove(g); snd.pick();
     toast('Apanhaste o <b>cartão ' + names[kind] + '</b>.');
   });
   G.anim.push({ card: g, y0: y });
@@ -738,11 +726,11 @@ function doorPrompt(d) {
 function useDoor(d) {
   if (d.open) return;
   if (d.ch === 'X') {
-    if (!G.power) { sfx.deny(); toast('O painel da saída não tem energia.'); return; }
-    if (!G.inv.red) { sfx.deny(); toast('A saída só abre com o <b>cartão vermelho</b>.'); return; }
+    if (!G.power) { snd.deny(d.x, d.z); toast('O painel da saída não tem energia.'); return; }
+    if (!G.inv.red) { snd.deny(d.x, d.z); toast('A saída só abre com o <b>cartão vermelho</b>.'); return; }
     G.exitOpen = true; G.exitLed.material.color.set(0x22ff77); G.daylight.visible = true;
-  } else if (!G.inv[d.info.key]) { sfx.deny(); toast('Precisas do <b>cartão ' + d.info.name + '</b>.'); return; }
-  d.open = true; sfx.door();
+  } else if (!G.inv[d.info.key]) { snd.deny(d.x, d.z); toast('Precisas do <b>cartão ' + d.info.name + '</b>.'); return; }
+  d.open = true; snd.reader(d.x, d.z); snd.door(d.x, d.z);
 }
 
 function updateLever(l) {
@@ -752,11 +740,11 @@ function updateLever(l) {
 }
 function toggleBreaker(i) {
   if (G.power) { toast('A energia já está ligada.'); return; }
-  G.breakers[i] = !G.breakers[i]; sfx.click(); updateLever(G.levers[i]);
+  G.breakers[i] = !G.breakers[i]; snd.breaker(18 * S, 2.5 * S, G.breakers[i]); updateLever(G.levers[i]);
   if (G.breakers.join() === G.target.join()) powerOn();
 }
 function powerOn() {
-  G.power = true; sfx.power();
+  G.power = true; snd.powerOn();
   G.lights.forEach((l) => {
     if (l.room === 'c' || l.room === 's') {
       l.light.color.set(0xffdcb0); l.panel.material.color.set(0xffdcb0); l.halo.material.color.set(0xffdcb0);
@@ -779,17 +767,18 @@ function drawKeypad(err) {
 }
 document.querySelectorAll('.keys button').forEach((b) => b.addEventListener('click', () => {
   audio(); const k = b.textContent;
-  if (k === 'C') { kbuf = ''; sfx.key(); drawKeypad(); return; }
+  snd.key(k);
+  if (k === 'C') { kbuf = ''; drawKeypad(); return; }
   if (k === 'OK') {
     if (kbuf === G.code) {
-      sfx.ok(); closeKeypad(); G.safeOpen = true;
+      snd.safe(G.safe.x, G.safe.z); closeKeypad(); G.safeOpen = true;
       G.anim.push({ obj: G.safe.pivot, prop: 'y', to: -Math.PI * 0.55 });
       addCard('blue', G.safe.x, 0.06, G.safe.z + 0.05);
       toast('O cofre abriu!');
-    } else { sfx.deny(); $('kdisp').textContent = 'ERRO'; $('kdisp').classList.add('err'); kbuf = ''; }
+    } else { snd.deny(); $('kdisp').textContent = 'ERRO'; $('kdisp').classList.add('err'); kbuf = ''; }
     return;
   }
-  if (kbuf.length < 4) { kbuf += k; sfx.key(); drawKeypad(); }
+  if (kbuf.length < 4) { kbuf += k; drawKeypad(); }
 }));
 $('kclose').addEventListener('click', closeKeypad);
 
@@ -797,6 +786,7 @@ $('kclose').addEventListener('click', closeKeypad);
 let toastT = 0;
 function toast(html) { const t = $('toast'); t.innerHTML = html; t.style.opacity = 1; toastT = 3.2; }
 function showNote(text, screenish) {
+  snd.note();
   $('modalText').textContent = text; $('paper').classList.toggle('screenish', !!screenish);
   $('modal').classList.remove('hidden');
 }
@@ -820,6 +810,7 @@ function setState(s) {
   $('pause').classList.toggle('hidden', s !== 'pause');
   $('win').classList.toggle('hidden', s !== 'win');
   $('hud').classList.toggle('hidden', s !== 'play');
+  if (s === 'pause') snd.suspend(); else snd.resume();
   if (s !== 'play') { resetInput(); if (document.pointerLockElement) document.exitPointerLock(); }
 }
 function showBest() { const b = parseFloat(load('etl_best')); $('bestTxt').textContent = b ? 'Melhor tempo: ' + fmtTime(b) : ''; }
@@ -887,7 +878,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyE' || e.code === 'Enter') { if (!modalOpen()) doInteract(); }
   if (e.code === 'Escape' && modalOpen()) window.olBack();
   if (e.code === 'KeyP') setState('pause');
-  if (!$('keypad').classList.contains('hidden') && /^Digit\d$/.test(e.code) && kbuf.length < 4) { kbuf += e.code.slice(5); sfx.key(); drawKeypad(); }
+  if (!$('keypad').classList.contains('hidden') && /^Digit\d$/.test(e.code) && kbuf.length < 4) { kbuf += e.code.slice(5); snd.key(e.code.slice(5)); drawKeypad(); }
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
@@ -947,7 +938,7 @@ function update(dt) {
   const T = performance.now() / 1000;
   // animações (portas, cofre, cartões)
   for (const d of G.doors) {
-    if (!d.open && !d.info.key && Math.hypot(G.x - d.x, G.z - d.z) < 3.2) { d.open = true; sfx.door(); }
+    if (!d.open && !d.info.key && Math.hypot(G.x - d.x, G.z - d.z) < 3.2) { d.open = true; snd.door(d.x, d.z); }
     const to = d.open ? 1 : 0; d.t += (to - d.t) * Math.min(1, dt * 2.2);
     d.mesh.position.y = WH / 2 + d.t * (WH - 0.12);
   }
@@ -981,6 +972,10 @@ function update(dt) {
   }
   camera.position.set(G.x, EYE + Math.sin(G.bob) * 0.035, G.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
+  const ph = Math.floor(G.bob / Math.PI);
+  if (ph !== G.stepPh) { G.stepPh = ph; snd.step(); }
+  snd.listener(G.x, EYE, G.z, -Math.sin(G.yaw) * Math.cos(G.pitch), Math.sin(G.pitch), -Math.cos(G.yaw) * Math.cos(G.pitch));
+  snd.tick(dt, state === 'play' && !modalOpen());
 
   if (state === 'play') {
     target = modalOpen() ? null : findTarget();
@@ -994,7 +989,7 @@ function update(dt) {
   }
 }
 function win() {
-  G.won = true; sfx.win();
+  G.won = true; snd.win();
   const best = parseFloat(load('etl_best'));
   const rec = !best || G.time < best;
   if (rec) save('etl_best', G.time.toFixed(1));
@@ -1008,4 +1003,4 @@ G.yaw = 0.6; // vista do menu
 requestAnimationFrame(frame);
 
 // Ganchos para testes automáticos
-window.etl = { get frame() { return frameNo; }, get G() { return G; }, get state() { return state; }, teleport(x, z, yaw, pitch) { G.x = x * S; G.z = z * S; G.yaw = yaw; G.pitch = pitch || 0; }, interact: doInteract, get target() { return target && target.p; } };
+window.etl = { snd, get frame() { return frameNo; }, get G() { return G; }, get state() { return state; }, teleport(x, z, yaw, pitch) { G.x = x * S; G.z = z * S; G.yaw = yaw; G.pitch = pitch || 0; }, interact: doInteract, get target() { return target && target.p; } };
