@@ -249,6 +249,10 @@
   .quote cite { font-style: normal; font-size: 0.82rem; color: var(--muted); }
 
   details.card summary { cursor: pointer; font-weight: 700; }
+  .ix-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 14px; }
+  .ix-bar .note { margin: 0; }
+  .ix-bar .note.err { color: var(--warn); }
+  h3.sub { font-size: 0.98rem; margin: 22px 0 10px; }
   details.card[open] summary { margin-bottom: 14px; }
   .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
   .note { font-size: 0.82rem; color: var(--muted); margin-top: 10px; }
@@ -331,6 +335,10 @@
         <button type="submit">Guardar mês</button>
       </form>
       <p class="note">Cada jogador tem um registo por mês: se já existir, é substituído. Os totais somam os dois jogadores (e a equipa). Os dados ficam apenas neste browser.</p>
+      <div class="ix-bar">
+        <button type="button" class="secondary" id="ix-sync">Atualizar Nuno do InvoiceXpress</button>
+        <span class="note" id="ix-status"></span>
+      </div>
       <div class="table-wrap" id="table"></div>
     </div>
   </section>
@@ -348,6 +356,13 @@
         <button type="submit">Guardar definições</button>
       </form>
       <p class="note">Na corrida, cada barco avança com a faturação acumulada do jogador desde o mês de início; chega à bandeira quando atinge a meta por jogador.</p>
+      <h3 class="sub">InvoiceXpress (faturação do Nuno)</h3>
+      <form class="row" id="ix-form">
+        <label>URL do serviço <input type="url" name="url" placeholder="https://rumo-metas-ix.xxx.workers.dev" autocomplete="off"></label>
+        <label>Código de acesso <input type="password" name="token" autocomplete="off"></label>
+        <button type="submit">Guardar ligação</button>
+      </form>
+      <p class="note">A faturação do Nuno passa a vir do InvoiceXpress (sem IVA, notas de crédito deduzidas, rascunhos e anuladas excluídos) e atualiza-se sozinha ao abrir a página. A ligação fica só neste browser e não entra no backup. Como configurar: ver <code>metas/worker/README.md</code>.</p>
       <div class="actions">
         <button type="button" class="secondary" id="export">Exportar backup (JSON)</button>
         <button type="button" class="secondary" id="import">Importar (JSON)</button>
@@ -363,6 +378,7 @@
   "use strict";
 
   var KEY = "rumo-metas-v1";
+  var IX_KEY = "rumo-metas-ix";
   var DEFAULTS = {
     a1Target: 500000,
     a1Year: 2027,
@@ -1014,7 +1030,87 @@
     renderTable(m);
   }
 
+  // ---------- InvoiceXpress (via worker) ----------
+  var IX_PLAYER = "Nuno";
+  var IX_ERRORS = {
+    unauthorized: "código de acesso errado",
+    origin_not_allowed: "este site não está em ALLOWED_ORIGINS no worker",
+    invoicexpress_failed: "o InvoiceXpress recusou o pedido (confirma IX_ACCOUNT e IX_API_KEY no worker)",
+    from_to_required: "pedido inválido"
+  };
+  function ixConfig() {
+    try { return JSON.parse(localStorage.getItem(IX_KEY)) || {}; } catch (e) { return {}; }
+  }
+  function ixSave(c) {
+    try { localStorage.setItem(IX_KEY, JSON.stringify(c)); } catch (e) { /* armazenamento indisponível */ }
+  }
+  function ixStatus(text, isError) {
+    el("ix-status").textContent = text;
+    el("ix-status").className = "note" + (isError ? " err" : "");
+  }
+  function ixShowLast(c) {
+    if (c.lastSync) ixStatus("Última atualização: " + new Date(c.lastSync).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" }));
+    else if (!c.url) ixStatus("Ligação ao InvoiceXpress por configurar (em Definições).");
+    else ixStatus("");
+  }
+
+  function ixSync(silent) {
+    var c = ixConfig();
+    if (!c.url || !c.token) {
+      if (!silent) ixStatus("Configura primeiro a ligação ao InvoiceXpress em Definições.", true);
+      return;
+    }
+    var now = new Date();
+    // Desde o mais antigo entre o início da corrida e os últimos 12 meses fechados
+    var yearAgo = new Date(now.getFullYear(), now.getMonth() - 12, 1);
+    var yaKey = yearAgo.getFullYear() + "-" + pad(yearAgo.getMonth() + 1);
+    var fromMonth = state.settings.raceStart < yaKey ? state.settings.raceStart : yaKey;
+    var from = fromMonth + "-01", to = todayISO();
+    ixStatus("A atualizar do InvoiceXpress…");
+    fetch(c.url.replace(/\/+$/, "") + "/monthly?from=" + from + "&to=" + to, { headers: { Authorization: "Bearer " + c.token } })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (body) {
+          if (!r.ok) throw new Error(IX_ERRORS[body.error] || "erro " + r.status);
+          return body;
+        });
+      })
+      .then(function (data) {
+        var got = {};
+        (data.months || []).forEach(function (mo) { got[mo.month] = mo.revenue; });
+        // Todos os meses do intervalo: os que não têm documentos ficam a 0
+        var d = new Date(+fromMonth.slice(0, 4), +fromMonth.slice(5, 7) - 1, 1);
+        while (d <= now) {
+          var key = d.getFullYear() + "-" + pad(d.getMonth() + 1);
+          var old = state.entries.find(function (e) { return e.month === key && e.player === IX_PLAYER; });
+          if (got[key] != null || old) {
+            var entry = { month: key, player: IX_PLAYER, revenue: got[key] || 0, profit: old ? old.profit : null };
+            state.entries = state.entries.filter(function (e) { return e !== old; }).concat(entry);
+          }
+          d.setMonth(d.getMonth() + 1);
+        }
+        save(); render();
+        c.lastSync = new Date().toISOString();
+        ixSave(c);
+        ixStatus("Atualizado agora: " + (data.documents || 0) + " documentos, " + (data.months || []).length + " meses.");
+      })
+      .catch(function (e) {
+        var msg = e instanceof TypeError ? "sem ligação ao serviço (confirma o URL)" : e.message;
+        ixStatus("Não foi possível atualizar: " + msg + ".", true);
+      });
+  }
+
   // ---------- Eventos ----------
+  el("ix-sync").addEventListener("click", function () { ixSync(false); });
+  el("ix-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var f = ev.target, c = ixConfig();
+    c.url = f.elements.url.value.trim();
+    if (f.elements.token.value) c.token = f.elements.token.value;
+    ixSave(c);
+    f.elements.token.value = "";
+    f.elements.token.placeholder = c.token ? "guardado" : "";
+    ixSync(false);
+  });
   el("msg-filter").addEventListener("click", function (ev) {
     var b = ev.target.closest(".chip");
     if (!b) return;
@@ -1118,6 +1214,14 @@
   renderSettings();
   renderStatic();
   render();
+  (function () {
+    var c = ixConfig();
+    el("ix-form").elements.url.value = c.url || "";
+    el("ix-form").elements.token.placeholder = c.token ? "guardado" : "";
+    ixShowLast(c);
+    // Atualiza sozinho ao abrir, no máximo uma vez por hora
+    if (c.url && c.token && (!c.lastSync || new Date() - new Date(c.lastSync) > 60 * 60 * 1000)) ixSync(true);
+  })();
   // O marcador "Hoje" avança sozinho com a página aberta
   setInterval(render, 60 * 60 * 1000);
   document.addEventListener("visibilitychange", function () { if (!document.hidden) render(); });

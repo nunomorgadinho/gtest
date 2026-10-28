@@ -15,6 +15,8 @@ Web app de uma só página que mostra a distância entre a situação atual e as
 
 **Frases lendárias:** 24 frases, com uma "frase do dia" no topo que muda todos os dias.
 
+**InvoiceXpress:** a faturação do Nuno pode vir automaticamente do InvoiceXpress através de um Cloudflare Worker que guarda a chave da API em segredo. Ver [`worker/README.md`](worker/README.md).
+
 Os dados ficam só no browser (`localStorage`). Usa "Exportar backup" para guardar um JSON e "Importar (JSON)" para os recuperar noutro browser. A importação junta os registos aos que já existem: só substitui o mesmo mês e jogador, e mantém o lucro já registado quando o ficheiro não o traz.
 
 Para usar, abre `index.html` no browser. Não precisa de servidor nem de dependências. Metas, data do DCBKK e data de início da contagem de B/C são editáveis em "Definições".
