@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { snd } from './audio.js';
+import { SECTORS } from './sectors.js';
 
 // ---------- Utilidades ----------
 const $ = (id) => document.getElementById(id);
@@ -11,46 +12,9 @@ function shuffle(a) {
 }
 function fmtTime(s) { s = Math.floor(s); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }
 
-// ---------- Som (ver audio.js) ----------
-function audio() { snd.init(roomOf, SOUND_WORLD, load('etl_mute') === '1'); }
 
-// ---------- Mapa (cada casa = 2,5 m) ----------
-// # parede · chão · G porta verde · B porta azul · D porta automática · X saída
+// ---------- Mundo (cada casa = 2,5 m) ----------
 const S = 2.5, WH = 3, EYE = 1.6, RAD = 0.3;
-const MAP = [
-  '###################',
-  '#.....#.....#.....#',
-  '#.....#.....#.....#',
-  '#.....#.....#.....#',
-  '###G#####D#####B###',
-  '#.................X',
-  '#########D#########',
-  '      #.....#      ',
-  '      #.....#      ',
-  '      #.....#      ',
-  '      #######      '
-];
-// Sala onde está um ponto (para abafar sons de outras salas)
-function roomOf(x, z) {
-  const c = Math.floor(x / S), r = Math.floor(z / S);
-  if (r <= 3) return c <= 5 ? 'q' : c <= 11 ? 'o' : 's';
-  if (r >= 7) return 'l';
-  return 'c';
-}
-// Fontes de som fixas do mapa
-const SOUND_WORLD = {
-  server: [15.5 * S, 1.5, 1.8 * S],
-  lights: [[3.5 * S, 2.5 * S, 'q'], [9.5 * S, 2.5 * S, 'o'], [9.5 * S, 8.5 * S, 'l'], [15.5 * S, 2.5 * S, 's'], [3 * S, 5.5 * S, 'c'], [9 * S, 5.5 * S, 'c'], [15 * S, 5.5 * S, 'c']],
-  tanks: [[16.6 * S, 6 * S - 0.45, 'c'], [17.15 * S, 6 * S - 0.45, 'c'], [7 * S + 0.6, 8.7 * S, 'l'], [7 * S + 0.6, 9.55 * S, 'l'], [1 * S + 0.5, 3.7 * S, 'q']]
-};
-function cell(c, r) { return r < 0 || r >= MAP.length || c < 0 || c >= MAP[r].length ? ' ' : MAP[r][c]; }
-const DOORS = {
-  G: { key: 'green', name: 'verde', color: '#2ecc71', label: 'ACESSO VERDE' },
-  B: { key: 'blue', name: 'azul', color: '#3b82f6', label: 'ACESSO AZUL' },
-  X: { key: 'red', name: 'vermelho', color: '#ef4444', label: 'SAÍDA' },
-  D: { key: null, color: '#8f9aa6', label: 'LAB-7' }
-};
-const CARD_COLORS = { green: 0x2ecc71, blue: 0x3b82f6, red: 0xef4444 };
 
 // ---------- Renderer ----------
 const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: false, powerPreference: 'high-performance' });
@@ -337,253 +301,6 @@ function hitbox(parent, w, h, d) {
   parent.add(hb); return hb;
 }
 
-function newGame() {
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x020304);
-  scene.fog = new THREE.FogExp2(0x06080a, 0.045);
-  scene.add(camera);
-
-  const colors = [
-    { name: 'vermelho', css: '#e53935', hex: 0xe53935 }, { name: 'azul', css: '#1e88e5', hex: 0x1e88e5 },
-    { name: 'verde', css: '#43a047', hex: 0x43a047 }, { name: 'amarelo', css: '#fdd835', hex: 0xfdd835 }
-  ];
-  const digits = colors.map(() => 1 + Math.floor(Math.random() * 9));
-  const order = shuffle([0, 1, 2, 3]);
-  const odd = Math.random() < 0.5;
-  const target = odd ? [true, false, true, false] : [false, true, false, true];
-  let breakers;
-  do { breakers = [0, 1, 2, 3].map(() => Math.random() < 0.5); } while (breakers.join() === target.join());
-
-  G = {
-    colliders: [], doors: [], lights: [], emergency: [], anim: [], tanks: [],
-    inv: { green: false, blue: false, red: false }, power: false, safeOpen: false, lockerOpen: false, exitOpen: false,
-    colors, digits, order, code: order.map((i) => digits[i]).join(''), odd, target, breakers,
-    x: 3.5 * S, z: 2.5 * S, yaw: Math.PI, pitch: -0.05, bob: 0, time: 0, won: false
-  };
-
-  scene.add(new THREE.HemisphereLight(0x7d92b3, 0x1e1710, 0.6));
-
-  buildStructure();
-  buildQuarantine();
-  buildOffice();
-  buildLab();
-  buildServers();
-  buildCorridor();
-  buildDetails();
-  snd.reset();
-}
-
-function buildStructure() {
-  const walls = [], floors = [];
-  MAP.forEach((row, r) => [...row].forEach((ch, c) => {
-    if (ch === '#') walls.push([c, r]);
-    else if (ch !== ' ') floors.push([c, r]);
-  }));
-  const wallMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(S, WH, S), new THREE.MeshStandardMaterial({ map: TEX.wall.map, normalMap: TEX.wall.normalMap, roughness: 0.62, metalness: 0.35 }), walls.length);
-  const m4 = new THREE.Matrix4();
-  walls.forEach(([c, r], i) => { m4.makeTranslation((c + 0.5) * S, WH / 2, (r + 0.5) * S); wallMesh.setMatrixAt(i, m4); });
-  scene.add(wallMesh);
-  const fg = new THREE.PlaneGeometry(S, S); fg.rotateX(-Math.PI / 2);
-  const cg = new THREE.PlaneGeometry(S, S); cg.rotateX(Math.PI / 2);
-  const floor = new THREE.InstancedMesh(fg, new THREE.MeshStandardMaterial({ map: TEX.floor.map, normalMap: TEX.floor.normalMap, roughness: 0.82, metalness: 0.05 }), floors.length);
-  const ceil = new THREE.InstancedMesh(cg, new THREE.MeshStandardMaterial({ map: TEX.ceil.map, normalMap: TEX.ceil.normalMap, roughness: 0.7, metalness: 0.4 }), floors.length);
-  floors.forEach(([c, r], i) => {
-    m4.makeTranslation((c + 0.5) * S, 0, (r + 0.5) * S); floor.setMatrixAt(i, m4);
-    m4.makeTranslation((c + 0.5) * S, WH, (r + 0.5) * S); ceil.setMatrixAt(i, m4);
-  });
-  scene.add(floor, ceil);
-
-  // Portas
-  MAP.forEach((row, r) => [...row].forEach((ch, c) => {
-    const info = DOORS[ch]; if (!info) return;
-    const spansX = cell(c, r - 1) !== '#' && cell(c, r + 1) !== '#';
-    const x = (c + 0.5) * S, z = (r + 0.5) * S;
-    const m = box(spansX ? S : 0.2, WH, spansX ? 0.2 : S, new THREE.MeshStandardMaterial({ map: doorTex(info), roughness: 0.5, metalness: 0.55 }), x, WH / 2, z);
-    const door = { c, r, ch, info, mesh: m, open: false, t: 0, x, z };
-    G.doors.push(door);
-    if (info.key) interact(m, () => doorPrompt(door), () => useDoor(door));
-  }));
-}
-
-function addLight(x, z, color, intensity, room) {
-  const l = new THREE.PointLight(color, intensity * 3, 18, 1.2);
-  l.position.set(x, WH - 0.35, z); scene.add(l);
-  box(1.0, 0.14, 0.5, mat(0x1c2024, { metalness: 0.7, roughness: 0.4 }), x, WH - 0.07, z);
-  const panel = box(0.9, 0.02, 0.4, new THREE.MeshBasicMaterial({ map: TEX.grate, color }), x, WH - 0.15, z);
-  const halo = glowSprite(x, WH - 0.62, z, color, 1.1, 0.45);
-  const item = { light: l, panel, halo, base: intensity * 3, room };
-  G.lights.push(item);
-  return item;
-}
-
-// ----- Sala 1: quarentena (início) -----
-function buildQuarantine() {
-  addLight(3.5 * S, 2.5 * S, 0xdfe8ff, 2.2, 'q');
-  // cama
-  box(1.1, 0.45, 2.1, 0x8a96a3, 1.9 * S, 0.3, 1.9 * S, true);
-  box(1.0, 0.12, 2.0, 0x8f969c, 1.9 * S, 0.58, 1.9 * S);
-  box(0.8, 0.12, 0.4, 0xffffff, 1.9 * S, 0.68, 1.9 * S - 0.75);
-  // secretária e diário
-  box(1.6, 0.06, 0.8, 0x6d5844, 5.1 * S, 0.76, 1.45 * S, true);
-  [[-0.7, -0.33], [0.7, -0.33], [-0.7, 0.33], [0.7, 0.33]].forEach(([a, b]) => box(0.06, 0.74, 0.06, 0x3d3229, 5.1 * S + a, 0.37, 1.45 * S + b));
-  const note = box(0.32, 0.01, 0.42, 0xf4efe1, 5.1 * S - 0.2, 0.8, 1.45 * S);
-  note.rotation.y = 0.3;
-  interact(note, () => 'Ler o diário', () => showNote(
-    'DIÁRIO — DIA 12\n\nDepois do acidente selaram o laboratório inteiro. Ninguém responde.\n\n' +
-    'O Dr. Vasco passou por aqui ontem e esqueceu-se do cartão verde no carrinho médico. ' +
-    'Com ele consigo abrir a porta da quarentena.\n\nTenho de sair daqui.'));
-  // carrinho médico com o cartão verde
-  box(0.7, 0.06, 1.0, 0x7f8890, 5.4 * S, 0.9, 3.3 * S, true);
-  box(0.7, 0.06, 1.0, 0x7f8890, 5.4 * S, 0.35, 3.3 * S);
-  [[-0.3, -0.45], [0.3, -0.45], [-0.3, 0.45], [0.3, 0.45]].forEach(([a, b]) => box(0.04, 0.9, 0.04, 0x9aa3ad, 5.4 * S + a, 0.45, 3.3 * S + b));
-  box(0.2, 0.25, 0.2, 0xffffff, 5.4 * S + 0.15, 1.05, 3.3 * S - 0.3);
-  addCard('green', 5.4 * S - 0.1, 0.95, 3.3 * S + 0.15);
-  // armário de parede e símbolo de risco
-  box(1.6, 1.0, 0.4, 0x5f676f, 3.5 * S, 1.9, 1 * S + 0.2);
-  const hz = textTex(128, 128, '#ffd600', (x, w, h) => {
-    x.fillStyle = '#111'; x.beginPath(); x.moveTo(w / 2, 14); x.lineTo(w - 12, h - 16); x.lineTo(12, h - 16); x.closePath(); x.fill();
-    x.fillStyle = '#ffd600'; x.font = 'bold 64px sans-serif'; x.textAlign = 'center'; x.fillText('!', w / 2, h - 30);
-  });
-  plane(0.6, 0.6, new THREE.MeshLambertMaterial({ map: hz }), 1 * S + 0.02, 1.6, 2.5 * S, Math.PI / 2);
-}
-
-// ----- Sala 2: escritório (cofre com teclado) -----
-function buildOffice() {
-  addLight(9.5 * S, 2.5 * S, 0xfff1dc, 2.0, 'o');
-  const cx = 9.5 * S;
-  box(2.2, 0.06, 0.9, 0x7a6450, cx, 0.76, 1.55 * S, true);
-  box(0.06, 0.74, 0.86, 0x4a3d31, cx - 1.05, 0.37, 1.55 * S); box(0.06, 0.74, 0.86, 0x4a3d31, cx + 1.05, 0.37, 1.55 * S);
-  box(0.5, 0.05, 0.5, 0x222831, cx, 0.5, 1.55 * S + 0.8, true); box(0.5, 0.6, 0.06, 0x222831, cx, 0.8, 1.55 * S + 1.05);
-  // monitor com email
-  const screen = textTex(256, 160, '#06231a', (x) => {
-    x.fillStyle = '#7dffcf'; x.font = 'bold 18px monospace'; x.fillText('LAB-OS v3.1', 12, 26);
-    x.font = '15px monospace'; x.fillText('! ENERGIA PRINCIPAL OFF', 12, 60); x.fillText('> 1 email por ler', 12, 86);
-    x.fillText('> toque para abrir', 12, 112);
-  });
-  box(0.7, 0.45, 0.05, 0x111418, cx, 1.08, 1.55 * S - 0.2);
-  const scr = plane(0.64, 0.4, new THREE.MeshBasicMaterial({ map: screen }), cx, 1.08, 1.55 * S - 0.17, 0);
-  box(0.08, 0.25, 0.08, 0x111418, cx, 0.9, 1.55 * S - 0.22);
-  interact(scr, () => 'Ler o email no computador', () => showNote(
-    'DE: Dra. Inês Moura\nPARA: Equipa LAB-7\nASSUNTO: Cofre do escritório\n\n' +
-    'Por segurança, o código do cofre já não está escrito em lado nenhum.\n\n' +
-    'Sigam o protocolo de cores do quadro no laboratório. Cada cor corresponde ao número no rótulo do frasco da mesma cor.\n\n' +
-    'O cartão azul (sala dos servidores) fica dentro do cofre.', true));
-  // cofre
-  const safeX = 11.35 * S, safeZ = 1.6 * S;
-  hollowBox(0.9, 1.0, 0.8, 0x3a4048, safeX, 0.5, safeZ, '+z');
-  const pivot = new THREE.Group(); pivot.position.set(safeX - 0.45, 0.5, safeZ + 0.41); scene.add(pivot);
-  const sdoor = box(0.9, 0.96, 0.05, 0x4b535d, 0.45, 0, 0, false, pivot);
-  box(0.25, 0.32, 0.02, 0x0f1418, 0.62, 0.15, 0.03, false, pivot);
-  box(0.06, 0.2, 0.06, 0xb0b8c0, 0.2, 0, 0.05, false, pivot);
-  G.safe = { pivot, x: safeX, z: safeZ };
-  interact(sdoor, () => G.safeOpen ? 'Cofre aberto' : 'Usar o teclado do cofre', () => { if (!G.safeOpen) openKeypad(); });
-  // estante
-  box(0.45, 2.1, 2.2, 0x5a4a3c, 7 * S + 0.25, 1.05, 3 * S, true);
-  for (let i = 0; i < 4; i++) for (let k = 0; k < 7; k++) {
-    if (Math.random() < 0.25) continue;
-    box(0.25, 0.32, 0.06 + Math.random() * 0.06, [0x8e3b3b, 0x2f5f8a, 0x4f7a3a, 0xc9a227, 0x6b4c8a][Math.floor(Math.random() * 5)],
-      7 * S + 0.55, 0.3 + i * 0.5, 3 * S - 0.9 + k * 0.28);
-  }
-}
-
-// ----- Sala 3: laboratório (quadro e frascos) -----
-function buildLab() {
-  addLight(9.5 * S, 8.5 * S, 0xe8fff6, 2.3, 'l');
-  const tz = 8.3 * S;
-  [8.3 * S, 10.7 * S].forEach((x) => {
-    box(2.4, 0.08, 1.0, 0x9aa2a9, x, 0.92, tz, true);
-    box(2.3, 0.86, 0.9, mat(0x3c434b, { metalness: 0.4, roughness: 0.55 }), x, 0.44, tz);
-    hazardBand(2.3, 0.9, x, 0.1, tz);
-  });
-  // frascos coloridos com rótulos
-  G.colors.forEach((col, i) => {
-    const x = 8.3 * S - 0.75 + i * 0.5;
-    const flask = new THREE.Group(); flask.position.set(x, 0.96, tz);
-    const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.14, 0.28, 16),
-      new THREE.MeshLambertMaterial({ color: col.hex, emissive: col.hex, emissiveIntensity: 0.35, transparent: true, opacity: 0.85 }));
-    glass.position.y = 0.14; flask.add(glass);
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.14, 10), new THREE.MeshLambertMaterial({ color: 0xdde6ee, transparent: true, opacity: 0.6 }));
-    neck.position.y = 0.34; flask.add(neck);
-    const label = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.08), new THREE.MeshBasicMaterial({
-      map: textTex(64, 48, '#ffffff', (c) => { c.fillStyle = '#111'; c.font = 'bold 34px sans-serif'; c.textAlign = 'center'; c.fillText(String(G.digits[i]), 32, 38); })
-    }));
-    label.position.set(0, 0.12, 0.13); flask.add(label);
-    const back = label.clone(); back.position.z = -0.13; back.rotation.y = Math.PI; flask.add(back);
-    scene.add(flask);
-    hitbox(flask, 0.3, 0.5, 0.3).position.y = 0.2;
-    interact(flask, () => 'Examinar o frasco ' + col.name, () => toast('Frasco ' + col.name + '. O rótulo diz: <b>' + G.digits[i] + '</b>'));
-  });
-  // quadro branco com a ordem das cores
-  const board = textTex(512, 256, '#f7f9fb', (x, w, h) => {
-    x.fillStyle = '#1b2733'; x.font = 'bold 30px sans-serif'; x.fillText('PROTOCOLO DO COFRE', 24, 46);
-    x.font = '20px sans-serif'; x.fillStyle = '#516070'; x.fillText('Ler da esquerda para a direita', 24, 76);
-    G.order.forEach((ci, k) => {
-      x.fillStyle = G.colors[ci].css; x.beginPath(); x.arc(80 + k * 115, 150, 38, 0, Math.PI * 2); x.fill();
-      x.strokeStyle = '#1b2733'; x.lineWidth = 3; x.stroke();
-      if (k < 3) { x.fillStyle = '#1b2733'; x.font = 'bold 34px sans-serif'; x.fillText('→', 128 + k * 115, 162); }
-    });
-    x.fillStyle = '#7a8896'; x.font = 'italic 18px sans-serif'; x.fillText('cor = n.º do frasco  ·  ΔT = 4,2 K  ·  pH 7?', 24, 226);
-  });
-  box(3.2, 1.7, 0.06, 0x9aa3ad, 9.5 * S, 1.65, 10 * S - 0.04);
-  const wb = plane(3.0, 1.5, new THREE.MeshLambertMaterial({ map: board }), 9.5 * S, 1.65, 10 * S - 0.08, Math.PI);
-  interact(wb, () => 'Ver o quadro', () => toast('Quatro cores por ordem: ' + G.order.map((i) => G.colors[i].name).join(', ') + '.'));
-  // nota da manutenção
-  const sticky = box(0.22, 0.01, 0.22, 0xffeb7a, 10.7 * S + 0.6, 0.97, tz + 0.1);
-  sticky.rotation.y = -0.4;
-  interact(sticky, () => 'Ler a nota da manutenção', () => showNote(
-    'MANUTENÇÃO\n\nSe a energia falhar, na sala dos servidores ligar APENAS os disjuntores ' +
-    (G.odd ? 'ÍMPARES (1 e 3).' : 'PARES (2 e 4).') + '\n\nOs outros ficam desligados, senão o quadro volta a disparar!\n\n— Rui'));
-  // armário e hotte decorativos
-  box(1.8, 2.2, 0.6, 0x6c757e, 7 * S + 0.9, 1.1, 7 * S + 0.35, true);
-  box(1.7, 0.9, 0.04, 0x9fd3ff, 7 * S + 0.9, 1.6, 7 * S + 0.66).material = mat(0x9fd3ff, { transparent: true, opacity: 0.35 });
-  box(0.6, 1.8, 0.6, 0x7a838b, 12 * S - 0.35, 0.9, 9.4 * S, true);
-}
-
-// ----- Sala 4: servidores (disjuntores e cacifo) -----
-function buildServers() {
-  G.serverLight = addLight(15.5 * S, 2.5 * S, 0x7fb2ff, 0.6, 's');
-  const rackMat = new THREE.MeshStandardMaterial({ map: TEX.rack, emissive: 0xffffff, emissiveMap: TEX.rack, emissiveIntensity: 0.6, roughness: 0.5, metalness: 0.5 });
-  [13.6, 14.3, 16.7, 17.4].forEach((c) => box(0.75, 2.2, 0.9, rackMat, c * S, 1.1, 1 * S + 0.5, true));
-  // quadro elétrico na parede este
-  const px = 18 * S - 0.06, pz = 2.5 * S;
-  box(0.1, 1.1, 1.8, 0x5d6670, px, 1.5, pz);
-  const lbl = textTex(256, 64, '#ffd600', (x) => { x.fillStyle = '#111'; x.font = 'bold 30px sans-serif'; x.textAlign = 'center'; x.fillText('⚡ DISJUNTORES', 128, 42); });
-  plane(1.2, 0.3, new THREE.MeshLambertMaterial({ map: lbl }), px - 0.06, 2.25, pz, -Math.PI / 2);
-  G.levers = G.breakers.map((on, i) => {
-    const z = pz - 0.6 + i * 0.4;
-    const g = new THREE.Group(); g.position.set(px - 0.08, 1.45, z); scene.add(g);
-    const handle = box(0.2, 0.06, 0.07, 0xdedede, -0.1, 0, 0, false, g);
-    const led = box(0.04, 0.06, 0.06, 0x111111, -0.02, 0.3, 0, false, g);
-    led.material = new THREE.MeshBasicMaterial({ color: 0x330000 });
-    const num = textTex(64, 64, '#5d6670', (x) => { x.fillStyle = '#fff'; x.font = 'bold 40px sans-serif'; x.textAlign = 'center'; x.fillText(String(i + 1), 32, 46); });
-    const n = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.14), new THREE.MeshBasicMaterial({ map: num }));
-    n.position.set(-0.01, -0.28, 0); n.rotation.y = -Math.PI / 2; g.add(n);
-    hitbox(g, 0.3, 0.5, 0.3).position.x = -0.12;
-    const lever = { g, handle, led, i };
-    interact(g, () => 'Disjuntor ' + (i + 1) + (G.breakers[i] ? ' (ligado)' : ' (desligado)'), () => toggleBreaker(i));
-    return lever;
-  });
-  G.levers.forEach(updateLever);
-  // cacifo eletrónico com o cartão vermelho
-  const lx = 13 * S + 0.35, lz = 3 * S;
-  hollowBox(0.7, 2.0, 0.9, 0x6f7b88, lx, 1.0, lz, '+x');
-  box(0.62, 0.03, 0.82, 0x6f7b88, lx, 0.95, lz);
-  const pivot = new THREE.Group(); pivot.position.set(lx + 0.36, 1.0, lz - 0.45); scene.add(pivot);
-  const ldoor = box(0.04, 1.96, 0.9, 0x7f8c99, 0, 0, 0.45, false, pivot);
-  for (let i = 0; i < 5; i++) box(0.02, 0.03, 0.5, 0x4a545e, 0.03, 0.6 + i * 0.07, 0.45, false, pivot);
-  G.lockerLed = box(0.02, 0.08, 0.08, 0x111111, 0.03, 0.1, 0.8, false, pivot);
-  G.lockerLed.material = new THREE.MeshBasicMaterial({ color: 0x441111 });
-  G.locker = { pivot, x: lx, z: lz };
-  interact(ldoor, () => G.lockerOpen ? 'Cacifo aberto' : 'Abrir o cacifo eletrónico', () => {
-    if (G.lockerOpen) return;
-    if (!G.power) { snd.deny(lx, lz); toast('O cacifo eletrónico não tem energia.'); return; }
-    G.lockerOpen = true; snd.locker(lx, lz);
-    G.anim.push({ obj: pivot, prop: 'y', to: Math.PI * 0.6 });
-    addCard('red', lx, 0.92, lz);
-    toast('O cacifo abriu. Há um cartão lá dentro!');
-  });
-}
-
 // ---------- Pormenores industriais ----------
 function glowSprite(x, y, z, color, size, opacity) {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -626,6 +343,7 @@ function tank(x, z, color, h, r, light) {
   }
   glowSprite(x, liquid.position.y, z, color, r * 6, 0.35);
   G.colliders.push({ x0: x - r - 0.1, x1: x + r + 0.1, z0: z - r - 0.1, z1: z + r + 0.1 });
+  soundWorld.tanks.push([x, z, roomOf(x, z)]);
   if (light) {
     const l = new THREE.PointLight(color, light * 2.5, 10, 1.3); l.position.set(x, h * 0.6, z); scene.add(l);
     G.tanks.push({ light: l, base: light * 2.5, ph: Math.random() * 6 });
@@ -637,201 +355,514 @@ function hazardBand(w, d, x, y, z) {
   box(w + 0.02, 0.16, d + 0.02, m, x, y, z);
 }
 
-function buildDetails() {
-  // corredor: passadeira com faixas de perigo
-  const walk = new THREE.Mesh(new THREE.PlaneGeometry(40, 1.1), new THREE.MeshStandardMaterial({ map: TEX.asphalt.map, normalMap: TEX.asphalt.normalMap, roughness: 0.9 }));
-  walk.material.map = TEX.asphalt.map.clone(); walk.material.map.repeat.set(30, 1); walk.material.map.needsUpdate = true;
-  walk.rotation.x = -Math.PI / 2; walk.position.set(25, 0.004, 5.5 * S); scene.add(walk);
-  [-0.58, 0.58].forEach((dz) => {
-    const t = TEX.hazard.clone(); t.repeat.set(160, 1); t.needsUpdate = true;
-    const st = new THREE.Mesh(new THREE.PlaneGeometry(40, 0.07), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }));
-    st.rotation.x = -Math.PI / 2; st.position.set(25, 0.006, 5.5 * S + dz); scene.add(st);
-  });
-  // tubos no teto
-  pipe('x', 2.5, 45, 2.62, 5 * S + 0.35, 0.16);
-  pipe('x', 2.5, 45, 2.8, 5 * S + 0.85, 0.09);
-  pipe('x', 2.5, 47.5, 2.58, 6 * S - 0.4, 0.22);
-  pipe('x', 2.5, 15, 2.75, 1 * S + 0.3, 0.12);
-  pipe('x', 17.5, 30, 2.7, 1 * S + 0.3, 0.14);
-  pipe('x', 17.5, 30, 2.7, 10 * S - 0.35, 0.16);
-  pipe('z', 2.5, 10, 2.72, 18 * S - 0.3, 0.13);
-  // pilares no corredor
-  [6 * S, 12 * S].forEach((x) => {
-    box(0.5, WH, 0.3, mat(0x3a3f45, { metalness: 0.5, roughness: 0.6 }), x, WH / 2, 5 * S + 0.15, true);
-    box(0.5, WH, 0.3, mat(0x3a3f45, { metalness: 0.5, roughness: 0.6 }), x, WH / 2, 6 * S - 0.15, true);
-    hazardBand(0.5, 0.3, x, 0.1, 5 * S + 0.15); hazardBand(0.5, 0.3, x, 0.1, 6 * S - 0.15);
-  });
-  // tanques luminosos
-  tank(16.6 * S, 6 * S - 0.45, 0xff6a1a, 1.9, 0.32, 2.2);
-  tank(17.15 * S, 6 * S - 0.45, 0xff7a22, 1.9, 0.32, 0);
-  tank(7 * S + 0.6, 8.7 * S, 0x4dff6a, 2.3, 0.42, 2.6);
-  tank(7 * S + 0.6, 9.55 * S, 0x56ff74, 2.3, 0.42, 0);
-  tank(1 * S + 0.5, 3.7 * S, 0x48ff8a, 1.7, 0.3, 1.2);
-  // barris
-  barrel(2.2 * S, 6 * S - 0.4, 0.3); barrel(2.5 * S, 6 * S - 0.35, 2.1);
-  barrel(17.6 * S, 5 * S + 0.4, 1.2);
-  barrel(17.6 * S, 3.8 * S, 0.7);
-  barrel(7 * S + 0.4, 3.75 * S, 2.6);
-  barrel(11.6 * S, 9.6 * S, 1.6);
+// ---------- Itens ----------
+const ITEMS = {
+  green: { name: 'cartão verde', short: 'Verde', color: 0x2ecc71, css: '#2ecc71', kind: 'card' },
+  blue: { name: 'cartão azul', short: 'Azul', color: 0x3b82f6, css: '#3b82f6', kind: 'card' },
+  red: { name: 'cartão vermelho', short: 'Verm.', color: 0xef4444, css: '#ef4444', kind: 'card' },
+  fuse: { name: 'fusível', short: 'Fusível', color: 0xf5a623, css: '#f5a623', kind: 'fuse' },
+  uv: { name: 'lâmpada UV', short: 'UV', color: 0x8a5cff, css: '#8a5cff', kind: 'uv' },
+  key: { name: 'chave de manutenção', short: 'Chave', color: 0xc0c6cc, css: '#c0c6cc', kind: 'key' },
+  valve: { name: 'manípulo da válvula', short: 'Válvula', color: 0x4fc3f7, css: '#4fc3f7', kind: 'valve' }
+};
+function itemMesh(kind, color) {
+  const g = new THREE.Group();
+  const glowMat = new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.6 });
+  if (kind === 'card') {
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.015, 0.17), glowMat));
+    const chip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.04), mat(0xffd27a)); chip.position.set(-0.07, 0.005, 0); g.add(chip);
+  } else if (kind === 'fuse') {
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.16, 12), glowMat); body.rotation.z = Math.PI / 2; g.add(body);
+    [-0.1, 0.1].forEach((x) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 12), mat(0xb8bec4, { metalness: 0.9 })); c.rotation.z = Math.PI / 2; c.position.x = x; g.add(c); });
+  } else if (kind === 'uv') {
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.22, 12), mat(0x2a2633, { metalness: 0.6 })); body.rotation.z = Math.PI / 2; g.add(body);
+    const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.05, 12), glowMat); lens.rotation.z = Math.PI / 2; lens.position.x = 0.13; g.add(lens);
+  } else if (kind === 'key') {
+    const h = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.02, 0.04), glowMat); g.add(h);
+    const head = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.015, 8, 16), glowMat); head.rotation.x = Math.PI / 2; head.position.x = 0.14; g.add(head);
+  } else {
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.018, 8, 24), glowMat); wheel.rotation.x = Math.PI / 2; g.add(wheel);
+    for (let k = 0; k < 3; k++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.015, 0.02), glowMat); sp.rotation.y = k * Math.PI / 3; g.add(sp); }
+  }
+  return g;
 }
-
-// ----- Corredor -----
-function buildCorridor() {
-  [3, 9, 15].forEach((c) => {
-    const l = addLight(c * S, 5.5 * S, 0xff2a1a, 1.6, 'c');
-    G.emergency.push(l);
+function addItem(id, x, y, z, onPick) {
+  const it = ITEMS[id], g = itemMesh(it.kind, it.color);
+  g.position.set(x, y, z); hitbox(g, 0.5, 0.35, 0.5); scene.add(g);
+  interact(g, () => 'Apanhar: ' + it.name, () => {
+    G.inv[id] = true; scene.remove(g); snd.pick(); renderInv();
+    toast('Apanhaste: <b>' + it.name + '</b>.');
+    if (onPick) onPick();
   });
-  // sinal de saída e luz exterior
-  const sign = textTex(256, 96, '#0c7a3e', (x) => { x.fillStyle = '#fff'; x.font = 'bold 54px sans-serif'; x.textAlign = 'center'; x.fillText('SAÍDA ➜', 128, 66); });
-  plane(1.0, 0.38, new THREE.MeshBasicMaterial({ map: sign }), 17.5 * S, 2.6, 5 * S + 0.03, 0);
-  plane(S, WH, new THREE.MeshBasicMaterial({ color: 0xffffff }), 19 * S - 0.01, WH / 2, 5.5 * S, -Math.PI / 2);
-  glowSprite(19 * S - 0.3, WH / 2, 5.5 * S, 0xffffff, 3.5, 0.5);
-  const day = new THREE.PointLight(0xe8f4ff, 10, 8, 1.5); day.position.set(18.8 * S, 1.6, 5.5 * S); day.visible = false; scene.add(day); G.daylight = day;
-  G.exitLed = box(0.05, 0.2, 0.3, new THREE.MeshBasicMaterial({ color: 0x222222 }), 18.5 * S - 0.14, 2.75, 5.5 * S);
-  // caixotes e placas
-  const crateMat = new THREE.MeshStandardMaterial({ map: TEX.crate.map, normalMap: TEX.crate.normalMap, roughness: 0.6, metalness: 0.3 });
-  box(0.9, 0.9, 0.9, crateMat, 1.5 * S, 0.45, 5.25 * S, true);
-  box(0.7, 0.7, 0.7, crateMat, 1.5 * S + 0.1, 1.25, 5.25 * S).rotation.y = 0.4;
-  const names = [[3, 'QUARENTENA'], [9, 'ESCRITÓRIO'], [15, 'SERVIDORES']];
-  names.forEach(([c, n]) => {
-    const t = textTex(256, 64, '#1c2630', (x) => { x.fillStyle = '#cfe3f3'; x.font = 'bold 30px sans-serif'; x.textAlign = 'center'; x.fillText(n, 128, 42); });
-    plane(1.2, 0.3, new THREE.MeshBasicMaterial({ map: t }), (c + 1) * S + 0.4, 2.2, 5 * S + 0.02, 0);
-  });
-  const t = textTex(256, 64, '#1c2630', (x) => { x.fillStyle = '#cfe3f3'; x.font = 'bold 30px sans-serif'; x.textAlign = 'center'; x.fillText('LABORATÓRIO', 128, 42); });
-  plane(1.2, 0.3, new THREE.MeshBasicMaterial({ map: t }), 10 * S + 0.4, 2.2, 6 * S - 0.02, Math.PI);
+  G.anim.push({ card: g, y0: y });
+  return g;
 }
-
-function addCard(kind, x, y, z) {
+// Fragmentos do código Ómega (um por setor; o último setor pede os quatro)
+function fragment(n, x, y, z, story) {
   const g = new THREE.Group(); g.position.set(x, y, z);
-  const c = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.015, 0.17),
-    new THREE.MeshLambertMaterial({ color: CARD_COLORS[kind], emissive: CARD_COLORS[kind], emissiveIntensity: 0.6 }));
-  g.add(c);
-  const chip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.04), mat(0xffd27a)); chip.position.set(-0.07, 0.005, 0); g.add(chip);
-  hitbox(g, 0.5, 0.35, 0.5);
-  scene.add(g);
-  const names = { green: 'verde', blue: 'azul', red: 'vermelho' };
-  interact(g, () => 'Apanhar o cartão ' + names[kind], () => {
-    G.inv[kind] = true; scene.remove(g); snd.pick();
-    toast('Apanhaste o <b>cartão ' + names[kind] + '</b>.');
+  const paper = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.01, 0.3), new THREE.MeshLambertMaterial({ color: 0xf4efe1, emissive: 0x7dffcf, emissiveIntensity: 0.25 }));
+  g.add(paper); hitbox(g, 0.5, 0.35, 0.5); scene.add(g);
+  const halo = glowSprite(x, y + 0.1, z, 0x7dffcf, 0.8, 0.35);
+  interact(g, () => 'Apanhar o documento Ω', () => {
+    CH.found[n - 1] = true; scene.remove(g); scene.remove(halo); snd.pick(); renderInv(); saveChapter();
+    showNote('FRAGMENTO ÓMEGA ' + n + '/4\n\nDígito: ' + CH.frags[n - 1] + '\n\n' + story);
   });
   G.anim.push({ card: g, y0: y });
 }
+function renderInv() {
+  const html = Object.keys(ITEMS).filter((k) => G.inv[k]).map((k) =>
+    '<div class="it" style="--c:' + ITEMS[k].css + '"><i></i>' + ITEMS[k].short + '</div>');
+  CH.found.forEach((f, i) => { if (f) html.push('<div class="frag">Ω' + (i + 1) + '·' + CH.frags[i] + '</div>'); });
+  $('inv').innerHTML = html.join('');
+  $('uvBtn').classList.toggle('hidden', !G.inv.uv);
+}
 
-// ---------- Lógica dos puzzles ----------
+// ---------- Setores ----------
+let SEC = null, secIdx = 0, CH = null;
+const AUTO_DOOR = { label: 'LAB-7', color: '#8f9aa6', auto: true };
+function cell(c, r) { const M = SEC.map; return r < 0 || r >= M.length || c < 0 || c >= M[r].length ? ' ' : M[r][c]; }
+// Sala onde está um ponto (para abafar sons de outras salas)
+function roomOf(x, z) {
+  if (!SEC) return null;
+  const c = Math.floor(x / S), r = Math.floor(z / S);
+  for (const [id, c0, r0, c1, r1] of SEC.rooms || []) if (c >= c0 && c <= c1 && r >= r0 && r <= r1) return id;
+  return 'c';
+}
+let soundWorld = null;
+function audio() { snd.init(roomOf, soundWorld, load('etl_mute') === '1'); }
+
+function newChapter() {
+  CH = { sec: 0, frags: [0, 1, 2, 3].map(() => Math.floor(Math.random() * 10)), found: [false, false, false, false], time: 0 };
+}
+function saveChapter() { if (CH) save('etl_save', JSON.stringify({ sec: secIdx, frags: CH.frags, found: CH.found, time: CH.time })); }
+function loadChapter() { try { const s = JSON.parse(load('etl_save')); return s && s.frags ? s : null; } catch (e) { return null; } }
+
+function loadSector(i, preview) {
+  secIdx = i; SEC = SECTORS[i]; CH.sec = i;
+  if (SEC.prepare) SEC.prepare();
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x020304);
+  scene.fog = new THREE.FogExp2(SEC.fog || 0x06080a, SEC.fogDensity || 0.045);
+  scene.add(camera);
+  soundWorld = { lights: [], tanks: [], steam: [], alarm: [], spots: [], server: null, core: null, creepy: SEC.creepy || 1 };
+  G = {
+    colliders: [], doors: [], lights: [], emergency: [], anim: [], tanks: [], uvMarks: [], steam: [], s: {},
+    inv: {}, power: !!SEC.power, exitDoor: null, uv: false, countdown: null,
+    x: SEC.start[0] * S, z: SEC.start[1] * S, yaw: SEC.start[2], pitch: 0, bob: 0, time: 0, done: false
+  };
+  scene.add(new THREE.HemisphereLight(0x7d92b3, 0x1e1710, SEC.ambient == null ? 0.6 : SEC.ambient));
+  buildStructure();
+  SEC.build(api);
+  // pontos aleatórios para sons de ambiente
+  const fl = [];
+  SEC.map.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === '.') fl.push([(c + 0.5) * S, (r + 0.5) * S]); }));
+  for (let k = 0; k < 10; k++) soundWorld.spots.push(fl[Math.floor(Math.random() * fl.length)]);
+  snd.setWorld(soundWorld); snd.setPower(G.power); snd.klaxonOn(false);
+  flash.color.set(0xffe9c8); flash.intensity = SEC.flash || 9;
+  renderInv(); if (!preview) saveChapter();
+}
+
+function buildStructure() {
+  const walls = [], floors = [];
+  SEC.map.forEach((row, r) => [...row].forEach((ch, c) => {
+    if (ch === '#') walls.push([c, r]);
+    else if (ch !== ' ') floors.push([c, r]);
+  }));
+  const tint = SEC.wallTint || 0xffffff;
+  const wallMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(S, WH, S), new THREE.MeshStandardMaterial({ map: TEX.wall.map, normalMap: TEX.wall.normalMap, roughness: 0.62, metalness: 0.35, color: tint }), walls.length);
+  const m4 = new THREE.Matrix4();
+  walls.forEach(([c, r], i) => { m4.makeTranslation((c + 0.5) * S, WH / 2, (r + 0.5) * S); wallMesh.setMatrixAt(i, m4); });
+  scene.add(wallMesh);
+  const fg = new THREE.PlaneGeometry(S, S); fg.rotateX(-Math.PI / 2);
+  const cg = new THREE.PlaneGeometry(S, S); cg.rotateX(Math.PI / 2);
+  const floor = new THREE.InstancedMesh(fg, new THREE.MeshStandardMaterial({ map: TEX.floor.map, normalMap: TEX.floor.normalMap, roughness: 0.82, metalness: 0.05 }), floors.length);
+  const ceil = new THREE.InstancedMesh(cg, new THREE.MeshStandardMaterial({ map: TEX.ceil.map, normalMap: TEX.ceil.normalMap, roughness: 0.7, metalness: 0.4 }), floors.length);
+  floors.forEach(([c, r], i) => {
+    m4.makeTranslation((c + 0.5) * S, 0, (r + 0.5) * S); floor.setMatrixAt(i, m4);
+    m4.makeTranslation((c + 0.5) * S, WH, (r + 0.5) * S); ceil.setMatrixAt(i, m4);
+  });
+  scene.add(floor, ceil);
+
+  // Portas: 'D' abre sozinha; as outras letras são definidas pelo setor
+  SEC.map.forEach((row, r) => [...row].forEach((ch, c) => {
+    const info = ch === 'D' ? AUTO_DOOR : (SEC.doors || {})[ch]; if (!info) return;
+    const spansX = cell(c, r - 1) !== '#' && cell(c, r + 1) !== '#';
+    const x = (c + 0.5) * S, z = (r + 0.5) * S;
+    const m = box(spansX ? S : 0.2, WH, spansX ? 0.2 : S, new THREE.MeshStandardMaterial({ map: doorTex(info), roughness: 0.5, metalness: 0.55 }), x, WH / 2, z);
+    const door = { c, r, ch, info, mesh: m, open: false, t: 0, x, z };
+    G.doors.push(door);
+    if (!info.auto) interact(m, () => doorPrompt(door), () => useDoor(door));
+  }));
+}
+
+function addLight(x, z, color, intensity, room, opts) {
+  opts = opts || {};
+  const l = new THREE.PointLight(color, intensity * 3, 18, 1.2);
+  l.position.set(x, WH - 0.35, z); scene.add(l);
+  box(1.0, 0.14, 0.5, mat(0x1c2024, { metalness: 0.7, roughness: 0.4 }), x, WH - 0.07, z);
+  const panel = box(0.9, 0.02, 0.4, new THREE.MeshBasicMaterial({ map: TEX.grate, color }), x, WH - 0.15, z);
+  const halo = glowSprite(x, WH - 0.62, z, color, 1.1, 0.45);
+  const item = { light: l, panel, halo, base: intensity * 3, room, emerg: !!opts.emerg, flicker: !!opts.flicker, f: 1 };
+  G.lights.push(item);
+  if (item.emerg && !G.power) { G.emergency.push(item); soundWorld.alarm.push([x, z]); }
+  soundWorld.lights.push([x, z, room, item.emerg && !G.power]);
+  return item;
+}
+function powerOn(msg) {
+  G.power = true; snd.setPower(true); snd.powerOn();
+  G.lights.forEach((l) => {
+    if (l.emerg) { l.light.color.set(0xffdcb0); l.panel.material.color.set(0xffdcb0); l.halo.material.color.set(0xffdcb0); l.halo.material.opacity = 0.45; }
+    l.base = Math.max(l.base, 7.2);
+  });
+  G.emergency = [];
+  if (SEC.onPower) SEC.onPower();
+  toast(msg || '⚡ Energia restabelecida!');
+}
+function sign(text, x, y, z, rotY, bg, fg, w) {
+  const t = textTex(256, 64, bg || '#1c2630', (c) => { c.fillStyle = fg || '#cfe3f3'; c.font = 'bold 28px sans-serif'; c.textAlign = 'center'; c.fillText(text, 128, 42); });
+  return plane(w || 1.2, (w || 1.2) / 4, new THREE.MeshBasicMaterial({ map: t }), x, y, z, rotY || 0);
+}
+let crateMat = null;
+function crate(x, z, s, rot, y) {
+  if (!crateMat) crateMat = new THREE.MeshStandardMaterial({ map: TEX.crate.map, normalMap: TEX.crate.normalMap, roughness: 0.6, metalness: 0.3 });
+  s = s || 0.9;
+  const m = box(s, s, s, crateMat, x, (y || 0) + s / 2, z, !y);
+  if (rot) m.rotation.y = rot;
+  return m;
+}
+// Texto escrito com tinta invisível: só aparece com a lâmpada UV ligada
+function uvMark(text, x, y, z, rotY, size) {
+  const t = canvasTex(256, 128, (c) => {
+    c.fillStyle = '#d9b8ff'; c.font = 'bold 64px "Courier New", monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.shadowColor = '#b48cff'; c.shadowBlur = 18; c.fillText(text, 128, 64);
+  });
+  const m = plane(size || 1.0, (size || 1.0) / 2, new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }), x, y, z, rotY || 0);
+  m.visible = false; G.uvMarks.push(m);
+  return m;
+}
+function steamVent(x, z, room) {
+  soundWorld.steam.push([x, z, room || roomOf(x, z)]);
+  for (let k = 0; k < 3; k++) {
+    const sp = glowSprite(x, 2.4, z, 0xb8c4cc, 0.9, 0.0);
+    sp.material.blending = THREE.NormalBlending;
+    G.steam.push({ sp, x, z, ph: k / 3 });
+  }
+}
+function setServer(x, y, z, room) { soundWorld.server = [x, y, z]; soundWorld.serverRoom = room; }
+function setCore(x, y, z) { soundWorld.core = [x, y, z]; }
+
+// ---------- Portas ----------
 function doorPrompt(d) {
   if (d.open) return null;
-  if (d.ch === 'X') return 'Porta de saída';
-  return G.inv[d.info.key] ? 'Passar o cartão ' + d.info.name : 'Porta trancada (cartão ' + d.info.name + ')';
+  const info = d.info;
+  if (info.prompt) return info.prompt(d);
+  if (info.lock) return G.inv[info.lock] ? 'Usar: ' + ITEMS[info.lock].name : 'Porta trancada (' + ITEMS[info.lock].name + ')';
+  return 'Abrir a porta';
 }
 function useDoor(d) {
   if (d.open) return;
-  if (d.ch === 'X') {
-    if (!G.power) { snd.deny(d.x, d.z); toast('O painel da saída não tem energia.'); return; }
-    if (!G.inv.red) { snd.deny(d.x, d.z); toast('A saída só abre com o <b>cartão vermelho</b>.'); return; }
-    G.exitOpen = true; G.exitLed.material.color.set(0x22ff77); G.daylight.visible = true;
-  } else if (!G.inv[d.info.key]) { snd.deny(d.x, d.z); toast('Precisas do <b>cartão ' + d.info.name + '</b>.'); return; }
-  d.open = true; snd.reader(d.x, d.z); snd.door(d.x, d.z);
+  const info = d.info;
+  if (info.use) { info.use(d); return; }
+  if (info.lock && !G.inv[info.lock]) { snd.deny(d.x, d.z); toast('Precisas de: <b>' + ITEMS[info.lock].name + '</b>.'); return; }
+  if (info.check) { const msg = info.check(d); if (msg) { snd.deny(d.x, d.z); toast(msg); return; } }
+  openDoor(d);
 }
-
-function updateLever(l) {
-  const on = G.breakers[l.i];
-  l.handle.rotation.z = on ? 0.7 : -0.7;
-  l.led.material.color.set(on ? 0x33ff88 : 0x551111);
-}
-function toggleBreaker(i) {
-  if (G.power) { toast('A energia já está ligada.'); return; }
-  G.breakers[i] = !G.breakers[i]; snd.breaker(18 * S, 2.5 * S, G.breakers[i]); updateLever(G.levers[i]);
-  if (G.breakers.join() === G.target.join()) powerOn();
-}
-function powerOn() {
-  G.power = true; snd.powerOn();
-  G.lights.forEach((l) => {
-    if (l.room === 'c' || l.room === 's') {
-      l.light.color.set(0xffdcb0); l.panel.material.color.set(0xffdcb0); l.halo.material.color.set(0xffdcb0);
-    }
-    l.base = l.room === 's' ? 6.6 : Math.max(l.base, 7.2);
-  });
-  G.serverLight.light.color.set(0xdfe8ff);
-  G.emergency = [];
-  G.lockerLed.material.color.set(0x33ff88);
-  G.exitLed.material.color.set(0xff3333);
-  toast('⚡ Energia restabelecida!');
+function openDoor(d) {
+  if (typeof d === 'string') d = G.doors.find((x) => x.ch === d);
+  if (!d || d.open) return;
+  d.open = true;
+  if (d.info.lock) snd.reader(d.x, d.z);
+  snd.door(d.x, d.z);
+  if (d.info.exit) G.exitDoor = d;
+  if (d.info.onOpen) d.info.onOpen(d);
 }
 
 // ---------- Teclado numérico ----------
-let kbuf = '';
-function openKeypad() { kbuf = ''; drawKeypad(); $('keypad').classList.remove('hidden'); }
+let kbuf = '', kpad = null;
+function openKeypad(opts) { kpad = opts; kbuf = ''; drawKeypad(); $('keypad').classList.remove('hidden'); }
 function closeKeypad() { $('keypad').classList.add('hidden'); }
 function drawKeypad(err) {
-  const d = $('kdisp'); d.textContent = (kbuf + '____').slice(0, 4); d.classList.toggle('err', !!err);
+  const n = kpad ? kpad.code.length : 4;
+  const d = $('kdisp'); d.textContent = (kbuf + '______').slice(0, n); d.classList.toggle('err', !!err);
 }
-document.querySelectorAll('.keys button').forEach((b) => b.addEventListener('click', () => {
-  audio(); const k = b.textContent;
+function keypadKey(k) {
   snd.key(k);
   if (k === 'C') { kbuf = ''; drawKeypad(); return; }
   if (k === 'OK') {
-    if (kbuf === G.code) {
-      snd.safe(G.safe.x, G.safe.z); closeKeypad(); G.safeOpen = true;
-      G.anim.push({ obj: G.safe.pivot, prop: 'y', to: -Math.PI * 0.55 });
-      addCard('blue', G.safe.x, 0.06, G.safe.z + 0.05);
-      toast('O cofre abriu!');
-    } else { snd.deny(); $('kdisp').textContent = 'ERRO'; $('kdisp').classList.add('err'); kbuf = ''; }
+    if (kbuf === kpad.code) { closeKeypad(); kpad.onOk(); }
+    else { snd.deny(); $('kdisp').textContent = 'ERRO'; $('kdisp').classList.add('err'); kbuf = ''; }
     return;
   }
-  if (kbuf.length < 4) { kbuf += k; drawKeypad(); }
-}));
+  if (kbuf.length < kpad.code.length) { kbuf += k; drawKeypad(); }
+}
+document.querySelectorAll('.keys button').forEach((b) => b.addEventListener('click', () => { audio(); keypadKey(b.textContent); }));
 $('kclose').addEventListener('click', closeKeypad);
+
+// ---------- Terminal de escolha ----------
+let term = null;
+function openTerminal(opts) {
+  term = opts; $('termTitle').textContent = opts.title; $('termText').textContent = opts.text; $('termMsg').textContent = '';
+  const box = $('termOpts'); box.innerHTML = '';
+  opts.options.forEach((o, i) => {
+    const b = document.createElement('button'); b.textContent = '> ' + o;
+    b.addEventListener('click', () => {
+      if (term.lockUntil && performance.now() < term.lockUntil) return;
+      snd.key('5');
+      const r = term.onPick(i);
+      $('termMsg').textContent = r.msg;
+      if (r.ok) { setTimeout(closeTerminal, 1400); } else { snd.deny(); term.lockUntil = performance.now() + 6000; }
+    });
+    box.appendChild(b);
+  });
+  $('terminal').classList.remove('hidden');
+}
+function closeTerminal() { $('terminal').classList.add('hidden'); }
+$('termClose').addEventListener('click', closeTerminal);
+
+// ---------- Painel de memória (Simon) ----------
+let simon = null;
+function openSimon(opts) {
+  simon = { rounds: opts.rounds, round: 0, seq: [], pos: 0, busy: true, onWin: opts.onWin };
+  $('simon').classList.remove('hidden');
+  simonRound();
+}
+function simonRound() {
+  const len = simon.rounds[simon.round];
+  simon.seq = []; for (let i = 0; i < len; i++) simon.seq.push(Math.floor(Math.random() * 4));
+  simon.pos = 0; simon.busy = true;
+  $('simonMsg').textContent = 'Ronda ' + (simon.round + 1) + ' de ' + simon.rounds.length + ': observa...';
+  simon.seq.forEach((p, i) => setTimeout(() => simonFlash(p), 900 + i * 650));
+  setTimeout(() => { if (simon) { simon.busy = false; $('simonMsg').textContent = 'Repete a sequência.'; } }, 900 + simon.seq.length * 650);
+}
+function simonFlash(p) {
+  const el = document.querySelectorAll('.pad4 button')[p];
+  el.classList.add('lit'); snd.simon(p);
+  setTimeout(() => el.classList.remove('lit'), 380);
+}
+document.querySelectorAll('.pad4 button').forEach((b, i) => b.addEventListener('click', () => {
+  if (!simon || simon.busy) return;
+  simonFlash(i);
+  if (simon.seq[simon.pos] !== i) {
+    snd.simon(0, true); simon.busy = true; $('simonMsg').textContent = 'Errado! A sequência recomeça...';
+    setTimeout(() => { if (simon) simonRound(); }, 1300);
+    return;
+  }
+  simon.pos++;
+  if (simon.pos === simon.seq.length) {
+    simon.round++; simon.busy = true;
+    if (simon.round === simon.rounds.length) {
+      $('simonMsg').textContent = 'ACESSO CONCEDIDO'; const cb = simon.onWin;
+      setTimeout(() => { closeSimon(); cb(); }, 900);
+    } else setTimeout(() => { if (simon) simonRound(); }, 900);
+  }
+}));
+function closeSimon() { simon = null; $('simon').classList.add('hidden'); }
+$('simonClose').addEventListener('click', closeSimon);
+
+// ---------- Painel de tubos (rodar peças até a água chegar a todo o lado) ----------
+let pipes = null;
+const PDX = [0, 1, 0, -1], PDY = [-1, 0, 1, 0];
+const prot = (m, k) => { for (let i = 0; i < (k & 3); i++) m = ((m << 1) | (m >> 3)) & 15; return m; };
+function openPipes(opts) {
+  const N = opts.n || 5, base = new Array(N * N).fill(0), seen = new Array(N * N).fill(false), src = Math.floor(N / 2) * N;
+  const front = [];
+  const add = (c) => { seen[c] = true; for (let d = 0; d < 4; d++) front.push([c, d]); };
+  add(src);
+  while (front.length) {
+    const [c, d] = front.splice(Math.floor(Math.random() * front.length), 1)[0];
+    const x = c % N + PDX[d], y = Math.floor(c / N) + PDY[d];
+    if (x < 0 || y < 0 || x >= N || y >= N) continue;
+    const n = y * N + x;
+    if (seen[n]) continue;
+    base[c] |= 1 << d; base[n] |= 1 << ((d + 2) % 4); add(n);
+  }
+  const turns = base.map(() => Math.floor(Math.random() * 4));
+  pipes = { N, base, turns, src, onWin: opts.onWin, done: false };
+  if (pipesLit().every(Boolean)) pipes.turns[src + 1]++;
+  $('pipes').classList.remove('hidden'); drawPipes();
+}
+function pipesLit() {
+  const { N, base, turns, src } = pipes, m = base.map((b, i) => prot(b, turns[i])), lit = new Array(N * N).fill(false), q = [src];
+  lit[src] = true;
+  while (q.length) {
+    const a = q.pop();
+    for (let d = 0; d < 4; d++) {
+      if (!(m[a] & (1 << d))) continue;
+      const x = a % N + PDX[d], y = Math.floor(a / N) + PDY[d];
+      if (x < 0 || y < 0 || x >= N || y >= N) continue;
+      const b = y * N + x;
+      if ((m[b] & (1 << ((d + 2) % 4))) && !lit[b]) { lit[b] = true; q.push(b); }
+    }
+  }
+  return lit;
+}
+function drawPipes() {
+  const cv = $('pipeCv'), c = cv.getContext('2d'), { N, base, turns, src } = pipes, T = cv.width / N, lit = pipesLit();
+  c.fillStyle = '#0d1418'; c.fillRect(0, 0, cv.width, cv.height);
+  for (let i = 0; i < N * N; i++) {
+    const x = (i % N + 0.5) * T, y = (Math.floor(i / N) + 0.5) * T, m = prot(base[i], turns[i]);
+    c.fillStyle = '#16222a'; c.fillRect(x - T / 2 + 2, y - T / 2 + 2, T - 4, T - 4);
+    c.lineCap = 'round';
+    for (const [w, col] of [[T * 0.3, '#3a4650'], [T * 0.16, lit[i] ? '#4fc3f7' : '#1c262e']]) {
+      c.strokeStyle = col; c.lineWidth = w; c.beginPath();
+      for (let d = 0; d < 4; d++) if (m & (1 << d)) { c.moveTo(x, y); c.lineTo(x + PDX[d] * T / 2, y + PDY[d] * T / 2); }
+      c.stroke();
+    }
+    if (i === src) { c.fillStyle = '#4fc3f7'; c.beginPath(); c.arc(x, y, T * 0.2, 0, 7); c.fill(); }
+  }
+  const n = lit.filter(Boolean).length;
+  $('pipeMsg').textContent = pipes.done ? 'REFRIGERAÇÃO RESTABELECIDA' : 'Fluxo: ' + Math.round(n / (N * N) * 100) + '%';
+}
+$('pipeCv').addEventListener('click', (e) => {
+  if (!pipes || pipes.done) return;
+  const r = e.target.getBoundingClientRect(), N = pipes.N;
+  const gx = Math.floor((e.clientX - r.left) / r.width * N), gy = Math.floor((e.clientY - r.top) / r.height * N);
+  if (gx < 0 || gy < 0 || gx >= N || gy >= N) return;
+  pipes.turns[gy * N + gx]++; snd.breaker(G.x, G.z, false); drawPipes();
+  if (pipesLit().every(Boolean)) {
+    pipes.done = true; drawPipes(); const cb = pipes.onWin;
+    setTimeout(() => { closePipes(); cb(); }, 1000);
+  }
+});
+function closePipes() { pipes = null; $('pipes').classList.add('hidden'); }
+$('pipeClose').addEventListener('click', closePipes);
 
 // ---------- Interface ----------
 let toastT = 0;
-function toast(html) { const t = $('toast'); t.innerHTML = html; t.style.opacity = 1; toastT = 3.2; }
+function toast(html) { const t = $('toast'); t.innerHTML = html; t.style.opacity = 1; toastT = 3.6; }
 function showNote(text, screenish) {
   snd.note();
   $('modalText').textContent = text; $('paper').classList.toggle('screenish', !!screenish);
   $('modal').classList.remove('hidden');
 }
 $('modalOk').addEventListener('click', () => $('modal').classList.add('hidden'));
-function modalOpen() { return !$('modal').classList.contains('hidden') || !$('keypad').classList.contains('hidden'); }
+const OVERLAYS = ['modal', 'keypad', 'terminal', 'simon', 'pipes'];
+function modalOpen() { return OVERLAYS.some((id) => !$(id).classList.contains('hidden')); }
+function closeOverlays() { closeKeypad(); closeTerminal(); closeSimon(); closePipes(); $('modal').classList.add('hidden'); }
 
-function objective() {
-  const d = (ch) => G.doors.find((x) => x.ch === ch);
-  if (!d('G').open) return G.inv.green ? 'Usa o cartão verde na porta da quarentena.' : 'Encontra uma forma de sair da sala de quarentena.';
-  if (!G.inv.blue) return 'Explora o escritório e o laboratório. A sala dos servidores precisa do cartão azul.';
-  if (!d('B').open) return 'Abre a sala dos servidores com o cartão azul.';
-  if (!G.power) return 'Repõe a energia no quadro de disjuntores.';
-  if (!G.inv.red) return 'Com energia, o cacifo eletrónico já abre.';
-  return 'Foge pela SAÍDA ao fundo do corredor!';
+function toggleUV() {
+  if (!G.inv.uv || state !== 'play') return;
+  G.uv = !G.uv; snd.uv(G.uv);
+  flash.color.set(G.uv ? 0x8a5cff : 0xffe9c8); flash.intensity = G.uv ? 6 : (SEC.flash || 9);
+  $('uvBtn').classList.toggle('on', G.uv);
 }
+$('uvBtn').addEventListener('click', toggleUV);
 
+// Contagem decrescente (evacuação no núcleo)
+function startCountdown(sec, onFail) { G.countdown = { t: sec, onFail }; $('count').classList.remove('hidden'); snd.klaxonOn(true); }
+function stopCountdown() { G.countdown = null; $('count').classList.add('hidden'); snd.klaxonOn(false); }
+
+// ---------- Fluxo do capítulo ----------
 let state = 'menu';
 function setState(s) {
   state = s;
   $('menu').classList.toggle('hidden', s !== 'menu');
   $('pause').classList.toggle('hidden', s !== 'pause');
-  $('win').classList.toggle('hidden', s !== 'win');
+  $('win').classList.toggle('hidden', s !== 'end');
   $('hud').classList.toggle('hidden', s !== 'play');
   if (s === 'pause') snd.suspend(); else snd.resume();
   if (s !== 'play') { resetInput(); if (document.pointerLockElement) document.exitPointerLock(); }
 }
-function showBest() { const b = parseFloat(load('etl_best')); $('bestTxt').textContent = b ? 'Melhor tempo: ' + fmtTime(b) : ''; }
-$('playBtn').addEventListener('click', () => { audio(); newGame(); setState('play'); toast('Arrasta à esquerda para andar e à direita para olhar.'); });
-$('againBtn').addEventListener('click', () => { audio(); newGame(); setState('play'); });
+function totalTime() { return CH.time + (G ? G.time : 0); }
+
+function showTitle(t1, t2, ms, done) {
+  $('fadeT1').textContent = t1; $('fadeT2').textContent = t2;
+  $('fade').classList.add('on');
+  setTimeout(() => { $('fade').classList.remove('on'); if (done) done(); }, ms);
+}
+function enterSector(i) {
+  closeOverlays(); stopCountdown();
+  state = 'trans'; $('hud').classList.add('hidden'); resetInput();
+  $('fadeT1').textContent = ''; $('fadeT2').textContent = '';
+  $('fade').classList.add('on');
+  setTimeout(() => {
+    loadSector(i);
+    $('fadeT1').textContent = SEC.title; $('fadeT2').textContent = SEC.subtitle;
+    setTimeout(() => {
+      $('fade').classList.remove('on'); setState('play');
+      const msg = CH.pending || SEC.intro; CH.pending = null;
+      if (msg) setTimeout(() => toast(msg), 600);
+    }, 2800);
+  }, 900);
+}
+function nextSector() {
+  if (G.done) return;
+  G.done = true; CH.time += G.time; G.time = 0;
+  snd.elevator(2.6);
+  // se o jogador não apanhou o fragmento deste setor, guarda-o na mesma
+  if (secIdx < 4 && !CH.found[secIdx]) { CH.found[secIdx] = true; CH.pending = 'Encontraste no bolso um papel amarrotado: <b>Ω' + (secIdx + 1) + ' · ' + CH.frags[secIdx] + '</b>.'; }
+  if (secIdx + 1 < SECTORS.length) enterSector(secIdx + 1);
+}
+// Final do capítulo: o elevador sobe... e para.
+function playEnding() {
+  if (G.done) return;
+  G.done = true; CH.time += G.time; G.time = 0; stopCountdown();
+  state = 'story'; $('hud').classList.add('hidden'); resetInput();
+  const lines = [
+    [0, 'O elevador começa a subir.', () => snd.elevator(7)],
+    [3500, 'Nível −6 … −5 … −4 …'],
+    [7600, 'De repente, para.', () => snd.sting()],
+    [10200, 'As luzes apagam-se. Só se ouve o zumbido do altifalante.', () => snd.radio()],
+    [14200, '«Muito bem, Sujeito 12. Exatamente como previsto.»', () => snd.radio()],
+    [18200, '«Teste 7 concluído. Preparem a sala para o Teste 8.»', () => snd.radio()],
+    [22400, 'Sentes uma picada no pescoço. O chão foge-te dos pés…', () => snd.sting()]
+  ];
+  $('story').classList.remove('hidden'); $('storyText').innerHTML = '';
+  lines.forEach(([ms, txt, fx]) => setTimeout(() => {
+    const p = document.createElement('p'); p.textContent = txt; $('storyText').appendChild(p);
+    requestAnimationFrame(() => p.classList.add('in'));
+    if (fx) fx();
+  }, ms));
+  setTimeout(() => {
+    $('story').classList.add('hidden');
+    const best = parseFloat(load('etl_best_ch1')), rec = !best || CH.time < best;
+    if (rec) save('etl_best_ch1', CH.time.toFixed(1));
+    save('etl_ch1_done', '1'); save('etl_save', '');
+    $('winTxt').innerHTML = 'Tempo do capítulo: <b>' + fmtTime(CH.time) + '</b>' + (rec ? ' (novo recorde!)' : '<br>Melhor tempo: ' + fmtTime(best)) +
+      '<br><br>O LAB-7 ainda não acabou contigo.';
+    setState('end'); refreshMenu();
+  }, 27500);
+}
+
+function refreshMenu() {
+  const sv = loadChapter();
+  $('contBtn').classList.toggle('hidden', !sv);
+  if (sv) $('contBtn').textContent = 'CONTINUAR — ' + SECTORS[sv.sec].title;
+  const b = parseFloat(load('etl_best_ch1'));
+  $('bestTxt').textContent = b ? 'Melhor tempo do Capítulo 1: ' + fmtTime(b) : '';
+}
+$('playBtn').addEventListener('click', () => { audio(); newChapter(); enterSector(0); });
+$('contBtn').addEventListener('click', () => {
+  audio(); const sv = loadChapter(); if (!sv) return;
+  CH = { sec: sv.sec, frags: sv.frags, found: sv.found, time: sv.time || 0 }; enterSector(sv.sec);
+});
+$('againBtn').addEventListener('click', () => { refreshMenu(); setState('menu'); });
 $('pauseBtn').addEventListener('click', () => setState('pause'));
 $('resumeBtn').addEventListener('click', () => setState('play'));
-$('quitBtn').addEventListener('click', () => { showBest(); setState('menu'); });
+$('quitBtn').addEventListener('click', () => { CH.time += G.time; G.time = 0; saveChapter(); refreshMenu(); setState('menu'); });
 $('use').addEventListener('click', () => doInteract());
-showBest();
 
 // Ganchos chamados pela app Android
 window.olPause = () => { if (state === 'play') setState('pause'); };
 window.olBack = () => {
-  if (!$('keypad').classList.contains('hidden')) { closeKeypad(); return true; }
-  if (!$('modal').classList.contains('hidden')) { $('modal').classList.add('hidden'); return true; }
+  for (const id of OVERLAYS) if (!$(id).classList.contains('hidden')) { closeOverlays(); return true; }
   if (state === 'play') { setState('pause'); return true; }
-  if (state === 'pause' || state === 'win') { showBest(); setState('menu'); return true; }
+  if (state === 'pause' || state === 'end') { if (state === 'pause') { CH.time += G.time; G.time = 0; saveChapter(); } refreshMenu(); setState('menu'); return true; }
+  if (state === 'trans' || state === 'story') return true;
   return false;
 };
 document.addEventListener('visibilitychange', () => { if (document.hidden) window.olPause(); });
+
+// API usada pelos setores (sectors.js)
+const api = {
+  THREE, S, WH, TEX, get G() { return G; }, get CH() { return CH; }, get scene() { return scene; },
+  mat, box, plane, hollowBox, interact, hitbox, textTex, canvasTex, glowSprite, pipe, barrel, tank, hazardBand, crate, sign,
+  addLight, addItem, fragment, uvMark, steamVent, setServer, setCore, powerOn, openDoor, renderInv,
+  openKeypad, openTerminal, openSimon, openPipes, showNote, toast, snd, shuffle, roomOf,
+  startCountdown, stopCountdown, nextSector, playEnding, enterSector,
+  anim(obj, prop, to) { G.anim.push({ obj, prop, to }); }
+};
+
 
 // ---------- Controlos ----------
 const keys = {};
@@ -878,7 +909,8 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyE' || e.code === 'Enter') { if (!modalOpen()) doInteract(); }
   if (e.code === 'Escape' && modalOpen()) window.olBack();
   if (e.code === 'KeyP') setState('pause');
-  if (!$('keypad').classList.contains('hidden') && /^Digit\d$/.test(e.code) && kbuf.length < 4) { kbuf += e.code.slice(5); snd.key(e.code.slice(5)); drawKeypad(); }
+  if (!$('keypad').classList.contains('hidden') && /^Digit\d$/.test(e.code)) keypadKey(e.code.slice(5));
+  if (e.code === 'KeyU') toggleUV();
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
@@ -901,7 +933,7 @@ function doInteract() { if (target && state === 'play' && !modalOpen()) target.o
 // ---------- Física simples ----------
 function solidCell(c, r) {
   const ch = cell(c, r);
-  if (ch === '#' || ch === ' ') return !(ch === ' ' && G.exitOpen && c === 19 && r === 5);
+  if (ch === '#' || ch === ' ') return true;
   const d = G.doors.find((x) => x.c === c && x.r === r);
   return d ? d.t < 0.85 : false;
 }
@@ -936,9 +968,9 @@ function frame(now) {
 }
 function update(dt) {
   const T = performance.now() / 1000;
-  // animações (portas, cofre, cartões)
+  // animações (portas, cofres, itens)
   for (const d of G.doors) {
-    if (!d.open && !d.info.key && Math.hypot(G.x - d.x, G.z - d.z) < 3.2) { d.open = true; snd.door(d.x, d.z); }
+    if (!d.open && d.info.auto && Math.hypot(G.x - d.x, G.z - d.z) < 3.2) { d.open = true; snd.door(d.x, d.z); }
     const to = d.open ? 1 : 0; d.t += (to - d.t) * Math.min(1, dt * 2.2);
     d.mesh.position.y = WH / 2 + d.t * (WH - 0.12);
   }
@@ -946,7 +978,11 @@ function update(dt) {
     if (a.card) { a.card.position.y = a.y0 + 0.06 + Math.sin(T * 2.5) * 0.03; a.card.rotation.y += dt * 1.2; }
     else a.obj.rotation[a.prop] += (a.to - a.obj.rotation[a.prop]) * Math.min(1, dt * 3);
   }
-  for (const l of G.lights) l.light.intensity = l.base;
+  for (const l of G.lights) {
+    if (l.flicker) { if (Math.random() < 0.03) l.f = Math.random() < 0.5 ? 0.05 : 0.4; l.f += (1 - l.f) * Math.min(1, dt * 6); }
+    l.light.intensity = l.base * (l.flicker ? l.f : 1);
+    if (l.flicker) l.halo.material.opacity = 0.45 * l.f;
+  }
   for (const l of G.emergency) {
     const k = 0.35 + 0.65 * Math.abs(Math.sin(T * 2.2));
     l.light.intensity = l.base * k; l.halo.material.opacity = 0.6 * k;
@@ -954,7 +990,12 @@ function update(dt) {
   TEX.liquid.map.offset.y = (TEX.liquid.map.offset.y - dt * 0.04) % 1;
   TEX.liquid.map.offset.x = Math.sin(T * 0.3) * 0.05;
   for (const tk of G.tanks) tk.light.intensity = tk.base * (0.85 + 0.15 * Math.sin(T * 3 + tk.ph));
-  if (G.serverLight && !G.power) G.serverLight.light.intensity = 1.8 * (Math.random() < 0.04 ? 0.2 : 1);
+  for (const st of G.steam) {
+    const k = (T * 0.5 + st.ph) % 1;
+    st.sp.position.y = 2.5 - k * 1.2; st.sp.scale.setScalar(0.5 + k * 1.4); st.sp.material.opacity = 0.18 * Math.sin(k * Math.PI);
+  }
+  for (const m of G.uvMarks) m.visible = G.uv && Math.hypot(m.position.x - G.x, m.position.z - G.z) < 7;
+  if (SEC.update) SEC.update(dt, T);
 
   if (state === 'play' && !modalOpen()) {
     G.time += dt;
@@ -968,7 +1009,16 @@ function update(dt) {
     if (!blocked(G.x + mx, G.z)) G.x += mx;
     if (!blocked(G.x, G.z + mz)) G.z += mz;
     if (len > 0.1) G.bob += dt * 9 * Math.min(1, len);
-    if (G.exitOpen && G.x > 18.3 * S && !G.won) win();
+    // saída do setor: entrar na casa da porta de saída depois de aberta
+    const ed = G.exitDoor;
+    if (ed && ed.t > 0.85 && Math.floor(G.x / S) === ed.c && Math.floor(G.z / S) === ed.r) {
+      if (SEC.onExit) SEC.onExit(); else nextSector();
+    }
+    if (G.countdown) {
+      G.countdown.t -= dt;
+      $('count').textContent = fmtTime(Math.max(0, G.countdown.t));
+      if (G.countdown.t <= 0) { const cb = G.countdown.onFail; stopCountdown(); cb(); }
+    }
   }
   camera.position.set(G.x, EYE + Math.sin(G.bob) * 0.035, G.z);
   camera.rotation.set(G.pitch, G.yaw, 0);
@@ -982,25 +1032,23 @@ function update(dt) {
     $('prompt').classList.toggle('hidden', !target); $('use').classList.toggle('hidden', !target);
     $('cross').classList.toggle('hot', !!target);
     if (target) $('prompt').textContent = target.p;
-    $('timer').textContent = fmtTime(G.time);
-    $('objText').textContent = objective();
-    ['green', 'blue', 'red'].forEach((k) => $('inv-' + k).classList.toggle('on', G.inv[k]));
+    $('timer').textContent = fmtTime(totalTime());
+    $('objText').textContent = SEC.objective(G);
+    $('secTxt').textContent = SEC.title;
     if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').style.opacity = 0; }
   }
 }
-function win() {
-  G.won = true; snd.win();
-  const best = parseFloat(load('etl_best'));
-  const rec = !best || G.time < best;
-  if (rec) save('etl_best', G.time.toFixed(1));
-  $('winTxt').innerHTML = 'Saíste do laboratório em <b>' + fmtTime(G.time) + '</b>.' + (rec ? '<br>Novo recorde!' : '<br>Melhor tempo: ' + fmtTime(best));
-  setState('win');
-}
 
 makeTextures();
-newGame();
+newChapter();
+loadSector(0, true);
 G.yaw = 0.6; // vista do menu
+refreshMenu();
 requestAnimationFrame(frame);
 
 // Ganchos para testes automáticos
-window.etl = { snd, get frame() { return frameNo; }, get G() { return G; }, get state() { return state; }, teleport(x, z, yaw, pitch) { G.x = x * S; G.z = z * S; G.yaw = yaw; G.pitch = pitch || 0; }, interact: doInteract, get target() { return target && target.p; } };
+window.etl = {
+  snd, get frame() { return frameNo; }, get G() { return G; }, get CH() { return CH; }, get state() { return state; }, get sec() { return secIdx; }, get SEC() { return SEC; },
+  interact: doInteract, get target() { return target && target.p; }, toggleUV,
+  get simon() { return simon && { seq: simon.seq, busy: simon.busy }; }, get pipes() { return pipes; }
+};

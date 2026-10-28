@@ -5,7 +5,8 @@ let ctx = null, master = null, revIn = null, muted = false, meter = null, outNod
 let white = null, brown = null;
 let roomOf = () => null, listenerRoom = null, active = false, power = false;
 const loops = [];
-const tanks = [], lights = [];
+let tanks = [], lights = [];
+let world = { alarm: [], spots: [] }, collecting = null, secLoops = [];
 
 // ---------- Infraestrutura ----------
 function noiseBuf(sec, kind) {
@@ -98,11 +99,13 @@ function thump(dest, t0, f, vol, dur) {
 function loopAt(pos, room, ref, build, base) {
   const g = ctx.createGain(), occl = ctx.createBiquadFilter(), send = ctx.createGain();
   g.gain.value = 0; occl.type = 'lowpass'; occl.frequency.value = 20000; send.gain.value = 0.35;
+  const prev = collecting; collecting = [];
   build(g);
+  const sources = collecting; collecting = prev;
   if (pos) { const pn = panner(pos[0], pos[1], pos[2], ref); g.connect(occl); occl.connect(pn); pn.connect(master); pn.connect(send); }
   else { g.connect(occl); occl.connect(master); occl.connect(send); }
   send.connect(revIn);
-  const l = { g, occl, room, base, level: 1 };
+  const l = { g, occl, room, base, level: 1, sources };
   loops.push(l);
   return l;
 }
@@ -110,6 +113,7 @@ function noiseLoop(dest, buf, type, f, q) {
   const s = ctx.createBufferSource(), fl = ctx.createBiquadFilter();
   s.buffer = buf; s.loop = true; fl.type = type; fl.frequency.value = f; fl.Q.value = q || 0.7;
   s.connect(fl); fl.connect(dest); s.start();
+  if (collecting) collecting.push(s);
   return fl;
 }
 function oscLoop(dest, type, f, vol, filter) {
@@ -117,11 +121,12 @@ function oscLoop(dest, type, f, vol, filter) {
   s.type = type; s.frequency.value = f; g.gain.value = vol;
   if (filter) { const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = filter; s.connect(fl); fl.connect(g); } else s.connect(g);
   g.connect(dest); s.start();
+  if (collecting) collecting.push(s);
   return s;
 }
 let serverLoop = null;
-function startAmbience(world) {
-  // zumbido grave do edifício + ventilação (sem posição)
+// Ambiente comum a todo o laboratório
+function startGlobal() {
   loopAt(null, null, 1, (d) => {
     oscLoop(d, 'sawtooth', 55, 0.5, 140); oscLoop(d, 'sawtooth', 55.35, 0.5, 140); oscLoop(d, 'sine', 110, 0.15);
   }, 0.05);
@@ -129,25 +134,45 @@ function startAmbience(world) {
     const fl = noiseLoop(d, brown, 'bandpass', 380, 0.6);
     const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.07; lg.gain.value = 120; lfo.connect(lg); lg.connect(fl.frequency); lfo.start();
   }, 0.09);
+}
+// Fontes de som de um setor (substituídas ao mudar de setor)
+function startSector(w) {
+  for (const l of secLoops) {
+    l.g.gain.setTargetAtTime(0, ctx.currentTime, 0.1);
+    const src = l.sources; setTimeout(() => { src.forEach((x) => { try { x.stop(); } catch (e) { /* já parado */ } }); l.g.disconnect(); }, 600);
+    loops.splice(loops.indexOf(l), 1);
+  }
+  secLoops = []; tanks = []; lights = []; serverLoop = null; world = w;
+  const add = (l) => { secLoops.push(l); return l; };
   // servidores: zumbido, ventoinhas e um apito agudo
-  serverLoop = loopAt(world.server, 's', 2.5, (d) => {
+  if (w.server) serverLoop = add(loopAt(w.server, w.serverRoom || 's', 2.5, (d) => {
     oscLoop(d, 'square', 120, 0.25, 320); noiseLoop(d, white, 'bandpass', 1300, 0.8); oscLoop(d, 'sine', 6800, 0.012);
-  }, 0.07);
+  }, 0.07));
   // lâmpadas fluorescentes a zumbir
-  world.lights.forEach(([x, z, room]) => {
-    lights.push(loopAt([x, 2.7, z], room, 1.2, (d) => { oscLoop(d, 'sawtooth', 100, 0.3, 600); oscLoop(d, 'sine', 200, 0.2); }, 0.018));
+  (w.lights || []).forEach(([x, z, room, emerg]) => {
+    const l = add(loopAt([x, 2.7, z], room, 1.2, (d) => { oscLoop(d, 'sawtooth', 100, 0.3, 600); oscLoop(d, 'sine', 200, 0.2); }, 0.018));
+    l.emerg = emerg; lights.push(l);
   });
   // tanques: zumbido baixo das bombas (as bolhas são agendadas em tick)
-  world.tanks.forEach(([x, z, room]) => {
-    loopAt([x, 1, z], room, 1.2, (d) => { oscLoop(d, 'triangle', 72 + Math.random() * 8, 0.4, 300); noiseLoop(d, brown, 'lowpass', 500); }, 0.05);
+  (w.tanks || []).forEach(([x, z, room]) => {
+    add(loopAt([x, 1, z], room, 1.2, (d) => { oscLoop(d, 'triangle', 72 + Math.random() * 8, 0.4, 300); noiseLoop(d, brown, 'lowpass', 500); }, 0.05));
     tanks.push({ x, z, room, t: Math.random() * 0.5 });
   });
+  // fugas de vapor
+  (w.steam || []).forEach(([x, z, room]) => {
+    add(loopAt([x, 2.4, z], room, 1.5, (d) => { noiseLoop(d, white, 'highpass', 2500); }, 0.04));
+  });
+  // reator do núcleo
+  if (w.core) add(loopAt(w.core, 'n', 4, (d) => {
+    oscLoop(d, 'sawtooth', 41, 0.6, 160); oscLoop(d, 'sine', 82.5, 0.3); noiseLoop(d, brown, 'lowpass', 220);
+  }, 0.14));
 }
 
 // ---------- API ----------
 export const snd = {
-  init(roomFn, world, isMuted) {
+  init(roomFn, w, isMuted) {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    w = w || world;
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; return; }
     roomOf = roomFn; muted = isMuted;
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9;
@@ -157,7 +182,8 @@ export const snd = {
     const conv = ctx.createConvolver(); conv.buffer = impulse(2.6, 3.2);
     const rg = ctx.createGain(); rg.gain.value = 0.45; conv.connect(rg); rg.connect(master); revIn = conv;
     white = noiseBuf(2, 'white'); brown = noiseBuf(4, 'brown');
-    startAmbience(world);
+    startGlobal();
+    startSector(w);
   },
   get muted() { return muted; },
   // nível RMS atual da saída (usado nos testes automáticos)
@@ -172,7 +198,9 @@ export const snd = {
   setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : 0.9, ctx.currentTime, 0.05); },
   suspend() { if (ctx && ctx.state === 'running') ctx.suspend(); },
   resume() { if (ctx && ctx.state === 'suspended') ctx.resume(); },
-  reset() { power = false; },
+  setPower(p) { power = p; },
+  // troca as fontes de som do setor atual
+  setWorld(w) { if (ctx) startSector(w); else world = w; },
 
   // posição e orientação de quem ouve (a câmara)
   listener(px, py, pz, fx, fy, fz) {
@@ -198,16 +226,17 @@ export const snd = {
       l.occl.frequency.setTargetAtTime(muffled ? 600 : 18000, now, 0.15);
     }
     if (serverLoop) serverLoop.level = power ? 1.4 : 0.5;
-    lights.forEach((l) => { l.level = power || l.room !== 'c' ? 1 : 0; });
+    lights.forEach((l) => { l.level = power || !l.emerg ? 1 : 0; });
     if (!playing) return;
     for (const tk of tanks) {
       tk.t -= dt;
       if (tk.t <= 0) { tk.t = 0.08 + Math.random() * 0.5; this.bubble(tk.x, tk.z); }
     }
     this._alarm = (this._alarm || 0) - dt;
-    if (!power && this._alarm <= 0) { this._alarm = 4.5; this.alarm(); }
+    if (!power && world.alarm && world.alarm.length && this._alarm <= 0) { this._alarm = 4.5; this.alarm(); }
     this._amb = (this._amb == null ? 6 : this._amb) - dt;
-    if (this._amb <= 0) { this._amb = 7 + Math.random() * 12; this.randomAmbience(); }
+    if (this._amb <= 0) { this._amb = (7 + Math.random() * 12) / (world.creepy || 1); this.randomAmbience(); }
+    if (this._klaxon != null) { this._klaxon -= dt; if (this._klaxon <= 0) { this._klaxon = 1.6; this.klaxon(); } }
   },
 
   // ----- efeitos -----
@@ -224,14 +253,14 @@ export const snd = {
   },
   alarm() {
     const t = ctx.currentTime;
-    [[7.5, 0], [22.5, 0.2], [37.5, 0.4]].forEach(([x, dl]) => {
-      const d = out([x, 2.6, 13.75], 0.5, 3);
+    world.alarm.forEach(([x, z], i) => {
+      const dl = i * 0.2, d = out([x, 2.6, z], 0.5, 3);
       osc(d, 'square', 660, t + dl, 0.42, 0.025, { filter: 'lowpass', f: 1600, attack: 0.02 });
       osc(d, 'square', 520, t + dl + 0.5, 0.42, 0.025, { filter: 'lowpass', f: 1600, attack: 0.02 });
     });
   },
   randomAmbience() {
-    const spots = [[5, 3], [25, 3], [41, 5], [24, 23], [10, 14], [35, 14], [45, 14]];
+    const spots = world.spots && world.spots.length ? world.spots : [[0, 0]];
     const [x, z] = spots[Math.floor(Math.random() * spots.length)];
     const t = ctx.currentTime, k = Math.random();
     if (k < 0.35) { // gota de água
@@ -314,6 +343,59 @@ export const snd = {
     if (!ctx) return;
     const t = ctx.currentTime, d = out(null, 0.2);
     for (let i = 0; i < 4; i++) nz(d, t + i * 0.07 + Math.random() * 0.03, 0.08, 0.1, 'bandpass', 3000 + Math.random() * 2000, { q: 0.8 });
+  },
+  elevator(dur) {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out(null, 0.3); dur = dur || 3;
+    thump(d, t, 70, 0.4, 0.4);
+    osc(d, 'sawtooth', 48, t + 0.2, dur, 0.09, { filter: 'lowpass', f: 260, attack: 0.5 });
+    nz(d, t + 0.2, dur, 0.1, 'bandpass', 600, { q: 0.6, attack: 0.6 });
+    for (let k = 0.6; k < dur; k += 0.45 + Math.random() * 0.5) nz(d, t + k, 0.05, 0.08, 'bandpass', 1500 + Math.random() * 1500, { q: 3 });
+    thump(d, t + dur + 0.2, 60, 0.5, 0.5);
+    osc(d, 'sine', 880, t + dur + 0.5, 0.6, 0.05); osc(d, 'sine', 660, t + dur + 0.75, 0.8, 0.05);
+  },
+  simon(i, wrong) {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out(null, 0.25);
+    if (wrong) { osc(d, 'square', 110, t, 0.6, 0.1, { filter: 'lowpass', f: 900 }); return; }
+    osc(d, 'triangle', [330, 415, 494, 622][i], t, 0.35, 0.12);
+  },
+  valve(x, z) {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out([x, 1.2, z], 0.5);
+    creak(d, t, 0.6, 140 + Math.random() * 40, 0.12);
+    nz(d, t + 0.1, 0.9, 0.12, 'highpass', 2000, { fEnd: 4000, attack: 0.2 });
+    thump(d, t + 0.55, 110, 0.2, 0.12);
+  },
+  flow() {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out(null, 0.6);
+    nz(d, t, 3, 0.2, 'lowpass', 500, { brown: true, attack: 0.6 });
+    for (let k = 0; k < 14; k++) osc(d, 'sine', 200 + Math.random() * 500, t + Math.random() * 2.5, 0.08, 0.04, { slide: 700 });
+    thump(d, t + 2.6, 60, 0.45, 0.5);
+  },
+  uv(on) {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out(null, 0.1);
+    nz(d, t, 0.03, 0.2, 'highpass', 3000); if (on) osc(d, 'sine', 9000, t + 0.02, 0.4, 0.01, { attack: 0.1 });
+  },
+  sting() {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out(null, 1.2);
+    thump(d, t, 45, 0.6, 1.2);
+    [1, 1.06, 1.5].forEach((m) => osc(d, 'sawtooth', 110 * m, t, 2.5, 0.04, { filter: 'lowpass', f: 900, attack: 0.05 }));
+    nz(d, t, 1.8, 0.1, 'bandpass', 3000, { fEnd: 300, q: 2 });
+  },
+  radio() {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out(null, 0.6);
+    nz(d, t, 0.5, 0.15, 'bandpass', 1800, { q: 1.5 });
+    osc(d, 'sine', 1000, t + 0.45, 0.15, 0.05);
+  },
+  klaxonOn(on) { this._klaxon = on ? 0 : null; },
+  klaxon() {
+    const t = ctx.currentTime, d = out(null, 0.5);
+    osc(d, 'sawtooth', 300, t, 0.9, 0.06, { slide: 520, slideT: 0.8, filter: 'lowpass', f: 1800, attack: 0.05 });
   },
   win() {
     if (!ctx) return;

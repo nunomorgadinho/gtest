@@ -1,26 +1,32 @@
 # Escape the Lab
 
 Jogo 3D na primeira pessoa para Android. Acordas fechado num laboratório secreto depois de um acidente.
-Exploras as salas, encontras cartões de acesso, resolves enigmas e tentas escapar. O tempo conta.
+Exploras cinco setores, encontras cartões de acesso, resolves enigmas e tentas escapar.
 
 ![ícone](dist/icon-512.png)
 
 ## Como se joga
 
-- **Telemóvel:** arrasta no lado esquerdo do ecrã para andar, no lado direito para olhar; carrega em **USAR** quando a mira fica verde.
-- **Computador:** WASD para andar, rato para olhar (clica para prender o rato), **E** para interagir.
+- **Telemóvel:** arrasta no lado esquerdo do ecrã para andar, no lado direito para olhar; carrega em **USAR** quando a mira fica verde. O botão **UV** aparece quando tens a lâmpada ultravioleta.
+- **Computador:** WASD para andar, rato para olhar (clica para prender o rato), **E** para interagir, **U** para a luz UV.
 
-O caminho (sem spoilers dos códigos, que mudam em cada partida):
+## Capítulo 1 — Protocolo Ómega
 
-1. **Quarentena:** lê o diário e encontra o cartão verde.
-2. **Escritório:** o email no computador explica como funciona o cofre.
-3. **Laboratório:** o quadro mostra a ordem das cores; cada frasco tem um número no rótulo. Há também uma nota da manutenção.
-4. **Cofre:** o código abre-o e lá dentro está o cartão azul.
-5. **Servidores:** liga os disjuntores certos para repor a energia e abre o cacifo eletrónico (cartão vermelho).
-6. **Saída:** com energia e cartão vermelho, foge!
+Acordas sem memória como "Sujeito 12" numa instalação subterrânea selada. Alguém espalhou pelos setores um
+código de desativação do núcleo Ómega, um dígito em cada setor. O capítulo tem cinco setores, pensados para
+cerca de **25 minutos** na primeira vez (depende de quanto exploras e lês):
 
-Os números dos frascos, a ordem das cores e os disjuntores certos são sorteados em cada partida.
-O melhor tempo fica guardado.
+| Setor | Puzzles principais |
+|---|---|
+| **A — Quarentena** | Cartão verde; código do cofre (cores do quadro + números dos frascos); disjuntores; cacifo eletrónico |
+| **B — Arquivo** | Lógica com fichas de pessoal (turnos + suspensões) para autorizar o elevador; válvulas de pressão para abrir a criogenia; fusível |
+| **C — Genética** | Painel de memória de cores (3 rondas); lâmpada UV que revela um código escrito com tinta invisível; cofre de amostras |
+| **D — Manutenção** | Labirinto escuro gerado em cada partida; manípulo da válvula; circuito de tubos para restabelecer a refrigeração |
+| **E — Núcleo** | Barras de controlo por ordem; código Ómega com os 4 fragmentos; evacuação contra o relógio |
+
+O capítulo **não termina com a fuga**: a história fica em aberto para o Capítulo 2.
+O progresso é gravado no início de cada setor (botão **CONTINUAR** no menu). Os códigos, o puzzle de lógica,
+as válvulas e o labirinto mudam em cada partida.
 
 ## Visual
 
@@ -52,7 +58,7 @@ Uma amostra gravada de uma partida está em [`dist/som-demo.m4a`](dist/som-demo.
 
 ## Instalar
 
-O APK está em [`dist/EscapeTheLab-1.0.apk`](dist/EscapeTheLab-1.0.apk). Android 5.0 ou superior com WebGL.
+O APK está em [`dist/EscapeTheLab-2.0.apk`](dist/EscapeTheLab-2.0.apk). Android 5.0 ou superior com WebGL.
 Joga-se na horizontal.
 
 ## Originalidade (pronto a publicar)
@@ -78,7 +84,8 @@ KEYSTORE=~/escapethelab.jks KS_ALIAS=escape KS_PASS='a-tua-password' ./build.sh
 
 | Caminho | Conteúdo |
 |---|---|
-| `src/main.js` | Todo o jogo: mapa, salas, puzzles, controlos, física |
+| `src/main.js` | Motor: gráficos, controlos, física, interface, puzzles genéricos, fluxo do capítulo |
+| `src/sectors.js` | Os cinco setores do Capítulo 1 (mapas, puzzles, história) |
 | `src/audio.js` | Motor de som sintetizado (3D, reverberação, ambiente, efeitos) |
 | `web/index.html` | Interface (menus, inventário, teclado do cofre) |
 | `android/` | App Android (WebView em ecrã inteiro, horizontal) |

@@ -53,6 +53,32 @@
   .keys button { height:56px; border-radius:10px; border:1px solid #475563; background:#2a343e; color:#fff; font-size:22px; font-weight:700; }
   .keys button.ok { background:#2f8f6d; } .keys button.clr { background:#7a3a3a; }
   #kclose { margin-top:12px; width:100%; min-width:0; }
+  #inv { flex-wrap:wrap; max-width:60vw; }
+  .it { display:flex; align-items:center; gap:6px; padding:5px 9px 5px 6px; border-radius:8px; background:var(--ui); border:1px solid var(--c); font-size:12px; font-weight:700; box-shadow:0 0 10px color-mix(in srgb, var(--c) 40%, transparent); }
+  .it i { width:16px; height:11px; border-radius:2px; background:var(--c); display:block; }
+  .frag { padding:5px 8px; border-radius:8px; background:rgba(10,40,32,.8); border:1px solid #2f8f6d; color:#7dffcf; font:700 12px ui-monospace,monospace; }
+  #secTxt { color:#7f93a3; font-size:11px; letter-spacing:.08em; margin-top:2px; }
+  #uvBtn { pointer-events:auto; position:absolute; right:120px; bottom:max(40px, env(safe-area-inset-bottom)); width:60px; height:60px; border-radius:50%;
+    background:rgba(60,30,110,.85); color:#e5d6ff; border:2px solid #8a5cff; font-weight:900; }
+  #uvBtn.on { background:#8a5cff; color:#1a0b33; box-shadow:0 0 22px #8a5cff; }
+  #count { position:absolute; left:50%; top:70px; transform:translateX(-50%); font:900 34px ui-monospace,monospace; color:#ff4d4d; text-shadow:0 0 16px #ff0000; }
+  #fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity .9s; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; }
+  #fade.on { opacity:1; pointer-events:auto; }
+  #fadeT1 { font-size:clamp(26px, 7vw, 44px); font-weight:900; letter-spacing:.08em; color:#e8f1f8; }
+  #fadeT2 { color:var(--acc); letter-spacing:.2em; font-size:13px; }
+  .ovl { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.6); padding:16px; box-sizing:border-box; }
+  .term { background:#061510; border:1px solid #1d5c49; border-radius:10px; color:#7dffcf; font:15px ui-monospace,"Courier New",monospace; padding:18px; width:100%; max-width:440px; max-height:92vh; overflow:auto; }
+  .term h3 { margin:0 0 8px; font-size:16px; } .term p { white-space:pre-line; margin:0 0 12px; color:#a9e9d2; }
+  #termOpts button { display:block; width:100%; text-align:left; background:#0b241c; color:#7dffcf; border:1px solid #1d5c49; border-radius:6px; padding:10px; margin:6px 0; font:inherit; }
+  #termMsg { min-height:20px; margin-top:8px; color:#ffd27a; }
+  .pad4 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px auto; width:220px; }
+  .pad4 button { height:96px; border-radius:14px; border:2px solid rgba(255,255,255,.2); opacity:.45; transition:opacity .1s, transform .1s; }
+  .pad4 button.lit { opacity:1; transform:scale(1.05); box-shadow:0 0 26px currentColor; }
+  #pipeCv { width:min(78vw, 62vh); height:min(78vw, 62vh); display:block; margin:10px auto; border-radius:8px; touch-action:manipulation; }
+  #story { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; padding:24px; box-sizing:border-box; }
+  #storyText { max-width:560px; }
+  #storyText p { color:#d7e3ec; font-size:clamp(16px, 4.2vw, 22px); line-height:1.4; margin:0 0 14px; opacity:0; transition:opacity 1.2s; text-align:center; }
+  #storyText p.in { opacity:1; }
 </style>
 </head>
 <body>
@@ -62,25 +88,24 @@
 
 <div id="hud" class="hidden">
   <div id="top">
-    <div id="obj"><b>OBJETIVO</b><span id="objText"></span></div>
+    <div id="obj"><b>OBJETIVO</b><span id="objText"></span><div id="secTxt"></div></div>
     <div id="timer">00:00</div>
     <button id="pauseBtn">II</button>
   </div>
   <div id="cross"></div>
   <div id="prompt" class="hidden"></div>
   <div id="toast"></div>
-  <div id="inv">
-    <div class="card" id="inv-green" style="color:#2ecc71;background:#1f8f50"></div>
-    <div class="card" id="inv-blue" style="color:#3b82f6;background:#2860c0"></div>
-    <div class="card" id="inv-red" style="color:#ef4444;background:#b52f2f"></div>
-  </div>
+  <div id="inv"></div>
+  <div id="count" class="hidden">01:30</div>
+  <button id="uvBtn" class="hidden">UV</button>
   <button id="use" class="hidden">USAR</button>
 </div>
 
 <div id="menu" class="screen">
   <h1>ESCAPE<br><span>THE LAB</span></h1>
-  <p>Acordas fechado num laboratório secreto depois de um acidente. Encontra os cartões de acesso, resolve os enigmas e foge antes que seja tarde.</p>
-  <button class="btn" id="playBtn">JOGAR</button>
+  <p><b style="color:#7dffcf">Capítulo 1 — Protocolo Ómega.</b> Acordas sem memória numa instalação subterrânea selada. Cinco setores, cartões de acesso, enigmas e um código que alguém espalhou para te ajudar a fugir. Ou será que não?</p>
+  <button class="btn hidden" id="contBtn">CONTINUAR</button>
+  <button class="btn" id="playBtn">NOVO JOGO</button>
   <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button class="btn ghost" id="qBtn">GRÁFICOS: ALTA</button><button class="btn ghost" id="sndBtn">SOM: LIGADO</button></div>
   <p id="bestTxt" class="small"></p>
   <p class="small">Joga com auscultadores para ouvires de onde vêm os sons.<br>Telemóvel: arrasta à esquerda para andar, à direita para olhar, botão USAR para interagir.<br>
@@ -95,11 +120,35 @@
 </div>
 
 <div id="win" class="screen hidden">
-  <h1>ESCAPASTE!</h1>
+  <h1>FIM DO<br><span>CAPÍTULO 1</span></h1>
   <p id="winTxt"></p>
-  <button class="btn" id="againBtn">JOGAR OUTRA VEZ</button>
-  <p class="small">Cada partida tem códigos novos.</p>
+  <p style="color:#7dffcf;letter-spacing:.15em;font-weight:900">CAPÍTULO 2 — EM BREVE</p>
+  <button class="btn" id="againBtn">VOLTAR AO MENU</button>
+  <p class="small">Cada partida tem códigos e labirinto novos.</p>
 </div>
+
+<div id="terminal" class="ovl hidden"><div class="term">
+  <h3 id="termTitle"></h3><p id="termText"></p><div id="termOpts"></div><div id="termMsg"></div>
+  <button class="btn ghost" id="termClose" style="width:100%;min-width:0;margin-top:10px">SAIR DO TERMINAL</button>
+</div></div>
+
+<div id="simon" class="ovl hidden"><div class="term" style="text-align:center">
+  <h3>PAINEL DE SEGURANÇA · GENÉTICA</h3><p id="simonMsg"></p>
+  <div class="pad4">
+    <button style="background:#e53935;color:#e53935"></button><button style="background:#1e88e5;color:#1e88e5"></button>
+    <button style="background:#43a047;color:#43a047"></button><button style="background:#fdd835;color:#fdd835"></button>
+  </div>
+  <button class="btn ghost" id="simonClose" style="width:100%;min-width:0">AFASTAR-ME</button>
+</div></div>
+
+<div id="pipes" class="ovl hidden"><div class="term" style="text-align:center">
+  <h3>CIRCUITO DE REFRIGERAÇÃO</h3><p>Toca nas peças para as rodar até o líquido chegar a todos os tubos.</p>
+  <canvas id="pipeCv" width="500" height="500"></canvas><div id="pipeMsg"></div>
+  <button class="btn ghost" id="pipeClose" style="width:100%;min-width:0;margin-top:10px">AFASTAR-ME</button>
+</div></div>
+
+<div id="story" class="hidden"><div id="storyText"></div></div>
+<div id="fade"><div id="fadeT1"></div><div id="fadeT2"></div></div>
 
 <div id="modal" class="hidden"><div class="paper" id="paper"><span id="modalText"></span><button class="btn" id="modalOk">FECHAR</button></div></div>
 
