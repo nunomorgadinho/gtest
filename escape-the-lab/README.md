@@ -56,6 +56,13 @@ Todo o som é sintetizado em tempo real (Web Audio), sem ficheiros de som de ter
 
 Uma amostra gravada de uma partida está em [`dist/som-demo.m4a`](dist/som-demo.m4a).
 
+## Versão HTML (browser)
+
+[`dist/EscapeTheLab.html`](dist/EscapeTheLab.html) é o jogo inteiro num único ficheiro (cerca de 780 KB, com o
+three.js lá dentro). Abre-se em qualquer browser recente, no computador ou no telemóvel, sem instalar nada e
+sem Internet. Pode também ser posto num alojamento web (itch.io, GitHub Pages, Netlify, etc.).
+Para o regenerar depois de mudar o código: `npm run build:web && python3 tools/make_html.py`.
+
 ## Instalar
 
 O APK está em [`dist/EscapeTheLab-2.0.apk`](dist/EscapeTheLab-2.0.apk). Android 5.0 ou superior com WebGL.
