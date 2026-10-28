@@ -392,6 +392,51 @@ export const snd = {
     nz(d, t, 0.5, 0.15, 'bandpass', 1800, { q: 1.5 });
     osc(d, 'sine', 1000, t + 0.45, 0.15, 0.05);
   },
+  // drone em movimento: devolve um controlo para atualizar a posição
+  drone(x, z) {
+    if (!ctx) return { set() {}, stop() {} };
+    const g = ctx.createGain(), occl = ctx.createBiquadFilter(), pn = panner(x, 2, z, 1.2), send = ctx.createGain();
+    g.gain.value = 0; occl.type = 'lowpass'; occl.frequency.value = 20000; send.gain.value = 0.3;
+    const prev = collecting; collecting = [];
+    oscLoop(g, 'sawtooth', 170, 0.25, 900); oscLoop(g, 'sawtooth', 173.5, 0.25, 900); noiseLoop(g, white, 'bandpass', 2600, 3);
+    const sources = collecting; collecting = prev;
+    g.connect(occl); occl.connect(pn); pn.connect(master); pn.connect(send); send.connect(revIn);
+    const l = { g, occl, room: null, base: 0.06, level: 1, sources };
+    loops.push(l); secLoops.push(l);
+    return { set(x2, z2) { setPos(pn, x2, 2, z2); }, stop() { l.level = 0; } };
+  },
+  alert() {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out(null, 0.3);
+    [0, 0.12, 0.24].forEach((dl) => osc(d, 'square', 1400, t + dl, 0.08, 0.05));
+  },
+  beep(x, z, long) {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out([x, 1.5, z], 0.3, 1.5);
+    osc(d, 'sine', 760, t, long ? 0.66 : 0.22, 0.06, { attack: 0.01 });
+  },
+  staticBurst(clarity) {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out(null, 0.1);
+    nz(d, t, 0.25, 0.12 * (1 - clarity) + 0.01, 'bandpass', 2000, { q: 0.5 });
+    if (clarity > 0.3) osc(d, 'sine', 440 + 400 * clarity, t, 0.25, 0.05 * clarity);
+  },
+  clickTick() {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out(null, 0.1);
+    nz(d, t, 0.02, 0.2, 'highpass', 4000); osc(d, 'square', 2200, t, 0.02, 0.02);
+  },
+  slide() {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out(null, 0.2);
+    nz(d, t, 0.12, 0.15, 'bandpass', 900, { q: 1.5, fEnd: 500 });
+  },
+  mix() {
+    if (!ctx) return;
+    const t = ctx.currentTime, d = out(null, 0.5);
+    for (let k = 0; k < 10; k++) osc(d, 'sine', 300 + Math.random() * 700, t + Math.random() * 1.2, 0.07, 0.04, { slide: 1200 });
+    nz(d, t, 1.4, 0.08, 'lowpass', 600, { brown: true, attack: 0.3 });
+  },
   klaxonOn(on) { this._klaxon = on ? 0 : null; },
   klaxon() {
     const t = ctx.currentTime, d = out(null, 0.5);

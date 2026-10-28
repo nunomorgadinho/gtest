@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { snd } from './audio.js';
 import { SECTORS } from './sectors.js';
+import { SECTORS2 } from './sectors2.js';
 
 // ---------- Utilidades ----------
 const $ = (id) => document.getElementById(id);
@@ -276,7 +277,7 @@ function box(w, h, d, material, x, y, z, collide, parent) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), typeof material === 'number' ? mat(material) : material);
   m.position.set(x, y, z);
   (parent || scene).add(m);
-  if (collide) G.colliders.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2 });
+  if (collide) G.colliders.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, h: y + h / 2 });
   return m;
 }
 function plane(w, h, material, x, y, z, rotY) {
@@ -293,7 +294,7 @@ function hollowBox(w, h, d, color, x, y, z, side) {
   } else {
     box(t, h, d, m, x - w / 2 + t / 2, y, z); box(w, h, t, m, x, y, z - d / 2 + t / 2); box(w, h, t, m, x, y, z + d / 2 - t / 2);
   }
-  G.colliders.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2 });
+  G.colliders.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, h: y + h / 2 });
 }
 function interact(obj, prompt, use) { obj.userData.inter = { prompt, use }; return obj; }
 function hitbox(parent, w, h, d) {
@@ -342,7 +343,7 @@ function tank(x, z, color, h, r, light) {
     box(0.05, h - 0.25, 0.05, metal, x + Math.cos(a) * (r + 0.03), liquid.position.y, z + Math.sin(a) * (r + 0.03));
   }
   glowSprite(x, liquid.position.y, z, color, r * 6, 0.35);
-  G.colliders.push({ x0: x - r - 0.1, x1: x + r + 0.1, z0: z - r - 0.1, z1: z + r + 0.1 });
+  G.colliders.push({ x0: x - r - 0.1, x1: x + r + 0.1, z0: z - r - 0.1, z1: z + r + 0.1, h: h });
   soundWorld.tanks.push([x, z, roomOf(x, z)]);
   if (light) {
     const l = new THREE.PointLight(color, light * 2.5, 10, 1.3); l.position.set(x, h * 0.6, z); scene.add(l);
@@ -363,7 +364,8 @@ const ITEMS = {
   fuse: { name: 'fusível', short: 'Fusível', color: 0xf5a623, css: '#f5a623', kind: 'fuse' },
   uv: { name: 'lâmpada UV', short: 'UV', color: 0x8a5cff, css: '#8a5cff', kind: 'uv' },
   key: { name: 'chave de manutenção', short: 'Chave', color: 0xc0c6cc, css: '#c0c6cc', kind: 'key' },
-  valve: { name: 'manípulo da válvula', short: 'Válvula', color: 0x4fc3f7, css: '#4fc3f7', kind: 'valve' }
+  valve: { name: 'manípulo da válvula', short: 'Válvula', color: 0x4fc3f7, css: '#4fc3f7', kind: 'valve' },
+  contrast: { name: 'frasco de contraste', short: 'Contraste', color: 0xffd27a, css: '#ffd27a', kind: 'fuse' }
 };
 function itemMesh(kind, color) {
   const g = new THREE.Group();
@@ -400,19 +402,20 @@ function addItem(id, x, y, z, onPick) {
 // Fragmentos do código Ómega (um por setor; o último setor pede os quatro)
 function fragment(n, x, y, z, story) {
   const g = new THREE.Group(); g.position.set(x, y, z);
-  const paper = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.01, 0.3), new THREE.MeshLambertMaterial({ color: 0xf4efe1, emissive: 0x7dffcf, emissiveIntensity: 0.25 }));
+  const C = CHAP();
+  const paper = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.01, 0.3), new THREE.MeshLambertMaterial({ color: 0xf4efe1, emissive: C.fragColor, emissiveIntensity: 0.25 }));
   g.add(paper); hitbox(g, 0.5, 0.35, 0.5); scene.add(g);
-  const halo = glowSprite(x, y + 0.1, z, 0x7dffcf, 0.8, 0.35);
-  interact(g, () => 'Apanhar o documento Ω', () => {
+  const halo = glowSprite(x, y + 0.1, z, C.fragColor, 0.8, 0.35);
+  interact(g, () => 'Apanhar ' + C.fragItem, () => {
     CH.found[n - 1] = true; scene.remove(g); scene.remove(halo); snd.pick(); renderInv(); saveChapter();
-    showNote('FRAGMENTO ÓMEGA ' + n + '/4\n\nDígito: ' + CH.frags[n - 1] + '\n\n' + story);
+    showNote(C.fragName + ' ' + n + '/' + CH.frags.length + '\n\nDígito: ' + CH.frags[n - 1] + '\n\n' + story);
   });
   G.anim.push({ card: g, y0: y });
 }
 function renderInv() {
   const html = Object.keys(ITEMS).filter((k) => G.inv[k]).map((k) =>
     '<div class="it" style="--c:' + ITEMS[k].css + '"><i></i>' + ITEMS[k].short + '</div>');
-  CH.found.forEach((f, i) => { if (f) html.push('<div class="frag">Ω' + (i + 1) + '·' + CH.frags[i] + '</div>'); });
+  CH.found.forEach((f, i) => { if (f) html.push('<div class="frag">' + CHAP().fragLabel + (i + 1) + '·' + CH.frags[i] + '</div>'); });
   $('inv').innerHTML = html.join('');
   $('uvBtn').classList.toggle('hidden', !G.inv.uv);
 }
@@ -431,14 +434,51 @@ function roomOf(x, z) {
 let soundWorld = null;
 function audio() { snd.init(roomOf, soundWorld, load('etl_mute') === '1'); }
 
-function newChapter() {
-  CH = { sec: 0, frags: [0, 1, 2, 3].map(() => Math.floor(Math.random() * 10)), found: [false, false, false, false], time: 0 };
+// ---------- Capítulos ----------
+const CHAPTERS = {
+  1: {
+    sectors: SECTORS, fragLabel: 'Ω', fragName: 'FRAGMENTO ÓMEGA', fragItem: 'o documento Ω', fragColor: 0x7dffcf, frags: 4,
+    endText: 'O LAB-7 ainda não acabou contigo.', next: 'CAPÍTULO 2 — JÁ DISPONÍVEL NO MENU',
+    ending: [
+      [0, 'O elevador começa a subir.', 'elevator'], [3500, 'Nível −6 … −5 … −4 …'], [7600, 'De repente, para.', 'sting'],
+      [10200, 'As luzes apagam-se. Só se ouve o zumbido do altifalante.', 'radio'],
+      [14200, '«Muito bem, Sujeito 12. Exatamente como previsto.»', 'radio'],
+      [18200, '«Teste 7 concluído. Preparem a sala para o Teste 8.»', 'radio'],
+      [22400, 'Sentes uma picada no pescoço. O chão foge-te dos pés…', 'sting']
+    ]
+  },
+  2: {
+    sectors: SECTORS2, fragLabel: 'M', fragName: 'MEMÓRIA', fragItem: 'a memória', fragColor: 0xffb070, frags: 6,
+    endText: 'Agora sabes quem és. Falta saber o que vais fazer com isso.', next: 'CAPÍTULO 3 — EM BREVE',
+    ending: [
+      [0, 'A porta da sala de observação abre-se devagar.', 'door'],
+      [3800, 'Dezenas de monitores. Num deles, a sala de quarentena do setor A.'],
+      [7800, 'Alguém acorda na cama. Na pulseira lê-se: SUJEITO 13.', 'sting'],
+      [12000, 'Na cadeira do observador há uma placa: «Dr. Tomás Reis, Investigador Principal, Projeto Ómega».'],
+      [16500, 'A fotografia na placa é a tua.'],
+      [20000, '«Sempre foste tu, Tomás», diz a voz da Dra. Moura. «Criaste o Ómega para apagar memórias. Começaste pela tua.»', 'radio'],
+      [26000, '«O Teste 8 acabou. A partir de agora, és tu quem observa.»', 'radio'],
+      [30500, 'As portas trancam-se atrás de ti. No ecrã principal pisca uma pergunta: INICIAR TESTE 9?', 'sting']
+    ]
+  }
+};
+const CHAP = () => CHAPTERS[CH.ch];
+function newChapter(n) {
+  const c = CHAPTERS[n || 1];
+  CH = { ch: n || 1, sec: 0, frags: new Array(c.frags).fill(0).map(() => Math.floor(Math.random() * 10)), found: new Array(c.frags).fill(false), time: 0 };
 }
-function saveChapter() { if (CH) save('etl_save', JSON.stringify({ sec: secIdx, frags: CH.frags, found: CH.found, time: CH.time })); }
-function loadChapter() { try { const s = JSON.parse(load('etl_save')); return s && s.frags ? s : null; } catch (e) { return null; } }
+function saveChapter() { if (CH) save('etl_save_c' + CH.ch, JSON.stringify({ ch: CH.ch, sec: secIdx, frags: CH.frags, found: CH.found, time: CH.time })); }
+function loadChapter(n) {
+  try {
+    let raw = load('etl_save_c' + n);
+    if (!raw && n === 1) raw = load('etl_save'); // gravações antigas (antes dos capítulos)
+    const s = JSON.parse(raw); return s && s.frags ? Object.assign({ ch: n }, s) : null;
+  } catch (e) { return null; }
+}
+
 
 function loadSector(i, preview) {
-  secIdx = i; SEC = SECTORS[i]; CH.sec = i;
+  secIdx = i; SEC = CHAP().sectors[i]; CH.sec = i;
   if (SEC.prepare) SEC.prepare();
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x020304);
@@ -446,10 +486,11 @@ function loadSector(i, preview) {
   scene.add(camera);
   soundWorld = { lights: [], tanks: [], steam: [], alarm: [], spots: [], server: null, core: null, creepy: SEC.creepy || 1 };
   G = {
-    colliders: [], doors: [], lights: [], emergency: [], anim: [], tanks: [], uvMarks: [], steam: [], s: {},
+    colliders: [], doors: [], lights: [], emergency: [], anim: [], tanks: [], uvMarks: [], steam: [], drones: [], morse: [], s: {},
     inv: {}, power: !!SEC.power, exitDoor: null, uv: false, countdown: null,
     x: SEC.start[0] * S, z: SEC.start[1] * S, yaw: SEC.start[2], pitch: 0, bob: 0, time: 0, done: false
   };
+  G.checkpoint = [G.x, G.z, G.yaw];
   scene.add(new THREE.HemisphereLight(0x7d92b3, 0x1e1710, SEC.ambient == null ? 0.6 : SEC.ambient));
   buildStructure();
   SEC.build(api);
@@ -458,6 +499,8 @@ function loadSector(i, preview) {
   SEC.map.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === '.') fl.push([(c + 0.5) * S, (r + 0.5) * S]); }));
   for (let k = 0; k < 10; k++) soundWorld.spots.push(fl[Math.floor(Math.random() * fl.length)]);
   snd.setWorld(soundWorld); snd.setPower(G.power); snd.klaxonOn(false);
+  G.drones.forEach((d) => { d.snd = snd.drone(d.x, d.z); });
+  $('eye').classList.add('hidden');
   flash.color.set(0xffe9c8); flash.intensity = SEC.flash || 9;
   renderInv(); if (!preview) saveChapter();
 }
@@ -678,6 +721,8 @@ function openPipes(opts) {
   }
   const turns = base.map(() => Math.floor(Math.random() * 4));
   pipes = { N, base, turns, src, onWin: opts.onWin, done: false };
+  $('pipes').querySelector('h3').textContent = opts.title || 'CIRCUITO DE REFRIGERAÇÃO';
+  $('pipes').querySelector('p').textContent = opts.text || 'Toca nas peças para as rodar até o líquido chegar a todos os tubos.';
   if (pipesLit().every(Boolean)) pipes.turns[src + 1]++;
   $('pipes').classList.remove('hidden'); drawPipes();
 }
@@ -727,6 +772,361 @@ $('pipeCv').addEventListener('click', (e) => {
 function closePipes() { pipes = null; $('pipes').classList.add('hidden'); }
 $('pipeClose').addEventListener('click', closePipes);
 
+// ---------- Drones de vigilância ----------
+const DRONE_RANGE = 7.5, DRONE_FOV = 0.48;
+// linha de vista: paredes, portas fechadas e móveis altos tapam
+function lineOfSight(x0, z0, x1, z1) {
+  const d = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(d / 0.25);
+  for (let i = 1; i < n; i++) {
+    const x = x0 + (x1 - x0) * i / n, z = z0 + (z1 - z0) * i / n;
+    if (solidCell(Math.floor(x / S), Math.floor(z / S))) return false;
+    for (const b of G.colliders) if (b.h > 1.5 && x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1) return false;
+  }
+  return true;
+}
+function addDrone(path, speed) {
+  const g = new THREE.Group(); scene.add(g);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), mat(0x23272c, { metalness: 0.8, roughness: 0.3 }));
+  body.scale.y = 0.6; g.add(body);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 8, 24), mat(0x3a3f45, { metalness: 0.7 })); ring.rotation.x = Math.PI / 2; g.add(ring);
+  for (let k = 0; k < 4; k++) {
+    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.02, 12), new THREE.MeshBasicMaterial({ color: 0x555b62, transparent: true, opacity: 0.5 }));
+    r.position.set(Math.cos(k * Math.PI / 2 + 0.78) * 0.42, 0.06, Math.sin(k * Math.PI / 2 + 0.78) * 0.42); g.add(r);
+  }
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffb02e }));
+  eye.position.set(0, -0.02, -0.26); g.add(eye);
+  const len = DRONE_RANGE, rad = Math.tan(DRONE_FOV) * len;
+  const coneGeo = new THREE.ConeGeometry(rad, len, 24, 1, true); coneGeo.translate(0, -len / 2, 0); coneGeo.rotateX(-Math.PI / 2 - 0.25);
+  const cone = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({ color: 0xffb02e, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  g.add(cone);
+  const halo = glowSprite(0, 0, 0, 0xffb02e, 0.9, 0.5); scene.remove(halo); g.add(halo); halo.position.set(0, 0, -0.3);
+  const d = { g, eye, cone, halo, path, speed: speed || 1.5, i: 0, x: path[0][0], z: path[0][1], yaw: 0, wait: 0, alert: 0, off: false, snd: null };
+  d.yaw = Math.atan2(-(path[1][0] - d.x), -(path[1][1] - d.z));
+  G.drones.push(d);
+  return d;
+}
+function resetDrones() { for (const d of G.drones) { d.i = 0; d.x = d.path[0][0]; d.z = d.path[0][1]; d.alert = 0; d.wait = 0.8; } }
+function dronesOff() {
+  for (const d of G.drones) { d.off = true; d.cone.visible = false; d.halo.visible = false; d.eye.material.color.set(0x222222); if (d.snd) d.snd.stop(); }
+  $('eye').classList.add('hidden');
+}
+function caught() {
+  snd.sting(); toast('<b>Foste detetado!</b> Voltaste ao último ponto seguro.');
+  $('hit').classList.add('on'); setTimeout(() => $('hit').classList.remove('on'), 500);
+  const [x, z, yaw] = G.checkpoint; G.x = x; G.z = z; G.yaw = yaw; G.pitch = 0;
+  resetDrones(); G.grace = 2.5;
+  if (SEC.onCaught) SEC.onCaught();
+}
+function updateDrones(dt, T) {
+  let worst = 0;
+  if (G.grace > 0) G.grace -= dt;
+  for (const d of G.drones) {
+    if (d.off) { d.g.position.y += (0.3 - d.g.position.y) * Math.min(1, dt * 2); continue; }
+    if (d.wait > 0) d.wait -= dt;
+    else {
+      const nx = d.path[(d.i + 1) % d.path.length];
+      const dx = nx[0] - d.x, dz = nx[1] - d.z, dist = Math.hypot(dx, dz), step = d.speed * dt;
+      const want = Math.atan2(-dx, -dz);
+      let da = want - d.yaw; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
+      d.yaw += da * Math.min(1, dt * 4);
+      if (Math.abs(da) < 0.5) {
+        if (dist <= step) { d.x = nx[0]; d.z = nx[1]; d.i = (d.i + 1) % d.path.length; d.wait = 0.7; }
+        else { d.x += dx / dist * step; d.z += dz / dist * step; }
+      }
+    }
+    d.g.position.set(d.x, 2.15 + Math.sin(T * 2 + d.path.length) * 0.06, d.z); d.g.rotation.y = d.yaw;
+    if (d.snd) d.snd.set(d.x, d.z);
+    // deteção
+    if (state === 'play' && !modalOpen() && !(G.grace > 0)) {
+      const px = G.x - d.x, pz = G.z - d.z, dist = Math.hypot(px, pz);
+      const fx = -Math.sin(d.yaw), fz = -Math.cos(d.yaw);
+      const ang = Math.acos(Math.max(-1, Math.min(1, (px * fx + pz * fz) / (dist || 1))));
+      const seen = dist < DRONE_RANGE && (ang < DRONE_FOV || dist < 1.3) && lineOfSight(d.x, d.z, G.x, G.z);
+      const before = d.alert;
+      d.alert = Math.max(0, Math.min(1, d.alert + (seen ? dt * 1.6 : -dt * 0.8)));
+      if (seen && before === 0) snd.alert();
+      const c = d.alert > 0 ? 0xff3b2a : 0xffb02e;
+      d.eye.material.color.set(c); d.cone.material.color.set(c); d.halo.material.color.set(c);
+      d.cone.material.opacity = 0.07 + d.alert * 0.12;
+      worst = Math.max(worst, d.alert);
+      if (d.alert >= 1) { caught(); return; }
+    }
+  }
+  $('eye').classList.toggle('hidden', worst <= 0);
+  $('eye').style.opacity = 0.4 + worst * 0.6;
+}
+
+// ---------- Luz que pisca em código Morse ----------
+const MORSE = { 0: '-----', 1: '.----', 2: '..---', 3: '...--', 4: '....-', 5: '.....', 6: '-....', 7: '--...', 8: '---..', 9: '----.' };
+function morseLight(x, y, z, digits) {
+  const u = 0.28, seq = [];
+  [...digits].forEach((dg) => { [...MORSE[dg]].forEach((s) => { seq.push([1, s === '.' ? u : 3 * u, s === '-']); seq.push([0, u]); }); seq[seq.length - 1][1] = 3 * u; });
+  seq[seq.length - 1][1] = 9 * u;
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), new THREE.MeshBasicMaterial({ color: 0x330000 }));
+  bulb.position.set(x, y, z); scene.add(bulb);
+  const halo = glowSprite(x, y, z, 0xff3b2a, 2.6, 0);
+  G.morse.push({ x, z, bulb, halo, seq, i: 0, t: 0 });
+}
+function updateMorse(dt) {
+  for (const m of G.morse) {
+    m.t += dt;
+    if (m.t >= m.seq[m.i][1]) {
+      m.t = 0; m.i = (m.i + 1) % m.seq.length;
+      const [on, , dash] = m.seq[m.i];
+      if (on && Math.hypot(G.x - m.x, G.z - m.z) < 10) snd.beep(m.x, m.z, dash);
+    }
+    const on = m.seq[m.i][0];
+    m.bulb.material.color.set(on ? 0xff4a3a : 0x330000); m.halo.material.opacity = on ? 0.8 : 0;
+  }
+}
+
+// ---------- Painel de portas lógicas ----------
+const GATES = { AND: (a, b) => a && b, OR: (a, b) => a || b, XOR: (a, b) => a !== b, NAND: (a, b) => !(a && b) };
+let logic = null;
+function logicEval(L, s) {
+  const x = s.map((v, i) => (L.inv[i] ? !v : v));
+  const a = GATES[L.g[0]](x[0], x[1]), b = GATES[L.g[1]](x[2], x[3]);
+  return { x, a, b, o1: GATES[L.g[2]](a, b), o2: GATES[L.g[3]](b, x[0]) };
+}
+function openLogic(opts) {
+  const names = Object.keys(GATES);
+  for (let tries = 0; tries < 500; tries++) {
+    const L = { g: [0, 1, 2, 3].map(() => names[Math.floor(Math.random() * names.length)]), inv: [0, 1, 2, 3].map(() => Math.random() < 0.3), s: [false, false, false, false] };
+    let sols = 0;
+    for (let m = 0; m < 16; m++) { const r = logicEval(L, [0, 1, 2, 3].map((i) => !!(m & (1 << i)))); if (r.o1 && r.o2) sols++; }
+    const r0 = logicEval(L, L.s);
+    if (sols >= 1 && sols <= 3 && !(r0.o1 && r0.o2)) { logic = Object.assign(L, { onWin: opts.onWin, done: false }); break; }
+  }
+  $('logic').classList.remove('hidden'); drawLogic();
+}
+function drawLogic() {
+  const cv = $('logicCv'), c = cv.getContext('2d'), L = logic, r = logicEval(L, L.s);
+  c.fillStyle = '#0d1418'; c.fillRect(0, 0, cv.width, cv.height);
+  const on = '#4fe3ff', off = '#26343d', sy = [50, 125, 215, 290];
+  const wire = (pts, v) => { c.strokeStyle = v ? on : off; c.lineWidth = 5; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); pts.slice(1).forEach((p) => c.lineTo(p[0], p[1])); c.stroke(); };
+  wire([[60, sy[0]], [150, sy[0]], [150, 75], [230, 75]], r.x[0]); wire([[60, sy[1]], [150, sy[1]], [150, 105], [230, 105]], r.x[1]);
+  wire([[60, sy[2]], [150, sy[2]], [150, 235], [230, 235]], r.x[2]); wire([[60, sy[3]], [150, sy[3]], [150, 265], [230, 265]], r.x[3]);
+  wire([[310, 90], [370, 90], [370, 120], [400, 120]], r.a); wire([[310, 250], [350, 250], [350, 150], [400, 150]], r.b);
+  wire([[310, 250], [400, 250]], r.b); wire([[100, sy[0]], [100, 18], [380, 18], [380, 280], [400, 280]], r.x[0]);
+  wire([[480, 135], [530, 135]], r.o1); wire([[480, 265], [530, 265]], r.o2);
+  const gate = (x, y, name) => { c.fillStyle = '#1b2a33'; c.strokeStyle = '#7dffcf'; c.lineWidth = 2; c.fillRect(x, y, 80, 60); c.strokeRect(x, y, 80, 60); c.fillStyle = '#7dffcf'; c.font = 'bold 18px monospace'; c.textAlign = 'center'; c.fillText(name, x + 40, y + 37); };
+  gate(230, 60, L.g[0]); gate(230, 220, L.g[1]); gate(400, 105, L.g[2]); gate(400, 235, L.g[3]);
+  L.inv.forEach((v, i) => { if (!v) return; c.fillStyle = '#ffb02e'; c.fillRect(110, sy[i] - 12, 30, 24); c.fillStyle = '#111'; c.font = 'bold 11px monospace'; c.textAlign = 'center'; c.fillText('NÃO', 125, sy[i] + 4); });
+  L.s.forEach((v, i) => { c.fillStyle = v ? '#4fe3ff' : '#2b3036'; c.beginPath(); c.arc(38, sy[i], 22, 0, 7); c.fill(); c.fillStyle = v ? '#05202a' : '#9aa3ad'; c.font = 'bold 18px monospace'; c.textAlign = 'center'; c.fillText(v ? '1' : '0', 38, sy[i] + 6); });
+  [[135, r.o1], [265, r.o2]].forEach(([y, v]) => { c.fillStyle = v ? '#ffe28a' : '#3a3020'; c.beginPath(); c.arc(548, y, 18, 0, 7); c.fill(); });
+  $('logicMsg').textContent = L.done ? 'CIRCUITO FECHADO' : 'Acende as duas lâmpadas ao mesmo tempo.';
+}
+$('logicCv').addEventListener('click', (e) => {
+  if (!logic || logic.done) return;
+  const rc = e.target.getBoundingClientRect(), x = (e.clientX - rc.left) / rc.width * 570, y = (e.clientY - rc.top) / rc.height * 320;
+  [50, 125, 215, 290].forEach((sy, i) => { if (Math.hypot(x - 38, y - sy) < 34) { logic.s[i] = !logic.s[i]; snd.clickTick(); } });
+  const r = logicEval(logic, logic.s);
+  if (r.o1 && r.o2) { logic.done = true; const cb = logic.onWin; drawLogic(); setTimeout(() => { closeLogic(); cb(); }, 1000); return; }
+  drawLogic();
+});
+function closeLogic() { logic = null; $('logic').classList.add('hidden'); }
+$('logicClose').addEventListener('click', closeLogic);
+
+// ---------- Espelhos e laser ----------
+let laser = null;
+const LD = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // E S W N
+const reflect = (t, d) => (t === 1 ? [3, 2, 1, 0][d] : [1, 0, 3, 2][d]); // 1 = '/', 2 = '\'
+function openLaser(opts) {
+  const N = 6;
+  for (let tries = 0; tries < 2000; tries++) {
+    const grid = new Array(N * N).fill(0), er = Math.floor(Math.random() * N);
+    let c = 0, r = er, d = 0, ok = false, mirrors = 0, steps = 0; const seen = new Set();
+    while (steps++ < 40) {
+      if (c < 0 || r < 0 || r >= N) break;
+      if (c >= N) { ok = d === 0; break; }
+      if (seen.has(c + ',' + r)) break;
+      seen.add(c + ',' + r);
+      if (Math.random() < 0.38) {
+        const nd = Math.random() < 0.5 ? (d + 1) % 4 : (d + 3) % 4;
+        grid[r * N + c] = reflect(1, d) === nd ? 1 : 2; d = nd; mirrors++;
+      }
+      c += LD[d][0]; r += LD[d][1];
+    }
+    if (!ok || mirrors < 4 || seen.size < 9) continue;
+    const rr = r, empty = [];
+    for (let i = 0; i < N * N; i++) if (!grid[i] && !seen.has((i % N) + ',' + Math.floor(i / N))) empty.push(i);
+    shuffle(empty).slice(0, 4).forEach((i) => { grid[i] = 1 + Math.floor(Math.random() * 2); });
+    shuffle(empty).slice(4, 7).forEach((i) => { if (!grid[i]) grid[i] = 3; });
+    for (let i = 0; i < N * N; i++) if (grid[i] === 1 || grid[i] === 2) grid[i] = 1 + Math.floor(Math.random() * 2);
+    laser = { N, grid, er, rr, onWin: opts.onWin, done: false };
+    if (laserTrace().hit) continue;
+    break;
+  }
+  $('laser').classList.remove('hidden'); drawLaser();
+}
+function laserTrace() {
+  const { N, grid, er, rr } = laser, pts = [[-0.5, er]];
+  let c = 0, r = er, d = 0;
+  for (let k = 0; k < 80; k++) {
+    if (c < 0 || r < 0 || r >= N) { pts.push([c, r]); return { pts, hit: false }; }
+    if (c >= N) { pts.push([N - 0.5 + 0.5, r]); return { pts, hit: r === rr && d === 0 }; }
+    const t = grid[r * N + c];
+    if (t === 3) { pts.push([c, r]); return { pts, hit: false }; }
+    if (t === 1 || t === 2) { pts.push([c, r]); d = reflect(t, d); }
+    c += LD[d][0]; r += LD[d][1];
+  }
+  return { pts, hit: false };
+}
+function drawLaser() {
+  const cv = $('laserCv'), c = cv.getContext('2d'), { N, grid, er, rr } = laser, T = cv.width / (N + 2);
+  c.fillStyle = '#0d1418'; c.fillRect(0, 0, cv.width, cv.height);
+  const X = (col) => (col + 1.5) * T, Y = (row) => (row + 1.5) * T;
+  for (let i = 0; i < N * N; i++) {
+    const x = X(i % N), y = Y(Math.floor(i / N)), t = grid[i];
+    c.fillStyle = '#16222a'; c.fillRect(x - T / 2 + 2, y - T / 2 + 2, T - 4, T - 4);
+    if (t === 3) { c.fillStyle = '#3a3f45'; c.fillRect(x - T / 3, y - T / 3, T * 0.66, T * 0.66); }
+    if (t === 1 || t === 2) {
+      c.strokeStyle = '#cfe3f3'; c.lineWidth = 6; c.beginPath();
+      if (t === 1) { c.moveTo(x - T / 3, y + T / 3); c.lineTo(x + T / 3, y - T / 3); } else { c.moveTo(x - T / 3, y - T / 3); c.lineTo(x + T / 3, y + T / 3); }
+      c.stroke();
+    }
+  }
+  c.fillStyle = '#ff3b2a'; c.fillRect(X(-1) - T / 3, Y(er) - T / 4, T / 1.5, T / 2);
+  const tr = laserTrace();
+  c.fillStyle = tr.hit ? '#7dffcf' : '#2f8f6d'; c.beginPath(); c.arc(X(N), Y(rr), T / 3, 0, 7); c.fill();
+  c.strokeStyle = 'rgba(255,60,40,.9)'; c.lineWidth = 3; c.shadowColor = '#ff3b2a'; c.shadowBlur = 12; c.beginPath();
+  tr.pts.forEach(([col, row], k) => { const x = X(Math.min(col, N)), y = Y(row); if (k) c.lineTo(x, y); else c.moveTo(X(-1) + T / 3, y); });
+  c.stroke(); c.shadowBlur = 0;
+  $('laserMsg').textContent = laser.done ? 'RECETOR ATIVADO' : 'Toca nos espelhos para os rodar e leva o laser até ao recetor verde.';
+}
+$('laserCv').addEventListener('click', (e) => {
+  if (!laser || laser.done) return;
+  const rc = e.target.getBoundingClientRect(), N = laser.N, T = rc.width / (N + 2);
+  const col = Math.floor((e.clientX - rc.left) / T) - 1, row = Math.floor((e.clientY - rc.top) / T) - 1;
+  if (col < 0 || row < 0 || col >= N || row >= N) return;
+  const i = row * N + col, t = laser.grid[i];
+  if (t !== 1 && t !== 2) return;
+  laser.grid[i] = t === 1 ? 2 : 1; snd.clickTick();
+  if (laserTrace().hit) { laser.done = true; const cb = laser.onWin; drawLaser(); setTimeout(() => { closeLaser(); cb(); }, 1100); return; }
+  drawLaser();
+});
+function closeLaser() { laser = null; $('laser').classList.add('hidden'); }
+$('laserClose').addEventListener('click', closeLaser);
+
+// ---------- Peças deslizantes (3×3) ----------
+let slide = null;
+function openSlide(opts) {
+  const img = document.createElement('canvas'); img.width = img.height = 300; opts.draw(img.getContext('2d'), 300);
+  const tiles = [0, 1, 2, 3, 4, 5, 6, 7, 8]; let blank = 8;
+  for (let k = 0; k < 120; k++) {
+    const bx = blank % 3, by = Math.floor(blank / 3), opt = [];
+    if (bx > 0) opt.push(blank - 1); if (bx < 2) opt.push(blank + 1); if (by > 0) opt.push(blank - 3); if (by < 2) opt.push(blank + 3);
+    const j = opt[Math.floor(Math.random() * opt.length)]; [tiles[blank], tiles[j]] = [tiles[j], tiles[blank]]; blank = j;
+  }
+  if (tiles.every((t, i) => t === i)) { [tiles[7], tiles[8]] = [tiles[8], tiles[7]]; [tiles[4], tiles[7]] = [tiles[7], tiles[4]]; }
+  slide = { img, tiles, onWin: opts.onWin, done: false };
+  $('slide').classList.remove('hidden'); drawSlide();
+}
+function drawSlide() {
+  const cv = $('slideCv'), c = cv.getContext('2d'), T = cv.width / 3;
+  c.fillStyle = '#0d1418'; c.fillRect(0, 0, cv.width, cv.height);
+  slide.tiles.forEach((t, i) => {
+    if (t === 8 && !slide.done) return;
+    c.drawImage(slide.img, (t % 3) * 100, Math.floor(t / 3) * 100, 100, 100, (i % 3) * T + 2, Math.floor(i / 3) * T + 2, T - 4, T - 4);
+  });
+  $('slideMsg').textContent = slide.done ? 'FOTOGRAFIA RECOMPOSTA' : 'Toca numa peça ao lado do espaço vazio para a deslizar.';
+}
+$('slideCv').addEventListener('click', (e) => {
+  if (!slide || slide.done) return;
+  const rc = e.target.getBoundingClientRect(), i = Math.floor((e.clientY - rc.top) / rc.height * 3) * 3 + Math.floor((e.clientX - rc.left) / rc.width * 3);
+  const b = slide.tiles.indexOf(8), adj = (Math.abs(i - b) === 3) || (Math.abs(i - b) === 1 && Math.floor(i / 3) === Math.floor(b / 3));
+  if (!adj) return;
+  [slide.tiles[i], slide.tiles[b]] = [slide.tiles[b], slide.tiles[i]]; snd.slide();
+  if (slide.tiles.every((t, k) => t === k)) { slide.done = true; const cb = slide.onWin; drawSlide(); setTimeout(() => { closeSlide(); cb(); }, 1200); return; }
+  drawSlide();
+});
+function closeSlide() { slide = null; $('slide').classList.add('hidden'); }
+$('slideClose').addEventListener('click', closeSlide);
+
+// ---------- Rádio ----------
+let radio = null;
+function openRadio(opts) {
+  radio = Object.assign({ done: false }, opts);
+  $('radioIn').value = radio.start || 95; $('radioMsg').textContent = ''; radioUpd(true);
+  $('radio').classList.remove('hidden');
+}
+function radioUpd(quiet) {
+  const f = parseFloat($('radioIn').value), clar = Math.max(0, 1 - Math.abs(f - radio.freq) / 2.5);
+  $('radioFreq').textContent = f.toFixed(1) + ' MHz';
+  $('radioBar').style.width = Math.round(clar * 100) + '%';
+  if (!quiet) snd.staticBurst(clar);
+  if (!radio.done && Math.abs(f - radio.freq) < 0.05) {
+    radio.done = true; snd.radio(); $('radioMsg').textContent = radio.message; if (radio.onWin) radio.onWin();
+  }
+}
+$('radioIn').addEventListener('input', () => { if (radio) radioUpd(); });
+function closeRadio() { radio = null; $('radio').classList.add('hidden'); }
+$('radioClose').addEventListener('click', closeRadio);
+
+// ---------- Relógio ----------
+let clock = null;
+function openClock(opts) { clock = { h: 12, m: 0, target: opts.target, onWin: opts.onWin }; $('clock').classList.remove('hidden'); drawClock(); }
+function drawClock() {
+  const cv = $('clockCv'), c = cv.getContext('2d'), R = cv.width / 2;
+  c.fillStyle = '#0d1418'; c.fillRect(0, 0, cv.width, cv.height);
+  c.fillStyle = '#e9e4d6'; c.beginPath(); c.arc(R, R, R - 8, 0, 7); c.fill();
+  c.strokeStyle = '#2b2b2b'; c.lineWidth = 6; c.stroke();
+  c.fillStyle = '#222'; c.font = 'bold 22px serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (let k = 1; k <= 12; k++) { const a = k / 12 * Math.PI * 2 - Math.PI / 2; c.fillText(String(k), R + Math.cos(a) * (R - 32), R + Math.sin(a) * (R - 32)); }
+  const hand = (a, len, w, col) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.beginPath(); c.moveTo(R, R); c.lineTo(R + Math.cos(a) * len, R + Math.sin(a) * len); c.stroke(); };
+  hand(((clock.h % 12) + clock.m / 60) / 12 * Math.PI * 2 - Math.PI / 2, R * 0.5, 8, '#1b1b1b');
+  hand(clock.m / 60 * Math.PI * 2 - Math.PI / 2, R * 0.75, 5, '#1b1b1b');
+  c.fillStyle = '#b71c1c'; c.beginPath(); c.arc(R, R, 7, 0, 7); c.fill();
+}
+document.querySelectorAll('#clock [data-k]').forEach((b) => b.addEventListener('click', () => {
+  if (!clock) return;
+  const k = b.dataset.k;
+  if (k === 'h+') clock.h = clock.h % 12 + 1; if (k === 'h-') clock.h = (clock.h + 10) % 12 + 1;
+  if (k === 'm+') clock.m = (clock.m + 5) % 60; if (k === 'm-') clock.m = (clock.m + 55) % 60;
+  snd.clickTick();
+  if (k === 'ok') {
+    if (clock.h === clock.target[0] && clock.m === clock.target[1]) { const cb = clock.onWin; closeClock(); cb(); return; }
+    snd.deny(); $('clockMsg').textContent = 'Nada acontece.'; return;
+  }
+  $('clockMsg').textContent = ''; drawClock();
+}));
+function closeClock() { clock = null; $('clock').classList.add('hidden'); }
+$('clockClose').addEventListener('click', closeClock);
+
+// ---------- Mistura química ----------
+const VIALS = [['vermelho', [229, 57, 53]], ['azul', [30, 136, 229]], ['amarelo', [253, 216, 53]], ['verde', [67, 160, 71]], ['branco', [240, 240, 235]], ['preto', [33, 33, 33]]];
+let mix = null;
+const mixColor = (sel) => [0, 1, 2].map((k) => Math.round(sel.reduce((s, i) => s + VIALS[i][1][k], 0) / sel.length));
+const rgb = (c) => 'rgb(' + c.join(',') + ')';
+function openMix(opts) {
+  mix = { target: opts.target, sel: [], onWin: opts.onWin };
+  const box = $('mixVials'); box.innerHTML = '';
+  VIALS.forEach(([n, c], i) => {
+    const b = document.createElement('button'); b.innerHTML = '<i style="background:' + rgb(c) + '"></i>' + n;
+    b.addEventListener('click', () => {
+      const k = mix.sel.indexOf(i);
+      if (k >= 0) mix.sel.splice(k, 1); else if (mix.sel.length < 3) mix.sel.push(i);
+      snd.clickTick(); drawMix();
+    });
+    box.appendChild(b);
+  });
+  $('mixTarget').style.background = rgb(mixColor(opts.target));
+  $('mix').classList.remove('hidden'); drawMix();
+}
+function drawMix() {
+  document.querySelectorAll('#mixVials button').forEach((b, i) => b.classList.toggle('on', mix.sel.includes(i)));
+  $('mixResult').style.background = mix.sel.length ? rgb(mixColor(mix.sel)) : 'transparent';
+  $('mixMsg').textContent = mix.sel.length + ' de 3 frascos escolhidos';
+}
+$('mixBtn').addEventListener('click', () => {
+  if (!mix || mix.sel.length !== 3) { snd.deny(); return; }
+  snd.mix();
+  if (rgb(mixColor(mix.sel)) === rgb(mixColor(mix.target))) { const cb = mix.onWin; $('mixMsg').textContent = 'Mistura correta!'; setTimeout(() => { closeMix(); cb(); }, 1300); }
+  else { $('mixMsg').textContent = 'A cor não corresponde à receita. A mistura foi para o lixo.'; mix.sel = []; setTimeout(drawMix, 1500); }
+});
+function closeMix() { mix = null; $('mix').classList.add('hidden'); }
+$('mixClose').addEventListener('click', closeMix);
+
 // ---------- Interface ----------
 let toastT = 0;
 function toast(html) { const t = $('toast'); t.innerHTML = html; t.style.opacity = 1; toastT = 3.6; }
@@ -736,9 +1136,9 @@ function showNote(text, screenish) {
   $('modal').classList.remove('hidden');
 }
 $('modalOk').addEventListener('click', () => $('modal').classList.add('hidden'));
-const OVERLAYS = ['modal', 'keypad', 'terminal', 'simon', 'pipes'];
+const OVERLAYS = ['modal', 'keypad', 'terminal', 'simon', 'pipes', 'logic', 'laser', 'slide', 'radio', 'clock', 'mix'];
 function modalOpen() { return OVERLAYS.some((id) => !$(id).classList.contains('hidden')); }
-function closeOverlays() { closeKeypad(); closeTerminal(); closeSimon(); closePipes(); $('modal').classList.add('hidden'); }
+function closeOverlays() { closeKeypad(); closeTerminal(); closeSimon(); closePipes(); closeLogic(); closeLaser(); closeSlide(); closeRadio(); closeClock(); closeMix(); $('modal').classList.add('hidden'); }
 
 function toggleUV() {
   if (!G.inv.uv || state !== 'play') return;
@@ -790,52 +1190,55 @@ function nextSector() {
   G.done = true; CH.time += G.time; G.time = 0;
   snd.elevator(2.6);
   // se o jogador não apanhou o fragmento deste setor, guarda-o na mesma
-  if (secIdx < 4 && !CH.found[secIdx]) { CH.found[secIdx] = true; CH.pending = 'Encontraste no bolso um papel amarrotado: <b>Ω' + (secIdx + 1) + ' · ' + CH.frags[secIdx] + '</b>.'; }
-  if (secIdx + 1 < SECTORS.length) enterSector(secIdx + 1);
+  const fn = SEC.frag || (CH.ch === 1 && secIdx < 4 ? secIdx + 1 : 0);
+  if (fn && !CH.found[fn - 1]) { CH.found[fn - 1] = true; CH.pending = 'Encontraste no bolso um papel amarrotado: <b>' + CHAP().fragLabel + fn + ' · ' + CH.frags[fn - 1] + '</b>.'; }
+  if (secIdx + 1 < CHAP().sectors.length) enterSector(secIdx + 1);
 }
 // Final do capítulo: o elevador sobe... e para.
 function playEnding() {
   if (G.done) return;
   G.done = true; CH.time += G.time; G.time = 0; stopCountdown();
   state = 'story'; $('hud').classList.add('hidden'); resetInput();
-  const lines = [
-    [0, 'O elevador começa a subir.', () => snd.elevator(7)],
-    [3500, 'Nível −6 … −5 … −4 …'],
-    [7600, 'De repente, para.', () => snd.sting()],
-    [10200, 'As luzes apagam-se. Só se ouve o zumbido do altifalante.', () => snd.radio()],
-    [14200, '«Muito bem, Sujeito 12. Exatamente como previsto.»', () => snd.radio()],
-    [18200, '«Teste 7 concluído. Preparem a sala para o Teste 8.»', () => snd.radio()],
-    [22400, 'Sentes uma picada no pescoço. O chão foge-te dos pés…', () => snd.sting()]
-  ];
+  const C = CHAP(), lines = C.ending;
+  const fx = { elevator: () => snd.elevator(7), sting: () => snd.sting(), radio: () => snd.radio(), door: () => snd.door(G.x, G.z) };
   $('story').classList.remove('hidden'); $('storyText').innerHTML = '';
-  lines.forEach(([ms, txt, fx]) => setTimeout(() => {
+  lines.forEach(([ms, txt, f]) => setTimeout(() => {
     const p = document.createElement('p'); p.textContent = txt; $('storyText').appendChild(p);
+    while ($('storyText').children.length > 4) $('storyText').removeChild($('storyText').firstChild);
     requestAnimationFrame(() => p.classList.add('in'));
-    if (fx) fx();
+    if (fx[f]) fx[f]();
   }, ms));
   setTimeout(() => {
     $('story').classList.add('hidden');
-    const best = parseFloat(load('etl_best_ch1')), rec = !best || CH.time < best;
-    if (rec) save('etl_best_ch1', CH.time.toFixed(1));
-    save('etl_ch1_done', '1'); save('etl_save', '');
+    const best = parseFloat(load('etl_best_ch' + CH.ch)), rec = !best || CH.time < best;
+    if (rec) save('etl_best_ch' + CH.ch, CH.time.toFixed(1));
+    save('etl_ch' + CH.ch + '_done', '1'); save('etl_save_c' + CH.ch, ''); if (CH.ch === 1) save('etl_save', '');
+    $('winTitle').innerHTML = 'FIM DO<br><span>CAPÍTULO ' + CH.ch + '</span>';
+    $('winNext').textContent = C.next;
     $('winTxt').innerHTML = 'Tempo do capítulo: <b>' + fmtTime(CH.time) + '</b>' + (rec ? ' (novo recorde!)' : '<br>Melhor tempo: ' + fmtTime(best)) +
-      '<br><br>O LAB-7 ainda não acabou contigo.';
+      '<br><br>' + C.endText;
     setState('end'); refreshMenu();
-  }, 27500);
+  }, lines[lines.length - 1][0] + 5200);
 }
 
 function refreshMenu() {
-  const sv = loadChapter();
-  $('contBtn').classList.toggle('hidden', !sv);
-  if (sv) $('contBtn').textContent = 'CONTINUAR — ' + SECTORS[sv.sec].title;
-  const b = parseFloat(load('etl_best_ch1'));
-  $('bestTxt').textContent = b ? 'Melhor tempo do Capítulo 1: ' + fmtTime(b) : '';
+  [[1, 'contBtn', 'best1'], [2, 'cont2Btn', 'best2']].forEach(([n, btn, bt]) => {
+    const sv = loadChapter(n);
+    $(btn).classList.toggle('hidden', !sv);
+    if (sv) $(btn).textContent = 'CONTINUAR — ' + CHAPTERS[n].sectors[sv.sec].title.split(' — ')[0];
+    const b = parseFloat(load('etl_best_ch' + n));
+    $(bt).textContent = b ? 'Melhor tempo: ' + fmtTime(b) : (load('etl_ch' + n + '_done') ? 'Concluído' : '');
+  });
 }
-$('playBtn').addEventListener('click', () => { audio(); newChapter(); enterSector(0); });
-$('contBtn').addEventListener('click', () => {
-  audio(); const sv = loadChapter(); if (!sv) return;
-  CH = { sec: sv.sec, frags: sv.frags, found: sv.found, time: sv.time || 0 }; enterSector(sv.sec);
-});
+function startNew(n) { audio(); newChapter(n); enterSector(0); }
+function continueChapter(n) {
+  audio(); const sv = loadChapter(n); if (!sv) return;
+  CH = { ch: n, sec: sv.sec, frags: sv.frags, found: sv.found, time: sv.time || 0 }; enterSector(sv.sec);
+}
+$('playBtn').addEventListener('click', () => startNew(1));
+$('contBtn').addEventListener('click', () => continueChapter(1));
+$('play2Btn').addEventListener('click', () => startNew(2));
+$('cont2Btn').addEventListener('click', () => continueChapter(2));
 $('againBtn').addEventListener('click', () => { refreshMenu(); setState('menu'); });
 $('pauseBtn').addEventListener('click', () => setState('pause'));
 $('resumeBtn').addEventListener('click', () => setState('play'));
@@ -860,6 +1263,8 @@ const api = {
   addLight, addItem, fragment, uvMark, steamVent, setServer, setCore, powerOn, openDoor, renderInv,
   openKeypad, openTerminal, openSimon, openPipes, showNote, toast, snd, shuffle, roomOf,
   startCountdown, stopCountdown, nextSector, playEnding, enterSector,
+  addDrone, dronesOff, resetDrones, morseLight, openLogic, openLaser, openSlide, openRadio, openClock, openMix, VIALS,
+  setCheckpoint(x, z, yaw) { G.checkpoint = [x, z, yaw]; },
   anim(obj, prop, to) { G.anim.push({ obj, prop, to }); }
 };
 
@@ -996,6 +1401,8 @@ function update(dt) {
   }
   for (const m of G.uvMarks) m.visible = G.uv && Math.hypot(m.position.x - G.x, m.position.z - G.z) < 7;
   if (SEC.update) SEC.update(dt, T);
+  if (G.morse.length) updateMorse(dt);
+  if (G.drones.length) updateDrones(dt, T);
 
   if (state === 'play' && !modalOpen()) {
     G.time += dt;
@@ -1040,7 +1447,7 @@ function update(dt) {
 }
 
 makeTextures();
-newChapter();
+newChapter(1);
 loadSector(0, true);
 G.yaw = 0.6; // vista do menu
 refreshMenu();
@@ -1050,5 +1457,6 @@ requestAnimationFrame(frame);
 window.etl = {
   snd, get frame() { return frameNo; }, get G() { return G; }, get CH() { return CH; }, get state() { return state; }, get sec() { return secIdx; }, get SEC() { return SEC; },
   interact: doInteract, get target() { return target && target.p; }, toggleUV,
-  get simon() { return simon && { seq: simon.seq, busy: simon.busy }; }, get pipes() { return pipes; }
+  get simon() { return simon && { seq: simon.seq, busy: simon.busy }; }, get pipes() { return pipes; },
+  get logic() { return logic; }, get laser() { return laser; }, get slide() { return slide; }, get mix() { return mix; }, get clock() { return clock; }
 };

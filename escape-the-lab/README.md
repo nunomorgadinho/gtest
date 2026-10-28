@@ -24,9 +24,25 @@ cerca de **25 minutos** na primeira vez (depende de quanto exploras e lês):
 | **D — Manutenção** | Labirinto escuro gerado em cada partida; manípulo da válvula; circuito de tubos para restabelecer a refrigeração |
 | **E — Núcleo** | Barras de controlo por ordem; código Ómega com os 4 fragmentos; evacuação contra o relógio |
 
-O capítulo **não termina com a fuga**: a história fica em aberto para o Capítulo 2.
-O progresso é gravado no início de cada setor (botão **CONTINUAR** no menu). Os códigos, o puzzle de lógica,
-as válvulas e o labirinto mudam em cada partida.
+O capítulo **não termina com a fuga**: a história continua no Capítulo 2.
+
+## Capítulo 2 — Teste 8
+
+Acordas noutra ala do LAB-7. Uma voz (Marta, Sujeito 11) tenta ajudar-te e, setor a setor, recuperas seis
+memórias que revelam quem és. Oito setores, pensados para **cerca de 1 hora** na primeira vez:
+
+| Setor | Puzzles principais |
+|---|---|
+| **1 — Dormitórios** | Fotografias com números (ordem pelos pontos); relógio parado que tens de acertar à hora certa |
+| **2 — Refeitório** | Painel de portas lógicas (acender duas lâmpadas); luz que pisca um código em Morse |
+| **3 — Ala Médica** | Misturador de químicos (cor da receita); radiografia com o código da farmácia |
+| **4 — Segurança** | Drones de patrulha com cone de visão (esconde-te atrás de pilares e estantes); espelhos e laser |
+| **5 — Comunicações** | Frequência de rádio a partir de um registo; painel de cabos; alinhar a antena |
+| **6 — Hidroponia** | Estufa vigiada por três drones; números escritos com tinta UV; válvulas da bomba |
+| **7 — Biblioteca** | Poema que indica quatro livros nas estantes; fotografia rasgada (peças deslizantes) |
+| **8 — Observação** | Código com as seis memórias; fuga contra o relógio entre drones; revelação final |
+
+Se um drone te vir, voltas ao último ponto seguro. O capítulo termina com um gancho para o **Capítulo 3**.
 
 ## Visual
 
@@ -65,7 +81,7 @@ Para o regenerar depois de mudar o código: `npm run build:web && python3 tools/
 
 ## Instalar
 
-O APK está em [`dist/EscapeTheLab-2.0.apk`](dist/EscapeTheLab-2.0.apk). Android 5.0 ou superior com WebGL.
+O APK está em [`dist/EscapeTheLab-3.0.apk`](dist/EscapeTheLab-3.0.apk). Android 5.0 ou superior com WebGL.
 Joga-se na horizontal.
 
 ## Originalidade (pronto a publicar)
@@ -93,6 +109,7 @@ KEYSTORE=~/escapethelab.jks KS_ALIAS=escape KS_PASS='a-tua-password' ./build.sh
 |---|---|
 | `src/main.js` | Motor: gráficos, controlos, física, interface, puzzles genéricos, fluxo do capítulo |
 | `src/sectors.js` | Os cinco setores do Capítulo 1 (mapas, puzzles, história) |
+| `src/sectors2.js` | Os oito setores do Capítulo 2 |
 | `src/audio.js` | Motor de som sintetizado (3D, reverberação, ambiente, efeitos) |
 | `web/index.html` | Interface (menus, inventário, teclado do cofre) |
 | `android/` | App Android (WebView em ecrã inteiro, horizontal) |
