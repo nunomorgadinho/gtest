@@ -147,6 +147,15 @@
   .boat .who b { color: var(--hero-text); }
   @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-3px) rotate(2deg); } }
   @media (prefers-reduced-motion: reduce) { .boat { transition: none; } .boat svg { animation: none; } }
+  .race-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin: 8px 0 0; padding-bottom: 28px; }
+  .race-form label { color: #cfe3e6; }
+  .race-form input {
+    background: rgba(255,255,255,0.08); color: var(--hero-text); border-color: rgba(255,255,255,0.22);
+  }
+  .race-form input::placeholder { color: rgba(255,255,255,0.5); }
+  .race-form button { background: var(--wl-green-light); color: var(--wl-teal); }
+  .race-form button:hover { background: #fff; }
+  .race-form .hint { flex-basis: 100%; margin: 0; font-size: 0.78rem; color: #cfe3e6; }
 
   /* Cards */
   .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
@@ -276,6 +285,12 @@
     <p>Do ponto A (27 out 2026) ao DCBKK '27 (A.1): onde estamos hoje e quanto falta.</p>
     <blockquote id="quote-of-day"></blockquote>
     <div class="journey" id="journey"></div>
+    <form class="race-form" id="race-form">
+      <label>Nuno: faturação acumulada (€) <input type="number" name="Nuno" step="any" min="0" inputmode="decimal"></label>
+      <label>Tiago: faturação acumulada (€) <input type="number" name="Tiago" step="any" min="0" inputmode="decimal"></label>
+      <button type="submit">Gravar</button>
+      <p class="hint">O valor escrito manda no barco. Deixa vazio para o barco voltar a usar os registos mensais.</p>
+    </form>
   </div>
 </header>
 
@@ -385,7 +400,8 @@
     dcbkk: "2027-10-15",
     aDate: "2026-10-27",
     raceStart: null,
-    raceGoal: 500000
+    raceGoal: 500000,
+    raceManual: {}
   };
   var PLAYERS = ["Nuno", "Tiago"];
   var TIPS = [
@@ -740,9 +756,12 @@
     m.a1 = a1;
 
     m.race = PLAYERS.map(function (p) {
-      var total = state.entries.filter(function (e) { return e.player === p && e.month >= s.raceStart; })
+      var auto = state.entries.filter(function (e) { return e.player === p && e.month >= s.raceStart; })
         .reduce(function (t, e) { return t + e.revenue; }, 0);
-      return { name: p, total: total, progress: total / s.raceGoal };
+      // Um total escrito à mão por baixo dos barcos tem prioridade sobre os registos
+      var manual = s.raceManual && typeof s.raceManual[p] === "number" ? s.raceManual[p] : null;
+      var total = manual != null ? manual : auto;
+      return { name: p, total: total, auto: auto, manual: manual != null, progress: total / s.raceGoal };
     });
     return m;
   }
@@ -843,6 +862,8 @@
         '<div class="lbl" style="transform:' + align + ";text-align:" + tAlign + '"><b>Hoje · ' + esc(dateLabel(m.now)) + "</b>" +
         (daysLeft ? "faltam " + daysLeft + " dias" : "chegámos ao DCBKK") + "</div></div>" +
       "</div>" + renderRace(m);
+    sailBoats();
+    fillRaceForm(m, false);
   }
 
   var BOAT_COLORS = { Nuno: "var(--wl-green-light)", Tiago: "var(--wl-green-medium)" };
@@ -853,6 +874,30 @@
       '<path d="M18.5 7L8 22H18.5Z" fill="' + color + '" opacity=".75"/>' +
       '<path d="M3 25H37L31.5 32H8.5Z" fill="#fff"/></svg>';
   }
+  // O HTML é refeito a cada render: parte da posição anterior para o barco navegar até à nova
+  var boatPos = {};
+  function sailBoats() {
+    el("journey").querySelectorAll(".boat").forEach(function (b) {
+      var prev = boatPos[b.dataset.name], next = b.style.left;
+      boatPos[b.dataset.name] = next;
+      if (!prev || prev === next) return;
+      b.style.transition = "none";
+      b.style.left = prev;
+      b.getBoundingClientRect();
+      b.style.transition = "";
+      b.style.left = next;
+    });
+  }
+  function fillRaceForm(m, setValues) {
+    var f = el("race-form");
+    m.race.forEach(function (r) {
+      var input = f.elements[r.name];
+      if (!input) return;
+      if (setValues) input.value = r.manual ? r.total : "";
+      input.placeholder = "registos: " + money(r.auto);
+    });
+  }
+
   function renderRace(m) {
     var leader = m.race.reduce(function (a, r) { return r.total > a.total ? r : a; }, m.race[0]);
     var tie = m.race.every(function (r) { return r.total === leader.total; });
@@ -862,10 +907,10 @@
       m.race.map(function (r) {
         var x = Math.min(Math.max(r.progress, 0), 1) * 100;
         return '<div class="lane"><div class="finish"></div>' +
-          '<div class="boat' + (x > 65 ? " flip" : "") + '" style="left:calc(20px + (100% - 40px) * ' + (x / 100) + ')" title="' +
+          '<div class="boat' + (x > 65 ? " flip" : "") + '" data-name="' + esc(r.name) + '" style="left:calc(20px + (100% - 40px) * ' + (x / 100) + ')" title="' +
           esc(r.name + ": " + money(r.total) + " (" + pct.format(r.progress) + ")") + '">' +
           boatSvg(BOAT_COLORS[r.name] || "#fff") +
-          '<div class="who"><b>' + esc(r.name) + "</b><br>" + short(r.total) + " · " + pct.format(r.progress) + "</div></div></div>";
+          '<div class="who"><b>' + esc(r.name) + "</b>" + (r.manual ? " (manual)" : "") + "<br>" + short(r.total) + " · " + pct.format(r.progress) + "</div></div></div>";
       }).join("") + "</div>";
   }
 
@@ -1100,6 +1145,18 @@
   }
 
   // ---------- Eventos ----------
+  el("race-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var f = ev.target, manual = {};
+    PLAYERS.forEach(function (p) {
+      var v = parseFloat(String(f.elements[p].value).replace(",", "."));
+      if (!isNaN(v) && v >= 0) manual[p] = v;
+    });
+    state.settings.raceManual = manual;
+    save();
+    render();
+    fillRaceForm(compute(), true);
+  });
   el("ix-sync").addEventListener("click", function () { ixSync(false); });
   el("ix-form").addEventListener("submit", function (ev) {
     ev.preventDefault();
@@ -1214,6 +1271,7 @@
   renderSettings();
   renderStatic();
   render();
+  fillRaceForm(compute(), true);
   (function () {
     var c = ixConfig();
     el("ix-form").elements.url.value = c.url || "";
