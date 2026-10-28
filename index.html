@@ -87,6 +87,12 @@
   }
   .hero .wrap { padding-bottom: 0; }
   .hero h1 { font-size: 1.7rem; letter-spacing: -0.01em; }
+  .hero-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+  .today-pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px;
+    background: rgba(255,255,255,0.1); color: var(--hero-text); font-weight: 700; font-size: 0.95rem;
+  }
+  .today-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--wl-green-light); }
   .hero p { margin: 6px 0 0; color: #cfe3e6; }
 
   /* Journey */
@@ -249,6 +255,7 @@
 
   @media (max-width: 640px) {
     .hero h1 { font-size: 1.35rem; }
+    .today-pill { font-size: 0.8rem; padding: 5px 12px; white-space: nowrap; }
     .stop .lbl { font-size: 0.7rem; }
     .stop .lbl b { font-size: 0.8rem; }
     .big { font-size: 1.6rem; }
@@ -258,7 +265,10 @@
 <body>
 <header class="hero">
   <div class="wrap">
-    <h1>Rumo às Metas</h1>
+    <div class="hero-top">
+      <h1>Rumo às Metas</h1>
+      <time class="today-pill" id="today"></time>
+    </div>
     <p>Do ponto A (27 out 2026) ao DCBKK '27 (A.1): onde estamos hoje e quanto falta.</p>
     <blockquote id="quote-of-day"></blockquote>
     <div class="journey" id="journey"></div>
@@ -994,6 +1004,9 @@
   function render() {
     var m = compute();
     renderQuoteOfDay(m.now);
+    var t = m.now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    el("today").textContent = "Hoje é " + t;
+    el("today").setAttribute("datetime", todayISO());
     renderJourney(m);
     renderCards(m);
     renderInsights(m);
