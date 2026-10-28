@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b1410">
+<title>Raízes de Luz</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b1410;overflow:hidden;touch-action:none;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+  #safe{position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top,0px)}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="safe"></div>
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Ecrã ----------
+  const cv = document.getElementById('c');
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0, DPR = 1, TOP = 16, T = 40, GX = 0, GY = 0;
+  let flies = [];
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const safe = parseFloat(getComputedStyle(document.getElementById('safe')).paddingTop) || 0;
+    TOP = Math.max(16, safe + 8);
+    flies = [];
+    const n = Math.round(W * H / 14000) + 8;
+    for (let i = 0; i < n; i++) {
+      flies.push({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - 0.5) * 12,
+        vy: (Math.random() - 0.5) * 12, p: Math.random() * 6.28, r: 1 + Math.random() * 1.8 });
+    }
+    layout();
+  }
+  window.addEventListener('resize', resize);
+
+  // ---------- Armazenamento ----------
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function save(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
+
+  // ---------- Som (sintetizado) ----------
+  let actx = null;
+  let muted = load('rl_muted') === '1';
+  function audio() {
+    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; } }
+    if (actx && actx.state === 'suspended') actx.resume();
+  }
+  function tone(freq, dur, type, vol, delay) {
+    if (muted || !actx) return;
+    const t0 = actx.currentTime + (delay || 0);
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.1, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  const SCALE = [392, 440, 523, 587, 659, 784, 880, 1046];
+  const sfx = {
+    turn() { tone(180 + Math.random() * 30, 0.06, 'triangle', 0.08); },
+    grow(n) { tone(SCALE[Math.min(n, SCALE.length - 1)], 0.35, 'sine', 0.08); },
+    win() { [523, 659, 784, 1046, 1318].forEach(function (f, i) { tone(f, 0.5, 'sine', 0.09, i * 0.09); }); },
+    click() { tone(600, 0.05, 'sine', 0.06); }
+  };
+
+  // ---------- Puzzle ----------
+  // Bits de ligação: 1 = norte, 2 = este, 4 = sul, 8 = oeste
+  const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
+  function rot(m, k) { for (let i = 0; i < (k & 3); i++) m = ((m << 1) | (m >> 3)) & 15; return m; }
+  function bits(m) { return (m & 1) + (m >> 1 & 1) + (m >> 2 & 1) + (m >> 3 & 1); }
+  function rng(seed) {
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      let r = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      r = r + Math.imul(r ^ r >>> 7, 61 | r) ^ r;
+      return ((r ^ r >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function sizeFor(level) { return Math.min(4 + Math.floor((level - 1) / 3), 8); }
+
+  // Gera uma árvore aleatória (Prim) que liga todas as casas à semente
+  function generate(level) {
+    const R = rng(level * 9973 + 7);
+    const N = sizeFor(level);
+    const src = Math.floor(N / 2) * N + Math.floor((N - 1) / 2);
+    const base = new Array(N * N).fill(0);
+    const seen = new Array(N * N).fill(false);
+    const front = [];
+    function add(c) { seen[c] = true; for (let d = 0; d < 4; d++) front.push([c, d]); }
+    add(src);
+    while (front.length) {
+      const [c, d] = front.splice(Math.floor(R() * front.length), 1)[0];
+      const x = c % N + DX[d], y = Math.floor(c / N) + DY[d];
+      if (x < 0 || y < 0 || x >= N || y >= N) continue;
+      const n = y * N + x;
+      if (seen[n] || bits(base[c]) >= 3) continue;
+      base[c] |= 1 << d; base[n] |= 1 << ((d + 2) % 4);
+      add(n);
+    }
+    // casas que ficaram de fora (por causa do limite de 3 ligações) ligam-se a um vizinho
+    let again = true;
+    while (again) {
+      again = false;
+      for (let c = 0; c < N * N; c++) {
+        if (seen[c]) continue;
+        for (let d = 0; d < 4; d++) {
+          const x = c % N + DX[d], y = Math.floor(c / N) + DY[d];
+          if (x < 0 || y < 0 || x >= N || y >= N) continue;
+          const n = y * N + x;
+          if (!seen[n]) continue;
+          base[c] |= 1 << d; base[n] |= 1 << ((d + 2) % 4); seen[c] = true; again = true; break;
+        }
+      }
+    }
+    const cells = base.map(function (b) {
+      const k = Math.floor(R() * 4);
+      return { base: b, turns: k, ang: k * Math.PI / 2, m: rot(b, k), glow: 0, bloom: 0 };
+    });
+    return { N, src, cells };
+  }
+
+  // ---------- Estado ----------
+  let state = 'menu';                        // menu | play | win
+  let unlocked = parseInt(load('rl_level') || '1', 10) || 1;
+  let level = unlocked, pick = unlocked;
+  let P = null, moves = 0, lit = [], litCount = 0, solved = false, winT = 0, t = 0;
+  let parts = [];
+
+  function startLevel(l) {
+    state = 'play'; level = l; P = generate(l); moves = 0; solved = false; parts = [];
+    computeLit();
+    if (solved) { tap(0); moves = 0; }        // nunca começar já resolvido
+    layout(); state = 'play';
+  }
+
+  function layout() {
+    if (!P) return;
+    if (state === 'menu') {
+      T = Math.floor(Math.min(W * 0.6, H * 0.24) / P.N);
+      GX = Math.round((W - T * P.N) / 2);
+      GY = Math.round(H * 0.41 - T * P.N / 2);
+      return;
+    }
+    T = Math.floor(Math.min(W * 0.92, H * 0.64) / P.N);
+    GX = Math.round((W - T * P.N) / 2);
+    GY = Math.round((H - T * P.N) / 2 + H * 0.04);
+  }
+
+  function computeLit() {
+    const N = P.N, c = P.cells;
+    lit = new Array(N * N).fill(false);
+    const q = [P.src]; lit[P.src] = true;
+    let ok = true;
+    while (q.length) {
+      const a = q.pop();
+      for (let d = 0; d < 4; d++) {
+        if (!(c[a].m & (1 << d))) continue;
+        const x = a % N + DX[d], y = Math.floor(a / N) + DY[d];
+        if (x < 0 || y < 0 || x >= N || y >= N) continue;
+        const b = y * N + x;
+        if (!(c[b].m & (1 << ((d + 2) % 4)))) continue;
+        if (!lit[b]) { lit[b] = true; q.push(b); }
+      }
+    }
+    const before = litCount;
+    litCount = lit.filter(Boolean).length;
+    // resolvido = tudo aceso e nenhuma ligação solta
+    for (let a = 0; a < N * N && ok; a++) {
+      if (!lit[a]) { ok = false; break; }
+      for (let d = 0; d < 4; d++) {
+        if (!(c[a].m & (1 << d))) continue;
+        const x = a % N + DX[d], y = Math.floor(a / N) + DY[d];
+        if (x < 0 || y < 0 || x >= N || y >= N || !(c[y * N + x].m & (1 << ((d + 2) % 4)))) { ok = false; break; }
+      }
+    }
+    solved = ok;
+    return litCount - before;
+  }
+
+  function tap(i) {
+    const c = P.cells[i];
+    c.turns++; c.m = rot(c.base, c.turns);
+    moves++;
+    sfx.turn();
+    const gained = computeLit();
+    if (gained > 0) sfx.grow(Math.floor(litCount / (P.N * P.N) * 7));
+    if (solved) {
+      state = 'win'; winT = 0;
+      if (level + 1 > unlocked) { unlocked = level + 1; save('rl_level', unlocked); }
+      pick = unlocked;
+      const bestKey = 'rl_best_' + level, prev = parseInt(load(bestKey) || '0', 10);
+      if (!prev || moves < prev) save(bestKey, moves);
+      sfx.win();
+      P.cells.forEach(function (cell, k) {
+        if (k !== P.src && bits(cell.base) === 1) {
+          const ctr = center(k);
+          burst(ctr[0], ctr[1], '#ff9fc2', 10); burst(ctr[0], ctr[1], '#ffe28a', 6);
+        }
+      });
+    }
+  }
+
+  function center(i) { return [GX + (i % P.N + 0.5) * T, GY + (Math.floor(i / P.N) + 0.5) * T]; }
+  function burst(x, y, color, n) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.283, v = 30 + Math.random() * 90;
+      parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, life: 0, max: 0.6 + Math.random() * 0.8, color, r: 1.5 + Math.random() * 2.5 });
+    }
+  }
+
+  // Ganchos chamados pela app Android
+  window.olPause = function () {};
+  window.olTurns = function () { return P ? P.cells.map(function (c) { return c.turns % 4; }) : []; };
+  window.olBack = function () {
+    if (state === 'play' || state === 'win') { state = 'menu'; return true; }
+    return false;
+  };
+
+  // ---------- Entrada ----------
+  const btn = {
+    mute() { return { x: W - 30, y: TOP + 18, r: 20 }; },
+    home() { return { x: 30, y: TOP + 18, r: 20 }; },
+    redo() { return { x: W - 30, y: TOP + 18, r: 20 }; },
+    prev() { return { x: W / 2 - Math.min(110, W * 0.3), y: H * 0.71, r: 24 }; },
+    next() { return { x: W / 2 + Math.min(110, W * 0.3), y: H * 0.71, r: 24 }; },
+    play() { return { x: W / 2, y: H * 0.8, w: Math.min(240, W * 0.6), h: 58 }; }
+  };
+  function hitC(b, x, y) { return Math.hypot(x - b.x, y - b.y) < b.r + 14; }
+  function hitR(b, x, y) { return Math.abs(x - b.x) < b.w / 2 && Math.abs(y - b.y) < b.h / 2; }
+
+  function press(x, y) {
+    audio();
+    if (state === 'menu') {
+      if (hitC(btn.mute(), x, y)) { muted = !muted; save('rl_muted', muted ? '1' : '0'); sfx.click(); return; }
+      if (hitC(btn.prev(), x, y)) { if (pick > 1) { pick--; sfx.click(); } return; }
+      if (hitC(btn.next(), x, y)) { if (pick < unlocked) { pick++; sfx.click(); } return; }
+      if (hitR(btn.play(), x, y)) { sfx.click(); startLevel(pick); }
+      return;
+    }
+    if (state === 'win') { if (winT > 0.8) startLevel(level + 1); return; }
+    if (hitC(btn.home(), x, y)) { pick = level; state = 'menu'; sfx.click(); return; }
+    if (hitC(btn.redo(), x, y)) { sfx.click(); startLevel(level); return; }
+    const gx = Math.floor((x - GX) / T), gy = Math.floor((y - GY) / T);
+    if (gx >= 0 && gy >= 0 && gx < P.N && gy < P.N) tap(gy * P.N + gx);
+  }
+  window.addEventListener('pointerdown', function (e) { e.preventDefault(); press(e.clientX, e.clientY); }, { passive: false });
+  window.addEventListener('keydown', function (e) {
+    if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); if (state === 'menu') startLevel(pick); else if (state === 'win' && winT > 0.8) startLevel(level + 1); }
+    else if (e.code === 'Escape') window.olBack();
+  });
+
+  // ---------- Atualização ----------
+  function update(dt) {
+    t += dt;
+    for (const f of flies) {
+      f.p += dt; f.x += (f.vx + Math.sin(f.p * 0.7) * 8) * dt; f.y += (f.vy + Math.cos(f.p * 0.5) * 8) * dt;
+      if (f.x < -10) f.x = W + 10; if (f.x > W + 10) f.x = -10; if (f.y < -10) f.y = H + 10; if (f.y > H + 10) f.y = -10;
+    }
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const q = parts[i]; q.life += dt;
+      if (q.life > q.max) { parts.splice(i, 1); continue; }
+      q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 60 * dt; q.vx *= 0.97;
+    }
+    if (state === 'win') winT += dt;
+    if (!P) return;
+    const k = 1 - Math.pow(0.0005, dt);
+    P.cells.forEach(function (c, i) {
+      c.ang += (c.turns * Math.PI / 2 - c.ang) * Math.min(1, k * 1.6);
+      const on = state === 'menu' ? 1 : (lit[i] ? 1 : 0);
+      c.glow += (on - c.glow) * Math.min(1, k);
+      c.bloom += (on - c.bloom) * Math.min(1, k * 0.6);
+    });
+  }
+
+  // ---------- Desenho ----------
+  function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); }
+  function glow(x, y, r, color, alpha) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = alpha; ctx.fillStyle = g; circle(x, y, r); ctx.fill(); ctx.globalAlpha = 1;
+  }
+  function text(str, x, y, size, color, weight, alpha) {
+    ctx.globalAlpha = alpha == null ? 1 : alpha;
+    ctx.fillStyle = color; ctx.font = (weight || 700) + ' ' + size + 'px system-ui,-apple-system,Roboto,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(str, x, y); ctx.globalAlpha = 1;
+  }
+  function rrect(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  function drawBackground() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#08120f'); g.addColorStop(1, '#122019');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+    for (const f of flies) {
+      const a = 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(f.p * 2.3));
+      glow(f.x, f.y, f.r * 5, 'rgba(210,255,140,0.8)', a * 0.5);
+      ctx.globalAlpha = a; ctx.fillStyle = '#eaffb0'; circle(f.x, f.y, f.r * 0.8); ctx.fill();
+    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function drawPiece(c, x, y, isSrc, dim) {
+    const lw = T * 0.2;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(c.ang);
+    ctx.lineCap = 'round';
+    for (let pass = 0; pass < 3; pass++) {
+      if (pass === 1 && c.glow < 0.02) continue;
+      ctx.beginPath();
+      for (let d = 0; d < 4; d++) {
+        if (!(c.base & (1 << d))) continue;
+        ctx.moveTo(0, 0); ctx.lineTo(DX[d] * T * 0.5, DY[d] * T * 0.5);
+      }
+      if (pass === 0) { ctx.strokeStyle = '#2f3d33'; ctx.lineWidth = lw; ctx.globalAlpha = dim; }
+      else if (pass === 1) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = 'rgba(255,200,90,0.18)'; ctx.lineWidth = lw * 2.4; ctx.globalAlpha = c.glow * dim;
+      } else { ctx.strokeStyle = '#ffd98a'; ctx.lineWidth = lw * 0.62; ctx.globalAlpha = c.glow * dim; }
+      ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.globalAlpha = dim;
+    if (isSrc) {
+      const p = 1 + 0.08 * Math.sin(t * 3);
+      ctx.globalCompositeOperation = 'lighter';
+      glow(0, 0, T * 0.6 * p, 'rgba(255,210,110,0.9)', 0.6 * dim);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#fff1c4'; circle(0, 0, T * 0.2 * p); ctx.fill();
+      ctx.fillStyle = '#ffbf4a'; circle(0, 0, T * 0.1 * p); ctx.fill();
+    } else if (bits(c.base) === 1) {
+      // flor: botão fechado que abre quando a luz chega
+      const b = 0.45 + 0.55 * c.bloom, pr = T * 0.1 * b, pd = T * 0.13 * b;
+      ctx.rotate(-c.ang + t * 0.3 * c.bloom);
+      for (let i = 0; i < 5; i++) {
+        const a = i / 5 * Math.PI * 2;
+        ctx.fillStyle = c.bloom > 0.5 ? '#ff9fc2' : '#5d5a68';
+        ctx.globalAlpha = dim * (0.6 + 0.4 * c.bloom);
+        circle(Math.cos(a) * pd, Math.sin(a) * pd, pr); ctx.fill();
+      }
+      ctx.globalAlpha = dim;
+      ctx.fillStyle = c.bloom > 0.5 ? '#ffe28a' : '#7a7466'; circle(0, 0, T * 0.08); ctx.fill();
+    } else {
+      ctx.fillStyle = c.glow > 0.5 ? '#ffe7ad' : '#3a4a3f'; circle(0, 0, lw * 0.55); ctx.fill();
+    }
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
+
+  function drawBoard(dim) {
+    if (!P) return;
+    const N = P.N;
+    ctx.globalAlpha = 0.5 * dim; ctx.fillStyle = '#0e1a14';
+    rrect(GX - 8, GY - 8, T * N + 16, T * N + 16, 16); ctx.fill();
+    for (let i = 0; i < N * N; i++) {
+      const x = GX + (i % N) * T, y = GY + Math.floor(i / N) * T;
+      ctx.globalAlpha = 0.35 * dim; ctx.fillStyle = (i % N + Math.floor(i / N)) % 2 ? '#17271e' : '#1b2d22';
+      rrect(x + 2, y + 2, T - 4, T - 4, T * 0.16); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < N * N; i++) {
+      const ctr = center(i);
+      drawPiece(P.cells[i], ctr[0], ctr[1], i === P.src, dim);
+    }
+  }
+
+  function drawFx() {
+    ctx.globalCompositeOperation = 'lighter';
+    for (const q of parts) { ctx.globalAlpha = 1 - q.life / q.max; ctx.fillStyle = q.color; circle(q.x, q.y, q.r); ctx.fill(); }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function drawIcon(b, kind) {
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'; circle(b.x, b.y, b.r); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const x = b.x, y = b.y;
+    if (kind === 'home') {
+      ctx.beginPath(); ctx.moveTo(x - 8, y - 1); ctx.lineTo(x, y - 8); ctx.lineTo(x + 8, y - 1);
+      ctx.moveTo(x - 6, y - 3); ctx.lineTo(x - 6, y + 7); ctx.lineTo(x + 6, y + 7); ctx.lineTo(x + 6, y - 3); ctx.stroke();
+    } else if (kind === 'redo') {
+      ctx.beginPath(); ctx.arc(x, y, 7.5, -Math.PI * 0.35, Math.PI * 1.35); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 4, y - 11); ctx.lineTo(x + 6, y - 5.5); ctx.lineTo(x + 0.5, y - 4); ctx.stroke();
+    } else if (kind === 'mute') {
+      ctx.beginPath(); ctx.moveTo(x - 8, y - 4); ctx.lineTo(x - 4, y - 4); ctx.lineTo(x + 1, y - 9);
+      ctx.lineTo(x + 1, y + 9); ctx.lineTo(x - 4, y + 4); ctx.lineTo(x - 8, y + 4); ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      if (muted) { ctx.moveTo(x + 4, y - 5); ctx.lineTo(x + 10, y + 5); ctx.moveTo(x + 10, y - 5); ctx.lineTo(x + 4, y + 5); }
+      else ctx.arc(x + 2, y, 7, -0.8, 0.8);
+      ctx.stroke();
+    } else {
+      const s = kind === 'prev' ? 1 : -1;
+      ctx.beginPath(); ctx.moveTo(x + 4 * s, y - 8); ctx.lineTo(x - 4 * s, y); ctx.lineTo(x + 4 * s, y + 8); ctx.stroke();
+    }
+  }
+
+  function drawMenu() {
+    const fs = Math.max(15, Math.min(W, H) * 0.04);
+        const ts = Math.max(40, Math.min(W * 0.14, H * 0.07));
+    text('RAÍZES', W / 2, H * 0.13, ts, '#f3ffe6', 900);
+    text('DE LUZ', W / 2, H * 0.13 + ts * 1.05, ts, '#ffd27a', 900);
+    text('Roda as peças para levar a luz', W / 2, H * 0.585, fs, '#cfe3c8', 500);
+    text('da semente a todas as flores', W / 2, H * 0.585 + fs * 1.45, fs, '#cfe3c8', 500);
+    drawIcon(btn.mute(), 'mute');
+    const pv = btn.prev(), nx = btn.next();
+    ctx.globalAlpha = pick > 1 ? 1 : 0.3; drawIcon(pv, 'prev');
+    ctx.globalAlpha = pick < unlocked ? 1 : 0.3; drawIcon(nx, 'next'); ctx.globalAlpha = 1;
+    text('Nível ' + pick, W / 2, pv.y - 6, fs * 1.4, '#ffffff', 800);
+    const best = load('rl_best_' + pick);
+    text(best ? 'Melhor: ' + best + ' jogadas' : sizeFor(pick) + ' × ' + sizeFor(pick), W / 2, pv.y + fs * 1.3, fs * 0.85, '#9fb89a', 600);
+    const b = btn.play();
+    const pulse = 1 + 0.03 * Math.sin(t * 4);
+    ctx.save(); ctx.translate(b.x, b.y); ctx.scale(pulse, pulse);
+    const g = ctx.createLinearGradient(0, -b.h / 2, 0, b.h / 2);
+    g.addColorStop(0, '#ffd98a'); g.addColorStop(1, '#f0a94a');
+    ctx.fillStyle = g; rrect(-b.w / 2, -b.h / 2, b.w, b.h, b.h / 2); ctx.fill();
+    ctx.restore();
+    text('JOGAR', b.x, b.y, fs * 1.25, '#2a1a05', 900);
+  }
+
+  function drawHud() {
+    const fs = Math.max(15, Math.min(W, H) * 0.04);
+    drawIcon(btn.home(), 'home');
+    if (state === 'play') drawIcon(btn.redo(), 'redo');
+    text('Nível ' + level, W / 2, TOP + 12, fs * 1.3, '#ffffff', 800);
+    text('Jogadas: ' + moves, W / 2, TOP + 12 + fs * 1.5, fs * 0.85, '#9fb89a', 600);
+    const flowers = P.cells.filter(function (c, i) { return i !== P.src && bits(c.base) === 1; }).length;
+    const open = P.cells.filter(function (c, i) { return i !== P.src && bits(c.base) === 1 && lit[i]; }).length;
+    text('✿ ' + open + ' / ' + flowers, W / 2, GY + T * P.N + 34, fs, open === flowers ? '#ff9fc2' : '#cfe3c8', 700);
+    if (state === 'win') {
+      const a = Math.min(1, winT * 2), by = GY + T * P.N + 34;
+      text('Tudo floresceu!', W / 2, by + fs * 2.4, fs * 1.8, '#ffd27a', 900, a);
+      text('Nível concluído em ' + moves + ' jogadas', W / 2, by + fs * 4.3, fs, '#ffffff', 600, a);
+      if (winT > 0.8) text('Toca para o nível ' + (level + 1), W / 2, H - Math.max(40, H * 0.07), fs * 1.05, '#ffffff', 700, 0.55 + 0.45 * Math.sin(t * 4));
+    }
+  }
+
+  function draw() {
+    drawBackground();
+    if (state === 'menu') {
+      if (!P || P.preview !== pick) { P = generate(pick); P.preview = pick; P.cells.forEach(function (c) { c.turns = 0; c.ang = 0; c.m = c.base; c.glow = 1; c.bloom = 1; }); computeLit(); layout(); }
+      drawMenu(); drawBoard(0.8);
+    } else {
+      drawBoard(1); drawFx(); drawHud();
+    }
+  }
+
+  // ---------- Ciclo principal ----------
+  let last = 0;
+  function frame(ts) {
+    const dt = Math.min(0.05, (ts - last) / 1000 || 0);
+    last = ts;
+    update(dt); draw();
+    requestAnimationFrame(frame);
+  }
+  resize();
+  requestAnimationFrame(function (ts) { last = ts; requestAnimationFrame(frame); });
+})();
+</script>
+</body>
+</html>
