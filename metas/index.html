@@ -274,8 +274,55 @@
     .big { font-size: 1.6rem; }
   }
 </style>
+<style>
+  #lock { display: none; }
+  html.locked body > :not(#lock) { display: none !important; }
+  html.locked #lock {
+    display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 16px;
+    background: var(--wl-teal); color: #fff;
+  }
+  #lock form { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 12px; }
+  #lock h1 { font-size: 1.6rem; }
+  #lock p { margin: 0; color: #cfe3e6; }
+  #lock input { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.25); }
+  #lock button { background: var(--wl-green-light); color: var(--wl-teal); }
+  #lock .err { color: #ffb4a0; min-height: 1.2em; font-size: 0.88rem; }
+</style>
+<script>
+  // Esconde a página até a palavra-passe ser validada neste browser (só o hash fica no código)
+  var LOCK_HASH = "beb3adcc0d081e59c3de8dffb8fd598b1bf67a1feaa87095b7e15e97a177df7d";
+  try {
+    if (localStorage.getItem("rumo-metas-unlock") !== LOCK_HASH) document.documentElement.classList.add("locked");
+  } catch (e) { document.documentElement.classList.add("locked"); }
+</script>
 </head>
 <body>
+<div id="lock">
+  <form id="lock-form">
+    <h1>Rumo às Metas</h1>
+    <p>Introduz a palavra-passe para entrar.</p>
+    <input type="password" name="pw" autocomplete="current-password" aria-label="Palavra-passe" autofocus>
+    <button type="submit">Entrar</button>
+    <span class="err" id="lock-err" role="alert"></span>
+  </form>
+</div>
+<script>
+  document.getElementById("lock-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var pw = ev.target.elements.pw.value;
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode("rumo-metas:" + pw)).then(function (buf) {
+      var hex = Array.prototype.map.call(new Uint8Array(buf), function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
+      if (hex !== LOCK_HASH) {
+        document.getElementById("lock-err").textContent = "Palavra-passe errada.";
+        ev.target.elements.pw.select();
+        return;
+      }
+      try { localStorage.setItem("rumo-metas-unlock", hex); } catch (e) { /* fica desbloqueado só nesta visita */ }
+      document.documentElement.classList.remove("locked");
+      ev.target.reset();
+    });
+  });
+</script>
 <header class="hero">
   <div class="wrap">
     <div class="hero-top">
@@ -382,6 +429,7 @@
         <button type="button" class="secondary" id="export">Exportar backup (JSON)</button>
         <button type="button" class="secondary" id="import">Importar (JSON)</button>
         <input type="file" id="import-file" accept="application/json,.json" hidden>
+        <button type="button" class="secondary" id="lock-now">Bloquear a página</button>
         <button type="button" class="link danger" id="reset">Apagar todos os dados</button>
       </div>
     </details>
@@ -1145,6 +1193,11 @@
   }
 
   // ---------- Eventos ----------
+  el("lock-now").addEventListener("click", function () {
+    try { localStorage.removeItem("rumo-metas-unlock"); } catch (e) { /* ignorar */ }
+    document.documentElement.classList.add("locked");
+    window.scrollTo(0, 0);
+  });
   el("race-form").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var f = ev.target, manual = {};

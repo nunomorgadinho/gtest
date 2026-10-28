@@ -17,6 +17,8 @@ Web app de uma só página que mostra a distância entre a situação atual e as
 
 **InvoiceXpress:** a faturação do Nuno pode vir automaticamente do InvoiceXpress através de um Cloudflare Worker que guarda a chave da API em segredo. Ver [`worker/README.md`](worker/README.md).
 
+**Palavra-passe:** a página pede uma palavra-passe ao entrar e lembra-a nesse browser ("Bloquear a página" nas Definições volta a pedi-la). O código guarda só o hash SHA-256 da palavra-passe. Como o site é estático e o repositório é público, isto é uma barreira simples e não substitui alojamento privado.
+
 Os dados ficam só no browser (`localStorage`). Usa "Exportar backup" para guardar um JSON e "Importar (JSON)" para os recuperar noutro browser. A importação junta os registos aos que já existem: só substitui o mesmo mês e jogador, e mantém o lucro já registado quando o ficheiro não o traz.
 
 Para usar, abre `index.html` no browser. Não precisa de servidor nem de dependências. Metas, data do DCBKK e data de início da contagem de B/C são editáveis em "Definições".
