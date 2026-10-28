@@ -22,6 +22,19 @@ O caminho (sem spoilers dos códigos, que mudam em cada partida):
 Os números dos frascos, a ordem das cores e os disjuntores certos são sorteados em cada partida.
 O melhor tempo fica guardado.
 
+## Visual
+
+Ambiente industrial escuro: betão gasto com fissuras, painéis de metal com rebites e ferrugem, teto
+enferrujado, tubos, tanques com líquido luminoso, barris e caixotes com símbolo de radiação, passadeira
+com faixas de perigo, luzes de emergência vermelhas e lanterna. Todas as texturas são geradas por código
+(ruído fBm + mapas de relevo). Por cima há um efeito de câmara: tone mapping, vinheta, grão e aberração
+cromática.
+
+No menu, **GRÁFICOS: ALTA / LEVE** permite desligar o pós-processamento e baixar a resolução em
+telemóveis mais fracos.
+
+![corredor](dist/screenshots/2-corredor.png)
+
 ## Instalar
 
 O APK está em [`dist/EscapeTheLab-1.0.apk`](dist/EscapeTheLab-1.0.apk). Android 5.0 ou superior com WebGL.
@@ -29,7 +42,8 @@ Joga-se na horizontal.
 
 ## Originalidade (pronto a publicar)
 
-- História, mapa, puzzles, código, texturas (desenhadas em canvas) e sons (sintetizados) criados de raiz.
+- História, mapa, puzzles, código, texturas (geradas por código) e sons (sintetizados) criados de raiz.
+  Nenhuma imagem foi copiada de outros jogos ou de referências.
 - Único componente de terceiros: o motor 3D [three.js](https://threejs.org), licença MIT, que permite uso
   comercial. A licença vai incluída dentro do APK (`THREE-LICENSE.txt`), como a MIT exige.
 - Sem permissões, sem Internet, sem anúncios, sem recolha de dados (ver [PRIVACY.md](PRIVACY.md)).

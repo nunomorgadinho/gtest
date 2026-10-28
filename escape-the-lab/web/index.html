@@ -33,7 +33,7 @@
     padding:10px 16px; font-size:15px; text-align:center; max-width:86vw; transition:opacity .3s; opacity:0; }
   #joy { position:fixed; width:110px; height:110px; margin:-55px; border-radius:50%; border:2px solid rgba(255,255,255,.25); background:rgba(255,255,255,.05); pointer-events:none; }
   #knob { position:absolute; left:50%; top:50%; width:46px; height:46px; margin:-23px; border-radius:50%; background:rgba(255,255,255,.35); }
-  .screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px; box-sizing:border-box;
+  .screen { position:fixed; inset:0; overflow-y:auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px; box-sizing:border-box;
     background: radial-gradient(ellipse at 50% 30%, rgba(20,60,55,.85), rgba(5,8,12,.94)); }
   .screen h1 { margin:0; font-size:clamp(38px, 11vw, 64px); line-height:.95; letter-spacing:.02em; }
   .screen h1 span { color:var(--acc); }
@@ -81,6 +81,7 @@
   <h1>ESCAPE<br><span>THE LAB</span></h1>
   <p>Acordas fechado num laboratório secreto depois de um acidente. Encontra os cartões de acesso, resolve os enigmas e foge antes que seja tarde.</p>
   <button class="btn" id="playBtn">JOGAR</button>
+  <button class="btn ghost" id="qBtn">GRÁFICOS: ALTA</button>
   <p id="bestTxt" class="small"></p>
   <p class="small">Telemóvel: arrasta à esquerda para andar, à direita para olhar, botão USAR para interagir.<br>
     Computador: WASD para andar, rato para olhar, E para interagir.</p>
