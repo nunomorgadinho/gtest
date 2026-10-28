@@ -11,6 +11,8 @@ Web app de uma só página que mostra a distância entre a situação atual e as
 
 **Dicas e insights:** números calculados a partir dos registos (quanto falta por mês e por semana, equivalência em planos mensais, pipeline necessário, efeito de subir preços, ritmo de cada barco) e 12 dicas fixas.
 
+**O que move a agulha?:** 14 atividades de vendas (novos contactos, contactos antigos, propostas, diagnósticos, follow-ups, referências, reuniões, upsell, planos mensais, parceiros, LinkedIn, casos de estudo, concursos, eventos), cada uma com meta semanal e contadores para o Nuno e o Tiago, com placar da semana e histórico das semanas anteriores.
+
 **Mensagens:** 13 modelos de WhatsApp e email, prontos a copiar, para gerar oportunidades.
 
 **Frases lendárias:** 24 frases, com uma "frase do dia" no topo que muda todos os dias.
