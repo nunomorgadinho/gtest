@@ -6,7 +6,9 @@
 <meta name="theme-color" content="#0b0f14">
 <title>Escape the Lab</title>
 <style>
-  :root { --ui: rgba(10,16,24,0.72); --line: rgba(255,255,255,0.18); --txt: #e8f1f8; --acc: #43e0b0; }
+  /* Letra dos capítulos: Saira Stencil One (SIL Open Font License, ver FONTE-LICENCA.txt) */
+  @font-face { font-family:'Saira Stencil One'; src:url('fonte-capitulos.woff2') format('woff2'); font-weight:400; font-display:block; }
+  :root { --chap:'Saira Stencil One', Impact, 'Arial Narrow', sans-serif; --ui: rgba(10,16,24,0.72); --line: rgba(255,255,255,0.18); --txt: #e8f1f8; --acc: #43e0b0; }
   html,body { margin:0; height:100%; background:#0b0f14; overflow:hidden; touch-action:none;
     -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent;
     font-family: system-ui,-apple-system,Roboto,sans-serif; color:var(--txt); }
@@ -37,6 +39,9 @@
     background: radial-gradient(ellipse at 50% 30%, rgba(20,60,55,.85), rgba(5,8,12,.94)); }
   .screen h1 { margin:0; font-size:clamp(38px, 11vw, 64px); line-height:.95; letter-spacing:.02em; }
   .screen h1 span { color:var(--acc); }
+  #winTitle { font-family:var(--chap); font-weight:400; letter-spacing:.03em; }
+  #winNext { font-family:var(--chap); font-weight:400; font-size:18px; }
+  .chap h2, .chap b, #fadeT1, #fadeT2, #winTitle, #winNext { font-synthesis:none; }
   .screen p { margin:0; max-width:420px; color:#b9c8d3; line-height:1.45; }
   .btn { pointer-events:auto; min-width:200px; padding:16px 28px; border-radius:999px; border:none; background:var(--acc); color:#05261c; font-weight:900; font-size:18px; letter-spacing:.04em; }
   .btn.ghost { background:transparent; color:var(--txt); border:1px solid var(--line); }
@@ -64,8 +69,8 @@
   #count { position:absolute; left:50%; top:70px; transform:translateX(-50%); font:900 34px ui-monospace,monospace; color:#ff4d4d; text-shadow:0 0 16px #ff0000; }
   #fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity .9s; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; }
   #fade.on { opacity:1; pointer-events:auto; }
-  #fadeT1 { font-size:clamp(26px, 7vw, 44px); font-weight:900; letter-spacing:.08em; color:#e8f1f8; }
-  #fadeT2 { color:var(--acc); letter-spacing:.2em; font-size:13px; }
+  #fadeT1 { font-family:var(--chap); font-size:clamp(28px, 7.5vw, 50px); font-weight:400; letter-spacing:.04em; color:#e8f1f8; }
+  #fadeT2 { font-family:var(--chap); color:var(--acc); letter-spacing:.2em; font-size:16px; font-weight:400; }
   .ovl { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.6); padding:16px; box-sizing:border-box; }
   .term { background:#061510; border:1px solid #1d5c49; border-radius:10px; color:#7dffcf; font:15px ui-monospace,"Courier New",monospace; padding:clamp(10px, 3vh, 18px); width:100%; max-width:440px; max-height:92vh; overflow:auto; }
   .term h3 { margin:0 0 8px; font-size:16px; } .term p { white-space:pre-line; margin:0 0 12px; color:#a9e9d2; }
@@ -81,7 +86,7 @@
   #storyText p.in { opacity:1; }
   .chaps { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; width:100%; max-width:640px; }
   .chap { flex:1 1 240px; min-width:0; background:rgba(10,20,26,.7); border:1px solid var(--line); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px; align-items:stretch; text-align:left; }
-  .chap b { color:var(--acc); letter-spacing:.12em; font-size:12px; } .chap h2 { margin:0; font-size:20px; } .chap span { color:#9fb3c2; font-size:13px; }
+  .chap b { font-family:var(--chap); font-weight:400; color:var(--acc); letter-spacing:.14em; font-size:14px; } .chap h2 { font-family:var(--chap); font-weight:400; margin:0; font-size:27px; letter-spacing:.02em; } .chap span { color:#9fb3c2; font-size:13px; }
   .chap .btn { min-width:0; padding:12px 16px; font-size:15px; }
   #eye { position:absolute; left:50%; top:62px; transform:translateX(-50%); background:rgba(80,10,10,.85); border:1px solid #ff3b2a; color:#ffd0c8; border-radius:999px; padding:5px 14px; font-weight:900; letter-spacing:.1em; font-size:12px; }
   #hit { position:fixed; inset:0; pointer-events:none; background:radial-gradient(ellipse at center, transparent 40%, rgba(255,30,20,.6)); opacity:0; transition:opacity .4s; }
@@ -147,7 +152,7 @@
 <div id="win" class="screen hidden">
   <h1 id="winTitle">FIM DO<br><span>CAPÍTULO 1</span></h1>
   <p id="winTxt"></p>
-  <p id="winNext" style="color:#7dffcf;letter-spacing:.15em;font-weight:900">CAPÍTULO 2 — EM BREVE</p>
+  <p id="winNext" style="color:#7dffcf;letter-spacing:.15em">CAPÍTULO 2 — EM BREVE</p>
   <button class="btn" id="againBtn">VOLTAR AO MENU</button>
   <p class="small">Cada partida tem códigos e labirinto novos.</p>
 </div>

@@ -81,15 +81,16 @@ Para o regenerar depois de mudar o código: `npm run build:web && python3 tools/
 
 ## Instalar
 
-O APK está em [`dist/EscapeTheLab-3.0.apk`](dist/EscapeTheLab-3.0.apk). Android 5.0 ou superior com WebGL.
+O APK está em [`dist/EscapeTheLab-3.1.apk`](dist/EscapeTheLab-3.1.apk). Android 5.0 ou superior com WebGL.
 Joga-se na horizontal.
 
 ## Originalidade (pronto a publicar)
 
 - História, mapa, puzzles, código, texturas (geradas por código) e sons (sintetizados) criados de raiz.
   Nenhuma imagem foi copiada de outros jogos ou de referências.
-- Único componente de terceiros: o motor 3D [three.js](https://threejs.org), licença MIT, que permite uso
-  comercial. A licença vai incluída dentro do APK (`THREE-LICENSE.txt`), como a MIT exige.
+- Componentes de terceiros, ambos com licença que permite uso comercial e cujo texto vai incluído no APK e no HTML:
+  o motor 3D [three.js](https://threejs.org) (MIT, `THREE-LICENSE.txt`) e a letra dos capítulos
+  Saira Stencil One (SIL Open Font License 1.1, `FONTE-LICENCA.txt`).
 - Sem permissões, sem Internet, sem anúncios, sem recolha de dados (ver [PRIVACY.md](PRIVACY.md)).
 - Sem violência nem sangue: adequado para todas as idades (PEGI 3 / "Everyone").
 - "Escape the Lab" é um título descritivo e já existem jogos com nomes parecidos. Antes de publicar,

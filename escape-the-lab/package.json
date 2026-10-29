@@ -6,6 +6,7 @@
     "build:web": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --outfile=web/game.js"
   },
   "dependencies": {
+    "@fontsource/saira-stencil-one": "5.2.6",
     "three": "0.170.0"
   },
   "devDependencies": {
