@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <EditText
+        android:id="@+id/title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@null"
+        android:fontFamily="serif"
+        android:hint="@string/title_hint"
+        android:imeOptions="actionNext|flagNoExtractUi"
+        android:inputType="textCapSentences"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
+        android:paddingTop="20dp"
+        android:textColor="@color/ink"
+        android:textColorHint="@color/ink_faint"
+        android:textSize="26sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/meta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="8dp"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
+        android:paddingTop="6dp"
+        android:textColor="@color/ink_faint"
+        android:textSize="12sp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:background="@color/divider" />
+
+    <EditText
+        android:id="@+id/body"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@null"
+        android:fontFamily="serif"
+        android:gravity="top|start"
+        android:hint="@string/body_hint"
+        android:imeOptions="flagNoExtractUi"
+        android:inputType="textMultiLine|textCapSentences|textAutoCorrect"
+        android:lineSpacingMultiplier="1.35"
+        android:padding="20dp"
+        android:scrollbars="vertical"
+        android:textColor="@color/ink"
+        android:textColorHint="@color/ink_faint"
+        android:textSize="18sp" />
+</LinearLayout>

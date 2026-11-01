@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Histórias</string>
+    <string name="new_story">Nova história</string>
+    <string name="edit_story">Editar história</string>
+    <string name="title_hint">Título</string>
+    <string name="body_hint">Era uma vez…</string>
+    <string name="untitled">Sem título</string>
+    <string name="empty_list">Ainda não tens histórias.\nToca em + para começar a escrever.</string>
+    <string name="empty_search">Nenhuma história encontrada.</string>
+    <string name="search">Pesquisar</string>
+    <string name="search_hint">Pesquisar histórias</string>
+    <string name="share">Partilhar</string>
+    <string name="delete">Apagar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="delete_confirm">Apagar esta história? Esta ação não pode ser desfeita.</string>
+    <string name="deleted">História apagada</string>
+    <string name="saved">Guardado</string>
+    <string name="share_with">Partilhar história</string>
+    <string name="new_story_fab">Escrever nova história</string>
+</resources>

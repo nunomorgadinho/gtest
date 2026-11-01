@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#5B3A29</color>
+    <color name="primary_dark">#3E271B</color>
+    <color name="accent">#D9822B</color>
+    <color name="paper">#FBF7F0</color>
+    <color name="card">#FFFFFF</color>
+    <color name="ink">#2B2118</color>
+    <color name="ink_soft">#6E6157</color>
+    <color name="ink_faint">#A39587</color>
+    <color name="divider">#E8DFD3</color>
+</resources>
