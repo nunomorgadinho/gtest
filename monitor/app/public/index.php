@@ -7,11 +7,12 @@ web_init();
 $user = require_user();
 $cfg = mon_config();
 ?><!doctype html>
-<html lang="pt-PT">
+<html lang="pt-PT" data-view="<?= $user['role'] === 'admin' ? 'advanced' : 'basic' ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<script src="assets/theme.js?v=<?= MON_VERSION ?>"></script>
 <title>Monitor de recursos</title>
 <link rel="stylesheet" href="assets/uPlot.min.css?v=1.6.30">
 <link rel="stylesheet" href="assets/app.css?v=<?= MON_VERSION ?>">
@@ -22,6 +23,13 @@ $cfg = mon_config();
     <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Monitor de recursos</div>
     <div class="server-name"><?= h($cfg['server_name']) ?></div>
     <div class="live" id="live" aria-live="polite"><span class="dot" aria-hidden="true"></span><span class="live-text">A ligar…</span></div>
+    <div class="prefs">
+      <div class="seg" role="group" aria-label="Vista">
+        <button type="button" data-view-btn="basic" aria-pressed="false">Básica</button>
+        <button type="button" data-view-btn="advanced" aria-pressed="false">Avançada</button>
+      </div>
+      <button type="button" class="btn-ghost" id="btn-theme">☾ Escuro</button>
+    </div>
     <form method="post" action="logout.php" class="logout">
       <input type="hidden" name="csrf" value="<?= h(csrf_token()) ?>">
       <span class="who"><?= h($user['name'] ?: $user['email']) ?></span>
@@ -36,10 +44,10 @@ $cfg = mon_config();
   <section class="tiles" aria-label="Estado atual do servidor">
     <article class="tile" id="t-cpu"><h3>CPU</h3><p class="big">–</p><p class="sub">–</p><span class="badge" hidden></span></article>
     <article class="tile" id="t-mem"><h3>Memória</h3><p class="big">–</p><p class="sub">–</p><span class="badge" hidden></span></article>
-    <article class="tile" id="t-load"><h3>Carga</h3><p class="big">–</p><p class="sub">–</p><span class="badge" hidden></span></article>
+    <article class="tile adv" id="t-load"><h3>Carga</h3><p class="big">–</p><p class="sub">–</p><span class="badge" hidden></span></article>
     <article class="tile" id="t-disk"><h3>Disco</h3><p class="big">–</p><p class="sub">–</p><span class="badge" hidden></span></article>
-    <article class="tile" id="t-io"><h3>Leitura e escrita em disco</h3><p class="big">–</p><p class="sub">–</p></article>
-    <article class="tile" id="t-net"><h3>Rede</h3><p class="big">–</p><p class="sub">–</p></article>
+    <article class="tile adv" id="t-io"><h3>Leitura e escrita em disco</h3><p class="big">–</p><p class="sub">–</p></article>
+    <article class="tile adv" id="t-net"><h3>Rede</h3><p class="big">–</p><p class="sub">–</p></article>
   </section>
 
   <section class="panel">
@@ -74,7 +82,7 @@ $cfg = mon_config();
     <div class="sites" id="sites"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel adv">
     <div class="panel-head">
       <h2>Serviços do servidor</h2>
       <p class="panel-note">Base de dados, cache e servidores web, partilhados por todos os sites.</p>
@@ -95,6 +103,7 @@ $cfg = mon_config();
 
 <div class="tooltip" id="tooltip" hidden></div>
 <script src="assets/uPlot.iife.min.js?v=1.6.30"></script>
+<script src="assets/common.js?v=<?= MON_VERSION ?>"></script>
 <script src="assets/app.js?v=<?= MON_VERSION ?>"></script>
 </body>
 </html>

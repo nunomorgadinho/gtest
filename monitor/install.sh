@@ -11,8 +11,9 @@
 #   1. Copia o código para /home/master/applications/<app>/public_html
 #      (config/ e data/ existentes são mantidos nas atualizações).
 #   2. Cria config/config.php a partir do exemplo, se não existir.
-#   3. Pergunta se pode adicionar a linha do coletor ao crontab do master.
-#   4. Corre o coletor uma vez para validar.
+#   3. Pergunta se pode adicionar ao crontab do master o coletor (cada minuto)
+#      e a leitura dos logs (cada 5 minutos).
+#   4. Corre os dois uma vez para validar.
 # =============================================================================
 set -euo pipefail
 
@@ -62,25 +63,31 @@ if [ ! -e "$DEST/config/config.php" ]; then
   echo "Criado config/config.php (podes ajustar o nome do servidor e os nomes dos sites)."
 fi
 
-CRON="* * * * * /usr/bin/php $DEST/bin/collect.php >/dev/null 2>&1"
-if crontab -l 2>/dev/null | grep -qF "$DEST/bin/collect.php"; then
-  echo "O coletor já está no crontab."
-else
+add_cron() {
+  local script="$1" line="$2" what="$3"
+  if crontab -l 2>/dev/null | grep -qF "$DEST/bin/$script"; then
+    echo "$what: já está no crontab."
+    return
+  fi
   echo
-  echo "Linha a adicionar ao crontab do master:"
-  echo "  $CRON"
+  echo "$what. Linha a adicionar ao crontab do master:"
+  echo "  $line"
   read -r -p "Adicionar agora? [s/N] " ok
   if [ "$ok" = "s" ] || [ "$ok" = "S" ]; then
-    ( crontab -l 2>/dev/null || true; echo "$CRON" ) | crontab -
+    ( crontab -l 2>/dev/null || true; echo "$line" ) | crontab -
     echo "Adicionada."
   else
-    echo "Não adicionada. Sem ela não há histórico (os valores ao vivo funcionam na mesma)."
+    echo "Não adicionada."
   fi
-fi
+}
+add_cron collect.php "* * * * * /usr/bin/php $DEST/bin/collect.php >/dev/null 2>&1" "Recolha de métricas (a cada minuto)"
+add_cron logs.php "*/5 * * * * nice -n 10 /usr/bin/php $DEST/bin/logs.php >/dev/null 2>&1" "Leitura dos logs (a cada 5 minutos)"
 
 echo
 echo "A testar o coletor…"
 /usr/bin/php "$DEST/bin/collect.php" --once --discover && echo "Coletor OK."
+echo "A ler os logs pela primeira vez…"
+nice -n 10 /usr/bin/php "$DEST/bin/logs.php" --verbose | tail -3
 [ -s "$DEST/data/collect.log" ] && tail -5 "$DEST/data/collect.log"
 
 echo

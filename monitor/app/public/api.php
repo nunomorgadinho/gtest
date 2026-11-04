@@ -43,13 +43,15 @@ if ($action === 'live') {
         }
     }
     $last = $store ? (int) $store->meta('last_sample') : 0;
+    $logs = $store ? (int) $store->meta('logs_last_run') : 0;
     json_out([
         'ts' => time(),
         'ncpu' => $r['ncpu'],
         'server_name' => $cfg['server_name'],
         'server' => $r['server'],
         'consumers' => array_map($describe, array_values($list)),
-        'collector' => ['last_sample' => $last ?: null, 'age' => $last ? time() - $last : null],
+        'collector' => ['last_sample' => $last ?: null, 'age' => $last ? time() - $last : null,
+            'logs_age' => $logs ? time() - $logs : null],
     ]);
 }
 
@@ -59,7 +61,44 @@ if ($action === 'history') {
     }
     $h = $store->history((string) ($_GET['range'] ?? '1h'), time());
     $h['consumers'] = array_map($describe, array_values(array_filter($h['consumers'], $visible)));
+    // Tráfego de cada site no mesmo período, com a mesma chave que os consumidores.
+    $spans = ['1h' => 3600, '6h' => 21600, '24h' => 86400, '7d' => 604800, '30d' => 2592000];
+    $h['traffic'] = [];
+    foreach (Traffic::summary($store, time() - ($spans[$h['range']] ?? 3600)) as $id => $t) {
+        if (isset($hidden[$id])) {
+            continue;
+        }
+        $key = $describe(['kind' => 'app', 'name' => $id]);
+        $h['traffic'][$key['id'] ?? $key['label']] = $t;
+    }
     json_out($h);
+}
+
+if ($action === 'site') {
+    if (!$store) {
+        json_out(['error' => 'sem dados']);
+    }
+    // O admin identifica o site pelo id interno; o cliente pelo nome (domínio).
+    $key = (string) ($_GET['app'] ?? '');
+    $id = null;
+    foreach ($apps as $aid => $a) {
+        $label = $cfg['labels'][$aid] ?? $a['label'];
+        if (!isset($hidden[$aid]) && $a['type'] !== 'monitor' && (($isAdmin && $aid === $key) || $label === $key)) {
+            $id = $aid;
+            break;
+        }
+    }
+    if ($id === null) {
+        http_response_code(404);
+        json_out(['error' => 'site desconhecido']);
+    }
+    $range = in_array($_GET['range'] ?? '', ['today', 'yesterday', '7d', '30d'], true) ? $_GET['range'] : 'today';
+    $data = Traffic::site($store, $id, $range, time(), $isAdmin);
+    $data['app'] = $describe(['kind' => 'app', 'name' => $id]);
+    $data['ncpu'] = (int) $store->meta('ncpu') ?: 1;
+    $logs = (int) $store->meta('logs_last_run');
+    $data['logs_age'] = $logs ? time() - $logs : null;
+    json_out($data);
 }
 
 http_response_code(400);

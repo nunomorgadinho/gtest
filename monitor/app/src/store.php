@@ -33,7 +33,7 @@ final class Store
             mkdir($dir, 02775, true);
         }
         $db = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $db->exec('PRAGMA journal_mode=DELETE; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000;');
+        $db->exec('PRAGMA journal_mode=DELETE; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=20000;');
         $s = new self($db);
         $s->migrate();
         @chmod($path, 0664);
@@ -75,6 +75,7 @@ final class Store
                 id TEXT PRIMARY KEY, label TEXT, url TEXT, php TEXT, type TEXT, updated INTEGER);
             CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
         ");
+        Traffic::migrate($this->db);
     }
 
     public function insertSample(int $ts, array $rates): void

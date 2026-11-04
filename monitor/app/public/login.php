@@ -46,6 +46,7 @@ $noUsers = !mon_users();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<script src="assets/theme.js?v=<?= MON_VERSION ?>"></script>
 <title>Entrar · Monitor de recursos</title>
 <link rel="stylesheet" href="assets/app.css?v=<?= MON_VERSION ?>">
 </head>

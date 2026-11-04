@@ -6,10 +6,12 @@ declare(strict_types=1);
  */
 
 const MON_ROOT = __DIR__ . '/..';
-const MON_VERSION = '0.1.0';
+const MON_VERSION = '0.2.0';
 
 require __DIR__ . '/procfs.php';
 require __DIR__ . '/store.php';
+require __DIR__ . '/logs.php';
+require __DIR__ . '/traffic.php';
 
 function mon_config(): array
 {
