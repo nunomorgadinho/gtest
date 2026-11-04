@@ -6,7 +6,7 @@ declare(strict_types=1);
  */
 
 const MON_ROOT = __DIR__ . '/..';
-const MON_VERSION = '0.2.1';
+const MON_VERSION = '0.2.2';
 
 require __DIR__ . '/procfs.php';
 require __DIR__ . '/store.php';

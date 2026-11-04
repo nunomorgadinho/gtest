@@ -47,6 +47,16 @@ function web_check_docroot(): void
     }
 }
 
+/**
+ * O pedido passou pelo Varnish? O Varnish acrescenta o cabeçalho X-Varnish aos
+ * pedidos que envia ao servidor de trás. Na Cloudways, o Varnish retira cookies
+ * que não conhece (como o da sessão deste painel), o que impede o login.
+ */
+function behind_varnish(): bool
+{
+    return !empty($_SERVER['HTTP_X_VARNISH']);
+}
+
 function h(?string $s): string
 {
     return htmlspecialchars((string) $s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');

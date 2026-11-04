@@ -84,11 +84,15 @@ add_cron collect.php "* * * * * /usr/bin/php $DEST/bin/collect.php >/dev/null 2>
 add_cron logs.php "*/5 * * * * nice -n 10 /usr/bin/php $DEST/bin/logs.php >/dev/null 2>&1" "Leitura dos logs (a cada 5 minutos)"
 
 echo
+START=$(date -u +%Y-%m-%dT%H:%M:%S)
 echo "A testar o coletor…"
 /usr/bin/php "$DEST/bin/collect.php" --once --discover && echo "Coletor OK."
 echo "A ler os logs pela primeira vez…"
 nice -n 10 /usr/bin/php "$DEST/bin/logs.php" --verbose | tail -3
-[ -s "$DEST/data/collect.log" ] && tail -5 "$DEST/data/collect.log"
+# Só os erros desta instalação (o collect.log pode ter registos antigos).
+if [ -s "$DEST/data/collect.log" ]; then
+  awk -v s="$START" 'substr($1, 1, 19) >= s' "$DEST/data/collect.log" | tail -5
+fi
 
 echo
 echo "Sites encontrados:"
@@ -99,10 +103,11 @@ echo "Sites encontrados:"
 
 cat <<EOF
 
-Falta:
-  1. No painel da Cloudways, em Application Settings > General > Webroot,
-     define:  public_html/public
-  2. Cria o primeiro utilizador:
+Falta (no painel da Cloudways, nesta aplicação):
+  1. Application Settings > General > Webroot:  public_html/public
+  2. Application Settings > Varnish: desativado. O Varnish retira o cookie de
+     sessão deste painel e impede o login.
+  3. Cria o primeiro utilizador:
        php $DEST/bin/user.php add o-teu-email@widgilabs.com admin "Nome"
        php $DEST/bin/user.php add email-do-cliente@exemplo.pt cliente "Nome"
 EOF

@@ -19,7 +19,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $keys = ['u:' . $email, 'ip:' . $ip];
 
     if (!csrf_check()) {
-        $error = 'A sessão expirou. Tenta novamente.';
+        if (!isset($_COOKIE[session_name()]) && behind_varnish()) {
+            // O browser enviou o cookie, mas o Varnish retirou-o pelo caminho.
+            $error = 'O Varnish está ativo nesta aplicação e está a retirar o cookie de sessão. '
+                . 'Na Cloudways, em Application Settings, desativa o Varnish para esta aplicação '
+                . '(ou acrescenta o cookie "' . session_name() . '" às exclusões do Varnish) e tenta de novo.';
+        } elseif (!isset($_COOKIE[session_name()])) {
+            $error = 'O browser não enviou o cookie de sessão. Confirma que os cookies estão permitidos para este endereço e tenta de novo.';
+        } else {
+            $error = 'A sessão expirou. Tenta novamente.';
+        }
     } elseif (throttle_blocked(...$keys)) {
         $error = 'Demasiadas tentativas. Aguarda 15 minutos.';
     } else {

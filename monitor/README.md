@@ -56,6 +56,11 @@ No topo de cada página há dois botões, lembrados em cada browser:
 4. Em *Application Settings > General > Webroot*, define `public_html/public`.
    Enquanto isto não estiver feito, o dashboard recusa abrir (para não expor
    `config/` e `data/`).
+   Na mesma página, **desativa o Varnish** para esta aplicação. O Varnish da
+   Cloudways retira cookies que não conhece, incluindo o da sessão do painel
+   (`wlmon`), e o login falha. Em alternativa, acrescenta `wlmon` às exclusões de
+   cookies do Varnish. O painel nunca é guardado em cache, por isso o Varnish não
+   traz vantagens aqui.
 5. Cria os utilizadores:
    ```bash
    php /home/master/applications/<app>/public_html/bin/user.php add nuno@widgilabs.com admin "Nuno"
