@@ -24,6 +24,14 @@ crontab do master ──► bin/collect.php ──┐
   Varnish (pedidos que chegaram ao servidor de trás face aos recebidos), a CPU
   gasta por URL, os robôs, os tipos de pedido WordPress, os erros PHP e o plugin
   ou tema responsável pelos pedidos lentos.
+- **Análise do WordPress** (`bin/wpscan.php`): verifica de hora a hora e analisa
+  cada WordPress uma vez por dia, sem o carregar: tamanho e tabelas da base de
+  dados, opções com autoload, transients, revisões e outro lixo acumulado,
+  eventos do WP-Cron e do Action Scheduler, plugins (ativos e inativos), drop-ins
+  de cache e constantes do `wp-config.php`. Uma vez por semana percorre os
+  uploads e separa originais, miniaturas, cópias WebP/AVIF, vídeo e documentos.
+  Só faz consultas de leitura, com limite de 30 s cada, e corre com prioridade
+  mínima de CPU e disco (`nice`, `ionice`).
 - **Dados**: SQLite fora da pasta pública. Amostras de 10 s durante 48 h e
   agregados de 5 minutos durante 90 dias.
 - **Dashboard** (`public/`): PHP sem dependências. Lê o SQLite e também `/proc`
@@ -77,6 +85,16 @@ pergunta se pode acrescentar a linha da leitura dos logs ao crontab:
 
 Para ver o que a leitura dos logs está a fazer: `php bin/logs.php --verbose`.
 
+A fase 3 acrescenta uma terceira linha ao crontab (o instalador pergunta):
+
+```
+17 * * * * nice -n 15 ionice -c3 /usr/bin/php <public_html>/bin/wpscan.php >/dev/null 2>&1
+```
+
+Para forçar uma análise: `php bin/wpscan.php --verbose --force` (acrescenta
+`--uploads` para analisar também os uploads, que pode demorar alguns minutos em
+sites com muitas imagens).
+
 ## Configuração
 
 `config/config.php` (criado pelo instalador):
@@ -126,5 +144,6 @@ para validar o servidor antes da construção.
 2. **Feito:** logs (taxa de cache, URLs mais caros, robôs, tipos de pedido, erros
    PHP e pedidos lentos), página de detalhe por site, vistas básica/avançada e
    tema claro/escuro.
-3. Base de dados e WordPress: autoload, cron, tabelas, plugins.
+3. **Feito:** base de dados e WordPress (autoload, transients, revisões, cron,
+   Action Scheduler, tabelas, plugins, configuração e composição dos uploads).
 4. Motor de recomendações.

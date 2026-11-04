@@ -82,6 +82,7 @@ add_cron() {
 }
 add_cron collect.php "* * * * * /usr/bin/php $DEST/bin/collect.php >/dev/null 2>&1" "Recolha de métricas (a cada minuto)"
 add_cron logs.php "*/5 * * * * nice -n 10 /usr/bin/php $DEST/bin/logs.php >/dev/null 2>&1" "Leitura dos logs (a cada 5 minutos)"
+add_cron wpscan.php "17 * * * * nice -n 15 ionice -c3 /usr/bin/php $DEST/bin/wpscan.php >/dev/null 2>&1" "Análise do WordPress (verifica de hora a hora; base de dados 1x/dia, uploads 1x/semana)"
 
 echo
 START=$(date -u +%Y-%m-%dT%H:%M:%S)
@@ -89,6 +90,9 @@ echo "A testar o coletor…"
 /usr/bin/php "$DEST/bin/collect.php" --once --discover && echo "Coletor OK."
 echo "A ler os logs pela primeira vez…"
 nice -n 10 /usr/bin/php "$DEST/bin/logs.php" --verbose | tail -3
+echo "A analisar a base de dados e os ficheiros de cada WordPress…"
+nice -n 15 ionice -c3 /usr/bin/php "$DEST/bin/wpscan.php" --verbose --no-uploads || true
+echo "(a composição dos uploads é analisada na próxima hora, em segundo plano)"
 # Só os erros desta instalação (o collect.log pode ter registos antigos).
 if [ -s "$DEST/data/collect.log" ]; then
   awk -v s="$START" 'substr($1, 1, 19) >= s' "$DEST/data/collect.log" | tail -5

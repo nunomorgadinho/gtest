@@ -18,7 +18,6 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require __DIR__ . '/../src/bootstrap.php';
-require __DIR__ . '/../src/apps.php';
 
 umask(0002);
 $cfg = mon_config();

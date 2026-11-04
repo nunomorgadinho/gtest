@@ -138,6 +138,170 @@
     if (!document.hidden) state.timer = setTimeout(load, 60000);
   }
 
+
+  /* ---------------- Base de dados e WordPress ---------------- */
+  const UPLOAD_CATS = {
+    images: 'Imagens originais', thumbs: 'Miniaturas geradas pelo WordPress', converted: 'Cópias WebP/AVIF',
+    media: 'Vídeo e áudio', docs: 'Documentos (PDF, Office, ZIP)', other: 'Outros',
+  };
+  const STATE = { ok: 'OK', warn: 'Atenção', crit: 'Crítico', off: '–' };
+
+  function every(sec) {
+    if (!sec) return '–';
+    if (sec < 60) return `${sec} s`;
+    if (sec < 3600) return `${nf0.format(sec / 60)} min`;
+    if (sec < 86400) return `${nf0.format(sec / 3600)} h`;
+    return `${nf0.format(sec / 86400)} dias`;
+  }
+
+  function wtile(id, big, sub) {
+    $('#' + id + ' .big').textContent = big;
+    $('#' + id + ' .sub').textContent = sub;
+  }
+
+  const row = (...cells) => el('tr', {}, ...cells);
+  const td = (v, cls) => el('td', cls ? { class: cls } : {}, v);
+  const fill = (id, rows, cols, text) => $('#' + id).replaceChildren(...(rows.length ? rows : [empty(cols, text)]));
+
+  function renderWp(d) {
+    const wp = d.wp;
+    const up = d.uploads;
+    const banner = $('#wp-banner');
+    if (!wp) {
+      banner.hidden = false;
+      banner.textContent = 'Ainda não há análise do WordPress deste site. Corre de hora a hora (a base de dados é analisada uma vez por dia).';
+      $('#wp-age').textContent = '';
+      return;
+    }
+    const db = wp.db || {};
+    const fs = wp.fs || {};
+    banner.hidden = !db.error;
+    banner.textContent = db.error ? 'A base de dados não pôde ser analisada: ' + db.error : '';
+    $('#wp-age').textContent = `Analisado ${ago(d.now - wp.ts)}` + (up ? ` · uploads ${ago(d.now - up.ts)}` : ' · uploads ainda não analisados');
+
+    // Indicadores
+    const tables = db.tables || [];
+    let dbSub = `${tables.length} tabelas`;
+    const tr = (d.trend || []).filter((t) => t.db != null);
+    if (tr.length > 1) {
+      const delta = tr[tr.length - 1].db - tr[Math.max(0, tr.length - 31)].db;
+      dbSub += ` · ${delta >= 0 ? '+' : '−'}${bytes(Math.abs(delta))} em ${Math.min(30, tr.length - 1)} dias`;
+    } else if (db.db_free > 10 * 1048576) {
+      dbSub += ` · ${bytes(db.db_free)} por recuperar`;
+    }
+    wtile('w-db', bytes(db.db_bytes), dbSub);
+    const al = db.autoload || {};
+    wtile('w-autoload', bytes(al.bytes), `carregadas em cada pedido · ${int(al.count)} opções`);
+    setBadge($('#w-autoload .badge'), al.bytes > 2 * 1048576 ? 'crit' : al.bytes > 800 * 1024 ? 'warn' : null,
+      { warn: '▲ Grande', crit: '● Muito grande' });
+    const installed = fs.plugins || [];
+    const active = new Set(db.active_plugins || []);
+    const inactive = installed.filter((p) => !active.has(p.file));
+    wtile('w-plugins', int(active.size), `${int(installed.length)} instalados · ${int(inactive.length)} inativos`);
+    if (up) {
+      const th = up.cats?.thumbs?.bytes || 0;
+      wtile('w-uploads', bytes(up.bytes), `${int(up.files)} ficheiros · ${pct(up.bytes ? (100 * th) / up.bytes : 0)} miniaturas`);
+    } else {
+      wtile('w-uploads', '–', 'Análise semanal ainda não feita');
+    }
+    const cron = db.cron || {};
+    const as = db.action_scheduler;
+    wtile('w-cron', int(cron.events), `${int(cron.overdue)} em atraso` + (as && as.status?.failed ? ` · ${int(as.status.failed)} falhadas` : ''));
+    setBadge($('#w-cron .badge'), cron.overdue > 5 || (as && as.late > 100) ? 'warn' : null, { warn: '▲ Atrasos', crit: '● Atrasos' });
+    wtile('w-ver', fs.wp_version || '–', [d.app.php ? 'PHP ' + d.app.php : '', db.theme?.stylesheet ? 'tema ' + db.theme.stylesheet : ''].filter(Boolean).join(' · '));
+
+    // Configuração
+    const cfg = fs.config || {};
+    const posts = db.posts || {};
+    const isStaging = /^staging\./i.test(d.app.label);
+    const conf = [];
+    const add = (label, state, level, note) => conf.push(row(td(label), td(el('span', { class: 'state state-' + level }, state)), td(note || '', 'note')));
+    add('Cache de objetos', fs.object_cache ? 'Ativa' : 'Não', fs.object_cache ? 'ok' : 'warn',
+      fs.object_cache || 'Sem Redis: cada pedido repete as mesmas consultas à base de dados');
+    add('Cache de páginas no WordPress', fs.page_cache ? 'Ativa' : 'Não', fs.page_cache ? 'ok' : 'off',
+      fs.page_cache || 'O Varnish do servidor pode fazer este papel');
+    add('Modo de depuração (WP_DEBUG)', cfg.WP_DEBUG === true ? 'Ligado' : 'Desligado', cfg.WP_DEBUG === true ? 'warn' : 'ok',
+      cfg.WP_DEBUG === true ? 'Em produção deve estar desligado' : '');
+    if (fs.debug_log != null) {
+      add('Ficheiro debug.log', bytes(fs.debug_log), fs.debug_log > 50 * 1048576 ? 'warn' : 'off', 'wp-content/debug.log');
+    }
+    add('WP-Cron', cfg.DISABLE_WP_CRON === true ? 'Cron do sistema' : 'Nas visitas', cfg.DISABLE_WP_CRON === true ? 'ok' : 'warn',
+      cfg.DISABLE_WP_CRON === true ? '' : 'As tarefas correm durante as visitas; é mais leve com um cron do sistema');
+    const rev = cfg.WP_POST_REVISIONS;
+    add('Revisões guardadas', rev === undefined || rev === true || rev === -1 ? 'Ilimitadas' : rev === false || rev === 0 ? 'Desativadas' : `Até ${rev}`,
+      rev === undefined || rev === true || rev === -1 ? 'warn' : 'ok', posts.revisions ? `${int(posts.revisions)} revisões na base de dados` : '');
+    add('Tabelas MyISAM', db.myisam ? int(db.myisam) : 'Nenhuma', db.myisam ? 'warn' : 'ok', db.myisam ? 'Converter para InnoDB' : '');
+    if (db.blog_public != null) {
+      add('Visível nos motores de busca', db.blog_public ? 'Sim' : 'Não', isStaging && db.blog_public ? 'warn' : 'off',
+        isStaging && db.blog_public ? 'Site de staging aberto aos robôs de pesquisa' : '');
+    }
+    if (cfg.WP_MEMORY_LIMIT) add('Memória do WordPress (WP_MEMORY_LIMIT)', String(cfg.WP_MEMORY_LIMIT), 'off', '');
+    $('#tb-config').replaceChildren(...conf);
+
+    // Limpeza
+    const cm = db.comments || {};
+    const tt = db.transients || {};
+    const cl = [];
+    const addC = (label, v) => { if (v) cl.push(row(td(label), td(v, 'num'))); };
+    addC('Revisões de artigos e páginas', posts.revisions ? int(posts.revisions) + (posts.revision_meta ? ` (+${int(posts.revision_meta)} metadados)` : '') : 0);
+    addC('Rascunhos automáticos', posts.auto_drafts ? int(posts.auto_drafts) : 0);
+    addC('Conteúdos no lixo', posts.trash ? int(posts.trash) : 0);
+    addC('Metadados órfãos (de conteúdos apagados)', posts.orphan_meta ? int(posts.orphan_meta) : 0);
+    addC('Comentários marcados como spam', cm.spam ? int(cm.spam) : 0);
+    addC('Comentários no lixo', cm.trash ? int(cm.trash) : 0);
+    addC('Transients expirados', tt.expired ? `${int(tt.expired)} de ${int(tt.count)}` : 0);
+    if (as) {
+      const old = (as.status?.complete || 0) + (as.status?.failed || 0) + (as.status?.canceled || 0);
+      addC('Ações antigas do Action Scheduler', old ? int(old) : 0);
+    }
+    addC('Espaço livre dentro das tabelas', db.db_free > 10 * 1048576 ? bytes(db.db_free) : 0);
+    fill('tb-cleanup', cl, 2, 'Nada relevante para limpar.');
+
+    // Tabelas
+    $('#tables-note').textContent = `${tables.length} tabelas · ${bytes(db.db_bytes)} no total`;
+    fill('tb-tables', tables.slice(0, 12).map((t) => row(td(t.name, 'mono'), td(t.engine || '–'), td(int(t.rows), 'num'), td(bytes(t.bytes), 'num'))), 4);
+    fill('tb-autoload', (db.autoload_top || []).filter((o) => o.bytes > 1024).map((o) => row(td(o.name, 'mono'), td(bytes(o.bytes), 'num'))), 2, 'Nenhuma opção acima de 1 KB.');
+
+    // Cron
+    fill('tb-cron', (cron.hooks || []).map((h) => row(td(h.hook, 'mono'), td(int(h.n), 'num'), td(every(h.interval), 'num'),
+      td(h.overdue ? int(h.overdue) : '–', 'num'))), 4, 'Sem eventos agendados.');
+    const asRows = [];
+    if (as) {
+      for (const [k, label] of [['pending', 'Pendentes'], ['failed', 'Falhadas'], ['complete', 'Concluídas'], ['canceled', 'Canceladas']]) {
+        if (as.status?.[k]) asRows.push(row(td(label), td(int(as.status[k]), 'num')));
+      }
+      if (as.late) asRows.push(row(td('Pendentes em atraso (mais de 10 min)'), td(int(as.late), 'num')));
+      for (const h of as.hooks || []) asRows.push(row(td(h.hook, 'mono'), td(int(h.n), 'num')));
+    }
+    fill('tb-as', asRows, 2, 'Este site não usa o Action Scheduler.');
+
+    // Plugins: ativos primeiro
+    $('#plugins-note').textContent = `${int(active.size)} ativos, ${int(inactive.length)} inativos` + (fs.mu_plugins?.length ? ` · ${fs.mu_plugins.length} mu-plugins` : '');
+    const plugins = [...installed].sort((a, b) => active.has(b.file) - active.has(a.file) || a.name.localeCompare(b.name));
+    fill('tb-plugins', plugins.map((p) => row(td(p.name), td(p.version || '–'),
+      td(el('span', { class: 'state state-' + (active.has(p.file) ? 'ok' : 'off') }, active.has(p.file) ? 'Ativo' : 'Inativo')))), 3);
+
+    // Uploads
+    if (up) {
+      $('#uploads-note').textContent = `${int(up.files)} ficheiros · ${bytes(up.bytes)}` + (up.big_count ? ` · ${int(up.big_count)} acima de 5 MB` : '');
+      const cats = Object.entries(up.cats || {}).sort((a, b) => b[1].bytes - a[1].bytes);
+      fill('tb-uploads', cats.map(([k, c]) => row(td(UPLOAD_CATS[k] || k), td(int(c.files), 'num'), td(bytes(c.bytes), 'num'),
+        td(pct(up.bytes ? (100 * c.bytes) / up.bytes : 0), 'num'))), 4);
+      fill('tb-years', Object.entries(up.years || {}).reverse().map(([y, b]) => row(td(y), td(bytes(b), 'num'))), 2);
+      fill('tb-big', (up.big || []).slice(0, 8).map((f) => row(td(f.path, 'mono'), td(bytes(f.bytes), 'num'))), 2, 'Nenhum ficheiro acima de 5 MB.');
+    } else {
+      $('#uploads-note').textContent = 'A composição dos uploads é analisada uma vez por semana.';
+      for (const id of ['tb-uploads', 'tb-years', 'tb-big']) fill(id, [], 4, 'Ainda não analisado.');
+    }
+  }
+
+  async function loadWp() {
+    try {
+      const d = await getJSON(`api.php?a=wp&app=${encodeURIComponent(app)}`);
+      if (!d.error) renderWp(d);
+    } catch (e) { /* a secção fica com os valores anteriores */ }
+  }
+
   document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
   for (const b of document.querySelectorAll('.range button')) {
     b.addEventListener('click', () => {
@@ -147,4 +311,6 @@
     });
   }
   load();
+  loadWp();
+  setInterval(() => { if (!document.hidden) loadWp(); }, 600000);
 })();

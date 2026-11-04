@@ -76,6 +76,7 @@ final class Store
             CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
         ");
         Traffic::migrate($this->db);
+        WpScan::migrate($this->db);
     }
 
     /**

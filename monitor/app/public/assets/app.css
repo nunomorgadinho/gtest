@@ -253,3 +253,18 @@ body:not([data-role="admin"]) .admin-only { display: none; }
 /* Na vista básica, grelhas que perdem uma coluna passam a ocupar a largura toda. */
 :root[data-view="basic"] .charts:has(> .adv),
 :root[data-view="basic"] .cols:has(> .adv) { grid-template-columns: 1fr; }
+
+/* ---------- Fase 3: WordPress ---------- */
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap;
+  margin: 36px 0 14px; padding-top: 20px; border-top: 2px solid var(--border); }
+.section-head h2 { font-size: 22px; }
+.cols-inner { gap: 0 24px; }
+.state { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.state-ok { background: var(--wl-green-light-40); color: var(--wl-teal); }
+.state-warn { background: var(--warn-bg); color: var(--warn); }
+.state-crit { background: var(--crit-bg); color: var(--crit); }
+.state-off { background: var(--bg); color: var(--muted); }
+.data td.note { color: var(--muted); font-size: 13px; }
+.data td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .state-ok { background: #0f5a4f; color: var(--wl-green-light); } }
+:root[data-theme="dark"] .state-ok { background: #0f5a4f; color: var(--wl-green-light); }

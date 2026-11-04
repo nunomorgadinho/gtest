@@ -85,24 +85,24 @@ if ($action === 'history') {
     json_out($h);
 }
 
+/** Resolve o site pedido: o admin usa o id interno, o cliente o nome (domínio). */
+$findSite = static function () use ($store, $apps, $cfg, $hidden, $isAdmin): string {
+    $key = (string) ($_GET['app'] ?? '');
+    foreach ($apps as $aid => $a) {
+        $label = $cfg['labels'][$aid] ?? $a['label'];
+        if (!isset($hidden[$aid]) && $a['type'] !== 'monitor' && (($isAdmin && $aid === $key) || $label === $key)) {
+            return $aid;
+        }
+    }
+    http_response_code(404);
+    json_out(['error' => 'site desconhecido']);
+};
+
 if ($action === 'site') {
     if (!$store) {
         json_out(['error' => 'sem dados']);
     }
-    // O admin identifica o site pelo id interno; o cliente pelo nome (domínio).
-    $key = (string) ($_GET['app'] ?? '');
-    $id = null;
-    foreach ($apps as $aid => $a) {
-        $label = $cfg['labels'][$aid] ?? $a['label'];
-        if (!isset($hidden[$aid]) && $a['type'] !== 'monitor' && (($isAdmin && $aid === $key) || $label === $key)) {
-            $id = $aid;
-            break;
-        }
-    }
-    if ($id === null) {
-        http_response_code(404);
-        json_out(['error' => 'site desconhecido']);
-    }
+    $id = $findSite();
     $range = in_array($_GET['range'] ?? '', ['today', 'yesterday', '7d', '30d'], true) ? $_GET['range'] : 'today';
     $data = Traffic::site($store, $id, $range, time(), $isAdmin);
     $data['app'] = $describe(['kind' => 'app', 'name' => $id]);
@@ -110,6 +110,26 @@ if ($action === 'site') {
     $logs = (int) $store->meta('logs_last_run');
     $data['logs_age'] = $logs ? time() - $logs : null;
     json_out($data);
+}
+
+if ($action === 'wp') {
+    if (!$store) {
+        json_out(['error' => 'sem dados']);
+    }
+    $id = $findSite();
+    $wp = WpScan::latest($store, $id, 'wp');
+    $up = WpScan::latest($store, $id, 'uploads');
+    if (!$isAdmin) {
+        // O cliente vê tamanhos e contagens; nomes de opções e caminhos de ficheiros ficam para a equipa.
+        unset($wp['db']['autoload_top'], $up['big'], $wp['db']['errors']);
+    }
+    json_out([
+        'now' => time(),
+        'app' => $describe(['kind' => 'app', 'name' => $id]),
+        'wp' => $wp,
+        'uploads' => $up,
+        'trend' => WpScan::trend($store, $id),
+    ]);
 }
 
 http_response_code(400);

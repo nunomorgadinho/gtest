@@ -144,6 +144,81 @@ $cfg = mon_config();
       </table>
     </div>
   </section>
+  <div class="section-head" id="wp">
+    <h2>Base de dados e WordPress</h2>
+    <p class="panel-note" id="wp-age">–</p>
+  </div>
+  <div class="banner" id="wp-banner" hidden role="status"></div>
+
+  <section class="tiles" aria-label="Resumo do WordPress">
+    <article class="tile" id="w-db"><h3>Base de dados</h3><p class="big">–</p><p class="sub">–</p></article>
+    <article class="tile" id="w-autoload"><h3>Opções em autoload</h3><p class="big">–</p><p class="sub">–</p><span class="badge" hidden></span></article>
+    <article class="tile" id="w-plugins"><h3>Plugins ativos</h3><p class="big">–</p><p class="sub">–</p></article>
+    <article class="tile" id="w-uploads"><h3>Uploads</h3><p class="big">–</p><p class="sub">–</p></article>
+    <article class="tile" id="w-cron"><h3>Tarefas agendadas</h3><p class="big">–</p><p class="sub">–</p><span class="badge" hidden></span></article>
+    <article class="tile" id="w-ver"><h3>WordPress</h3><p class="big">–</p><p class="sub">–</p></article>
+  </section>
+
+  <div class="cols">
+    <section class="panel">
+      <div class="panel-head"><h2>Configuração</h2><p class="panel-note">Definições que pesam no desempenho.</p></div>
+      <div class="table-wrap"><table class="data"><tbody id="tb-config"></tbody></table></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Limpeza possível</h2><p class="panel-note">Dados acumulados que podem ser apagados.</p></div>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">O quê</th><th scope="col" class="num">Quantidade</th></tr></thead>
+        <tbody id="tb-cleanup"></tbody></table></div>
+    </section>
+  </div>
+
+  <div class="cols adv">
+    <section class="panel">
+      <div class="panel-head"><h2>Maiores tabelas</h2><p class="panel-note" id="tables-note"></p></div>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">Tabela</th><th scope="col">Motor</th><th scope="col" class="num">Linhas (aprox.)</th><th scope="col" class="num">Tamanho</th></tr></thead>
+        <tbody id="tb-tables"></tbody></table></div>
+    </section>
+    <section class="panel admin-only">
+      <div class="panel-head"><h2>Maiores opções com autoload</h2><p class="panel-note">Lidas da base de dados em todos os pedidos.</p></div>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">Opção</th><th scope="col" class="num">Tamanho</th></tr></thead>
+        <tbody id="tb-autoload"></tbody></table></div>
+    </section>
+  </div>
+
+  <section class="panel adv">
+    <div class="panel-head"><h2>Tarefas agendadas</h2><p class="panel-note">WP-Cron e Action Scheduler. Tarefas em atraso indicam que o cron não está a acompanhar.</p></div>
+    <div class="cols cols-inner">
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">WP-Cron: hook</th><th scope="col" class="num">Eventos</th><th scope="col" class="num">Repete a cada</th><th scope="col" class="num">Em atraso</th></tr></thead>
+        <tbody id="tb-cron"></tbody></table></div>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">Action Scheduler</th><th scope="col" class="num">Ações</th></tr></thead>
+        <tbody id="tb-as"></tbody></table></div>
+    </div>
+  </section>
+
+  <div class="cols adv">
+    <section class="panel">
+      <div class="panel-head"><h2>Plugins</h2><p class="panel-note" id="plugins-note"></p></div>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">Plugin</th><th scope="col">Versão</th><th scope="col">Estado</th></tr></thead>
+        <tbody id="tb-plugins"></tbody></table></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Composição dos uploads</h2><p class="panel-note" id="uploads-note"></p></div>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">Tipo</th><th scope="col" class="num">Ficheiros</th><th scope="col" class="num">Tamanho</th><th scope="col" class="num">%</th></tr></thead>
+        <tbody id="tb-uploads"></tbody></table></div>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">Ano</th><th scope="col" class="num">Tamanho</th></tr></thead>
+        <tbody id="tb-years"></tbody></table></div>
+      <div class="table-wrap admin-only"><table class="data">
+        <thead><tr><th scope="col">Maiores ficheiros</th><th scope="col" class="num">Tamanho</th></tr></thead>
+        <tbody id="tb-big"></tbody></table></div>
+    </section>
+  </div>
 </main>
 
 <footer class="foot wrap">
