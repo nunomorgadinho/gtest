@@ -83,8 +83,8 @@ try {
                 continue;
             }
             $lines = 0;
-            $store->db->beginTransaction();
-            $bytes = LogReader::read($store, $file, function (string $text) use ($handle, &$lines) {
+            // Análise sem locks; depois uma transação curta grava totais e posição juntos.
+            $state = LogReader::read($store, $file, function (string $text) use ($handle, &$lines) {
                 foreach (explode("\n", rtrim($text, "\n")) as $l) {
                     if ($l !== '') {
                         $handle($l);
@@ -93,10 +93,15 @@ try {
                 }
                 return strlen($text);
             });
-            $agg->flush();
-            $store->db->commit();
+            if ($state === null) {
+                continue;
+            }
+            $store->tx(function () use ($agg, $store, $state) {
+                $agg->flush();
+                LogReader::save($store, $state);
+            });
             if ($verbose) {
-                printf("%-12s %-8s %8d linhas %10d bytes\n", $app, $kind, $lines, $bytes);
+                printf("%-12s %-8s %8d linhas %10d bytes\n", $app, $kind, $lines, $state['bytes']);
             }
         }
 
@@ -104,8 +109,7 @@ try {
         $slowFile = $first('php-app.slow.log');
         if ($slowFile) {
             $n = 0;
-            $store->db->beginTransaction();
-            LogReader::read($store, $slowFile, function (string $text) use ($agg, $app, &$n) {
+            $state = LogReader::read($store, $slowFile, function (string $text) use ($agg, $app, &$n) {
                 $end = strrpos($text, "\n\n");
                 if ($end === false) {
                     return 0;
@@ -118,8 +122,12 @@ try {
                 }
                 return $end + 2;
             });
-            $agg->flush();
-            $store->db->commit();
+            if ($state !== null) {
+                $store->tx(function () use ($agg, $store, $state) {
+                    $agg->flush();
+                    LogReader::save($store, $state);
+                });
+            }
             if ($verbose) {
                 printf("%-12s %-8s %8d blocos\n", $app, 'slow', $n);
             }
@@ -133,9 +141,6 @@ try {
         printf("Concluído em %.2f s\n", microtime(true) - $t0);
     }
 } catch (Throwable $e) {
-    if (isset($store) && $store->db->inTransaction()) {
-        $store->db->rollBack();
-    }
     @file_put_contents("$dataDir/collect.log", date('c') . ' ERRO logs: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine() . "\n", FILE_APPEND);
     if ($verbose) {
         fwrite(STDERR, $e->getMessage() . "\n");

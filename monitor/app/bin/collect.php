@@ -69,8 +69,13 @@ try {
         }
         $cur = Procfs::snapshot();
         $ts = isset($opts['once']) ? time() : $next;
-        $store->insertSample($ts, Procfs::rates($prev, $cur));
-        $store->setMeta('last_sample', (string) $ts);
+        try {
+            $store->insertSample($ts, Procfs::rates($prev, $cur));
+            $store->setMeta('last_sample', (string) $ts);
+        } catch (PDOException $e) {
+            // Base de dados ocupada além do busy_timeout: perde-se só esta amostra.
+            $log('AVISO amostra perdida: ' . $e->getMessage());
+        }
         $prev = $cur;
     }
 

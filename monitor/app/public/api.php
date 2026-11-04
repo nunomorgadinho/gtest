@@ -7,6 +7,17 @@ web_init();
 $user = require_user(true);
 session_write_close(); // não bloquear outros pedidos da mesma sessão
 
+// Qualquer falha (por exemplo a base de dados momentaneamente ocupada) devolve um
+// erro curto em JSON; o dashboard volta a tentar no ciclo seguinte.
+set_exception_handler(static function (Throwable $e): void {
+    $busy = str_contains($e->getMessage(), 'database is locked') || str_contains($e->getMessage(), 'busy');
+    http_response_code(503);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Retry-After: 5');
+    echo json_encode(['error' => $busy ? 'ocupado' : 'erro interno']);
+    error_log('wlmon api: ' . $e->getMessage());
+});
+
 $cfg = mon_config();
 $store = Store::openRead();
 $apps = $store ? $store->apps() : [];

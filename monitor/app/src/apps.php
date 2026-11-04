@@ -89,12 +89,12 @@ final class Apps
 
     public static function save(Store $s, array $apps): void
     {
-        $s->db->beginTransaction();
-        $s->db->exec('DELETE FROM apps');
-        $st = $s->db->prepare('INSERT INTO apps (id,label,url,php,type,updated) VALUES (?,?,?,?,?,?)');
-        foreach ($apps as $a) {
-            $st->execute([$a['id'], $a['label'], $a['url'], $a['php'], $a['type'], $a['updated']]);
-        }
-        $s->db->commit();
+        $s->tx(function () use ($s, $apps) {
+            $s->db->exec('DELETE FROM apps');
+            $st = $s->db->prepare('INSERT INTO apps (id,label,url,php,type,updated) VALUES (?,?,?,?,?,?)');
+            foreach ($apps as $a) {
+                $st->execute([$a['id'], $a['label'], $a['url'], $a['php'], $a['type'], $a['updated']]);
+            }
+        });
     }
 }

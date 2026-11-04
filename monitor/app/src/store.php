@@ -33,7 +33,7 @@ final class Store
             mkdir($dir, 02775, true);
         }
         $db = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $db->exec('PRAGMA journal_mode=DELETE; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=20000;');
+        $db->exec('PRAGMA journal_mode=DELETE; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=30000;');
         $s = new self($db);
         $s->migrate();
         @chmod($path, 0664);
@@ -52,7 +52,7 @@ final class Store
         }
         try {
             $db = new PDO('sqlite:' . $path, null, null, $opts);
-            $db->exec('PRAGMA busy_timeout=3000;');
+            $db->exec('PRAGMA busy_timeout=5000;');
             return new self($db);
         } catch (Throwable) {
             return null;
@@ -78,18 +78,41 @@ final class Store
         Traffic::migrate($this->db);
     }
 
+    /**
+     * Executa $fn numa transação de escrita curta.
+     * BEGIN IMMEDIATE reserva a escrita logo no início: dois processos nunca ficam
+     * presos um à espera do outro (o "database is locked" imediato do SQLite).
+     * Quem chega depois espera pelo busy_timeout. Nunca fazer trabalho demorado dentro de $fn.
+     */
+    public function tx(callable $fn): mixed
+    {
+        $this->db->exec('BEGIN IMMEDIATE');
+        try {
+            $r = $fn();
+            $this->db->exec('COMMIT');
+            return $r;
+        } catch (Throwable $e) {
+            try {
+                $this->db->exec('ROLLBACK');
+            } catch (Throwable) {
+                // a transação pode já ter sido anulada pelo SQLite
+            }
+            throw $e;
+        }
+    }
+
     public function insertSample(int $ts, array $rates): void
     {
         $cols = self::SERVER_COLS;
         $ph = implode(',', array_fill(0, count($cols) + 1, '?'));
-        $this->db->beginTransaction();
-        $st = $this->db->prepare('INSERT OR REPLACE INTO server (ts,' . implode(',', $cols) . ") VALUES ($ph)");
-        $st->execute(array_merge([$ts], array_map(fn($c) => $rates['server'][$c], $cols)));
-        $st = $this->db->prepare('INSERT OR REPLACE INTO consumer (ts,kind,name,cpu,rss,procs) VALUES (?,?,?,?,?,?)');
-        foreach ($rates['consumers'] as $c) {
-            $st->execute([$ts, $c['kind'], $c['name'], $c['cpu'], $c['rss'], $c['procs']]);
-        }
-        $this->db->commit();
+        $this->tx(function () use ($ts, $rates, $cols, $ph) {
+            $st = $this->db->prepare('INSERT OR REPLACE INTO server (ts,' . implode(',', $cols) . ") VALUES ($ph)");
+            $st->execute(array_merge([$ts], array_map(fn($c) => $rates['server'][$c], $cols)));
+            $st = $this->db->prepare('INSERT OR REPLACE INTO consumer (ts,kind,name,cpu,rss,procs) VALUES (?,?,?,?,?,?)');
+            foreach ($rates['consumers'] as $c) {
+                $st->execute([$ts, $c['kind'], $c['name'], $c['cpu'], $c['rss'], $c['procs']]);
+            }
+        });
     }
 
     /** Agrega amostras de 10 s em blocos de 5 minutos e apaga o que passou da retenção. */
@@ -101,16 +124,16 @@ final class Store
         if ($until > $done) {
             $avg = implode(', ', array_map(fn($c) => "AVG($c)", self::SERVER_COLS));
             $cols = implode(',', self::SERVER_COLS);
-            $this->db->beginTransaction();
-            $this->db->prepare("INSERT OR REPLACE INTO server_5m (ts,$cols,cpu_max)
-                SELECT (ts/300)*300 AS b, $avg, MAX(cpu) FROM server WHERE ts >= ? AND ts < ? GROUP BY b")
-                ->execute([$done, $until]);
-            $this->db->prepare("INSERT OR REPLACE INTO consumer_5m (ts,kind,name,cpu,cpu_max,rss,procs)
-                SELECT (ts/300)*300 AS b, kind, name, AVG(cpu), MAX(cpu), AVG(rss), AVG(procs)
-                FROM consumer WHERE ts >= ? AND ts < ? GROUP BY b, kind, name")
-                ->execute([$done, $until]);
-            $this->setMeta('rollup_until', (string) $until);
-            $this->db->commit();
+            $this->tx(function () use ($avg, $cols, $done, $until) {
+                $this->db->prepare("INSERT OR REPLACE INTO server_5m (ts,$cols,cpu_max)
+                    SELECT (ts/300)*300 AS b, $avg, MAX(cpu) FROM server WHERE ts >= ? AND ts < ? GROUP BY b")
+                    ->execute([$done, $until]);
+                $this->db->prepare("INSERT OR REPLACE INTO consumer_5m (ts,kind,name,cpu,cpu_max,rss,procs)
+                    SELECT (ts/300)*300 AS b, kind, name, AVG(cpu), MAX(cpu), AVG(rss), AVG(procs)
+                    FROM consumer WHERE ts >= ? AND ts < ? GROUP BY b, kind, name")
+                    ->execute([$done, $until]);
+                $this->setMeta('rollup_until', (string) $until);
+            });
         }
         // Limpeza no máximo uma vez por hora.
         if ($now - (int) $this->meta('pruned_at') > 3600) {
@@ -129,6 +152,7 @@ final class Store
         $st = $this->db->prepare('SELECT v FROM meta WHERE k = ?');
         $st->execute([$k]);
         $v = $st->fetchColumn();
+        $st->closeCursor(); // liberta já o lock de leitura
         return $v === false ? null : (string) $v;
     }
 

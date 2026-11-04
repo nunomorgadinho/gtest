@@ -11,17 +11,22 @@ final class LogReader
      * Lida com a rotação (o ficheiro antigo passa a $file.1) e com truncagens.
      * $onText recebe texto com linhas completas e devolve quantos bytes consumiu
      * (permite ao slow log deixar um bloco incompleto para a próxima leitura).
+     *
+     * Não escreve na base de dados: devolve a nova posição, que o chamador grava com
+     * save() na mesma transação curta em que grava os totais (assim a análise, que pode
+     * demorar, nunca é feita com a base de dados bloqueada).
      */
-    public static function read(Store $s, string $file, callable $onText, int $maxBytes = 64 << 20): int
+    public static function read(Store $s, string $file, callable $onText, int $maxBytes = 64 << 20): ?array
     {
         clearstatcache(true, $file);
         $st = @stat($file);
         if ($st === false || !is_readable($file)) {
-            return 0;
+            return null;
         }
         $q = $s->db->prepare('SELECT inode, pos FROM logpos WHERE file = ?');
         $q->execute([$file]);
         $saved = $q->fetch(PDO::FETCH_ASSOC) ?: null;
+        $q->closeCursor();
         $pos = $saved ? (int) $saved['pos'] : 0;
 
         $segments = [];
@@ -85,9 +90,14 @@ final class LogReader
             }
         }
 
+        return ['file' => $file, 'inode' => (int) $st['ino'], 'pos' => $newPos, 'bytes' => $total];
+    }
+
+    /** Grava a posição devolvida por read(). Chamar dentro da transação que grava os totais. */
+    public static function save(Store $s, array $state): void
+    {
         $s->db->prepare('INSERT OR REPLACE INTO logpos (file, inode, pos, updated) VALUES (?,?,?,?)')
-            ->execute([$file, (int) $st['ino'], $newPos, time()]);
-        return $total;
+            ->execute([$state['file'], $state['inode'], $state['pos'], time()]);
     }
 }
 
