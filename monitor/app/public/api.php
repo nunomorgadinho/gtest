@@ -132,5 +132,26 @@ if ($action === 'wp') {
     ]);
 }
 
+if ($action === 'advice') {
+    if (!$store) {
+        json_out(['items' => []]);
+    }
+    $only = isset($_GET['app']) && $_GET['app'] !== '' ? $findSite() : null;
+    $items = [];
+    foreach (Advice::all($store, time(), $hidden) as $r) {
+        if ($only !== null && $r['app'] !== $only) {
+            continue;
+        }
+        if ($r['app'] !== null) {
+            $d = $describe(['kind' => 'app', 'name' => $r['app']]);
+            $r['site'] = ['label' => $d['label'], 'key' => $d['id'] ?? $d['label']];
+        }
+        unset($r['app']);
+        $items[] = $isAdmin ? $r : Advice::forClient($r);
+    }
+    $count = array_count_values(array_column($items, 'severity'));
+    json_out(['items' => $items, 'counts' => ['crit' => $count['crit'] ?? 0, 'warn' => $count['warn'] ?? 0, 'info' => $count['info'] ?? 0]]);
+}
+
 http_response_code(400);
 json_out(['error' => 'ação desconhecida']);

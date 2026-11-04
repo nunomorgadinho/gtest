@@ -2,7 +2,7 @@
 (() => {
   'use strict';
 
-  const { $, el, getJSON, chart, legend, setBadge, pct, int, bytes, secs, ago, nf0, fDay } = window.Mon;
+  const { $, el, getJSON, chart, legend, setBadge, renderRecs, pct, int, bytes, secs, ago, nf0, fDay } = window.Mon;
 
   const isAdmin = document.body.dataset.role === 'admin';
   const app = new URLSearchParams(location.search).get('app') || '';
@@ -310,7 +310,16 @@
       load();
     });
   }
+  async function loadRecs() {
+    try {
+      const d = await getJSON(`api.php?a=advice&app=${encodeURIComponent(app)}`);
+      renderRecs($('#recs'), $('#recs-summary'), $('#recs-more'), d, { limit: 6, empty: 'Sem recomendações para este site de momento.' });
+    } catch (e) { /* tenta outra vez mais tarde */ }
+  }
+  setInterval(() => { if (!document.hidden) loadRecs(); }, 300000);
+
   load();
   loadWp();
+  loadRecs();
   setInterval(() => { if (!document.hidden) loadWp(); }, 600000);
 })();

@@ -32,6 +32,11 @@ crontab do master ──► bin/collect.php ──┐
   uploads e separa originais, miniaturas, cópias WebP/AVIF, vídeo e documentos.
   Só faz consultas de leitura, com limite de 30 s cada, e corre com prioridade
   mínima de CPU e disco (`nice`, `ionice`).
+- **Recomendações** (`src/advice.php`): junta as métricas do servidor, o tráfego e
+  a análise do WordPress e gera uma lista de oportunidades de melhoria, ordenada
+  por gravidade e impacto. São calculadas no momento em que se abre o painel e
+  desaparecem sozinhas quando o problema é resolvido. Cada uma tem uma explicação
+  simples (para o cliente) e, para o admin, o detalhe técnico e os passos a seguir.
 - **Dados**: SQLite fora da pasta pública. Amostras de 10 s durante 48 h e
   agregados de 5 minutos durante 90 dias.
 - **Dashboard** (`public/`): PHP sem dependências. Lê o SQLite e também `/proc`
@@ -146,4 +151,27 @@ para validar o servidor antes da construção.
    tema claro/escuro.
 3. **Feito:** base de dados e WordPress (autoload, transients, revisões, cron,
    Action Scheduler, tabelas, plugins, configuração e composição dos uploads).
-4. Motor de recomendações.
+4. **Feito:** motor de recomendações (servidor: disco, CPU, memória e plano
+   sobredimensionado; tráfego: cache, robôs, admin-ajax, URLs e plugins lentos,
+   erros PHP, xmlrpc e tentativas de login; WordPress: autoload, revisões, lixo,
+   Action Scheduler, WP-Cron, Redis, depuração, plugins, MyISAM, versão de PHP,
+   staging aberto e uploads).
+
+## Recomendações: regras e limites
+
+| Área | Quando aparece |
+|---|---|
+| Disco | uso ≥ 80% (urgente a partir de 90%) |
+| Plano | CPU média < 15%, picos (p95) < 40% e memória < 60% durante ≥ 3 dias |
+| Cache | menos de 50% dos pedidos servidos pela cache (urgente < 20%), com ≥ 500 pedidos/dia |
+| Robôs | robôs de IA, de SEO ou sem identificação com ≥ 3% dos pedidos e ≥ 200/dia |
+| admin-ajax | ≥ 20% da CPU do site ou Googlebot com ≥ 300 pedidos/dia |
+| URL caro | um URL com ≥ 10% da CPU do site e média ≥ 1 s |
+| Slow log | um plugin ou tema com ≥ 5 pedidos de mais de 5 s por dia |
+| Erros PHP | ≥ 1000 mensagens/dia ou qualquer erro fatal |
+| Autoload | ≥ 800 KB (urgente a partir de 2 MB) |
+| Tarefas | ≥ 10 eventos WP-Cron em atraso, WP-Cron nas visitas, Action Scheduler com ≥ 100 em atraso |
+| PHP | versão anterior a 8.2 |
+
+As regras de tráfego só correm com pelo menos 6 horas de logs e são calculadas
+por dia sobre os últimos 7 dias.

@@ -204,5 +204,49 @@
     badge.textContent = lvl ? labels[lvl] : '';
   }
 
-  window.Mon = { $, css, el, getJSON, chart, legend, setBadge, pct, int, bytes, rate, secs, ago, nf0, nf1, nf2, fHMS, fDay };
+
+  /* ---------- Recomendações ---------- */
+  const SEV = { crit: '● Urgente', warn: '▲ Importante', info: '◆ Sugestão' };
+
+  /**
+   * Lista de recomendações. opts: { showSite, limit, empty }.
+   * O detalhe técnico e os passos só vêm na resposta da API para o admin;
+   * aparecem na vista avançada.
+   */
+  function renderRecs(list, summary, more, data, opts = {}) {
+    const items = data.items || [];
+    const c = data.counts || {};
+    const parts = [];
+    if (c.crit) parts.push(`${c.crit} ${c.crit === 1 ? 'urgente' : 'urgentes'}`);
+    if (c.warn) parts.push(`${c.warn} ${c.warn === 1 ? 'importante' : 'importantes'}`);
+    if (c.info) parts.push(`${c.info} ${c.info === 1 ? 'sugestão' : 'sugestões'}`);
+    summary.textContent = items.length ? `${items.length} oportunidades: ${parts.join(', ')}.` : '';
+    let expanded = list.dataset.expanded === '1';
+    const draw = () => {
+      const shown = expanded ? items : items.slice(0, opts.limit || 6);
+      list.replaceChildren(...(items.length ? shown.map((r) => el('li', { class: 'rec rec-' + r.severity },
+        el('div', { class: 'rec-head' },
+          el('span', { class: 'sev sev-' + r.severity }, SEV[r.severity] || r.severity),
+          opts.showSite ? (r.site ? el('a', { class: 'rec-site', href: 'site.php?app=' + encodeURIComponent(r.site.key) }, r.site.label)
+            : el('span', { class: 'rec-site' }, 'Servidor')) : null,
+          el('span', { class: 'rec-area' }, r.area)),
+        el('h3', { class: 'rec-title' }, r.title),
+        el('p', { class: 'rec-simple' }, r.simple),
+        el('div', { class: 'rec-meta' },
+          el('span', { class: 'chip' }, 'Impacto ' + r.impact),
+          el('span', { class: 'chip' }, 'Esforço ' + r.effort),
+          (r.evidence || []).map((e) => el('span', { class: 'chip chip-ev' }, e))),
+        r.tech || (r.actions && r.actions.length) ? el('details', { class: 'rec-more adv' },
+          el('summary', {}, 'Detalhe técnico e o que fazer'),
+          r.tech ? el('p', { class: 'rec-tech' }, r.tech) : null,
+          r.actions && r.actions.length ? el('ol', { class: 'rec-actions' }, r.actions.map((a) => el('li', {}, a))) : null) : null))
+        : [el('li', { class: 'rec rec-none' }, opts.empty || 'Sem recomendações de momento.')]));
+      more.hidden = items.length <= (opts.limit || 6);
+      more.textContent = expanded ? 'Mostrar menos' : `Ver todas (${items.length})`;
+    };
+    more.onclick = () => { expanded = !expanded; list.dataset.expanded = expanded ? '1' : '0'; draw(); };
+    draw();
+  }
+
+  window.Mon = { $, css, el, getJSON, chart, legend, setBadge, renderRecs, pct, int, bytes, rate, secs, ago, nf0, nf1, nf2, fHMS, fDay };
 })();

@@ -53,6 +53,15 @@ $cfg = mon_config();
   </div>
   <div class="banner" id="logs-banner" hidden role="status"></div>
 
+
+  <section class="panel recs-panel" aria-labelledby="recs-title">
+    <div class="panel-head">
+      <h2 id="recs-title">Oportunidades de melhoria deste site</h2>
+      <p class="panel-note" id="recs-summary">A analisar…</p>
+    </div>
+    <ol class="recs" id="recs"></ol>
+    <button type="button" class="btn-link" id="recs-more" hidden></button>
+  </section>
   <section class="tiles" aria-label="Resumo do período">
     <article class="tile" id="t-req"><h3>Pedidos recebidos</h3><p class="big">–</p><p class="sub">–</p></article>
     <article class="tile" id="t-cache"><h3>Servidos pela cache</h3><p class="big">–</p><p class="sub">–</p><span class="badge" hidden></span></article>

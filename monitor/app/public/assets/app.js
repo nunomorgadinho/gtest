@@ -2,7 +2,7 @@
 (() => {
   'use strict';
 
-  const { $, el, getJSON, chart, setBadge, pct, int, bytes, rate, ago, nf0, nf2, fHMS } = window.Mon;
+  const { $, el, getJSON, chart, setBadge, renderRecs, pct, int, bytes, rate, ago, nf0, nf2, fHMS } = window.Mon;
 
   const LIVE_MS = 3000;
   const SPANS = { '1h': 3600, '6h': 21600, '24h': 86400, '7d': 604800, '30d': 2592000 };
@@ -237,6 +237,15 @@
     });
   }
 
+  async function loadRecs() {
+    try {
+      const d = await getJSON('api.php?a=advice');
+      renderRecs($('#recs'), $('#recs-summary'), $('#recs-more'), d, { showSite: true, limit: isAdmin ? 8 : 5 });
+    } catch (e) { /* tenta outra vez mais tarde */ }
+  }
+  setInterval(() => { if (!document.hidden) loadRecs(); }, 300000);
+
   pollLive();
   loadHistory();
+  loadRecs();
 })();

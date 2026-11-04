@@ -50,6 +50,15 @@ $cfg = mon_config();
     <article class="tile adv" id="t-net"><h3>Rede</h3><p class="big">–</p><p class="sub">–</p></article>
   </section>
 
+
+  <section class="panel recs-panel" aria-labelledby="recs-title">
+    <div class="panel-head">
+      <h2 id="recs-title">Oportunidades de melhoria</h2>
+      <p class="panel-note" id="recs-summary">A analisar…</p>
+    </div>
+    <ol class="recs" id="recs"></ol>
+    <button type="button" class="btn-link" id="recs-more" hidden></button>
+  </section>
   <section class="panel">
     <div class="panel-head">
       <h2>Histórico do servidor</h2>
