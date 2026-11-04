@@ -107,40 +107,76 @@ function require_user(bool $json = false): array
 
 /* ---------- Limite de tentativas de login (ficheiros em tmp) ---------- */
 
+/**
+ * Limites para o PIN (6 dígitos = 1 milhão de combinações):
+ *  - por IP: 5 falhas em 15 minutos bloqueiam esse IP durante 15 minutos;
+ *  - global: 20 falhas numa hora, de qualquer origem, bloqueiam o login durante uma hora
+ *    (impede contornar o limite por IP trocando de endereço).
+ */
+const THROTTLE_RULES = ['ip' => [5, 900], 'all' => [20, 3600]];
+
+function client_ip(): string
+{
+    foreach (['HTTP_X_REAL_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $h) {
+        $v = trim(explode(',', (string) ($_SERVER[$h] ?? ''))[0]);
+        if (filter_var($v, FILTER_VALIDATE_IP)) {
+            return $v;
+        }
+    }
+    return 'desconhecido';
+}
+
+function throttle_keys(): array
+{
+    return ['ip' => 'ip:' . client_ip(), 'all' => 'all'];
+}
+
 function throttle_file(string $key): string
 {
     return sys_get_temp_dir() . '/wlmon-login-' . hash('sha256', $key);
 }
 
-function throttle_blocked(string ...$keys): bool
+/** Segundos até ao fim do bloqueio (0 = não bloqueado). */
+function throttle_wait(): int
 {
-    foreach ($keys as $k) {
+    $wait = 0;
+    foreach (throttle_keys() as $rule => $k) {
+        [$max, $window] = THROTTLE_RULES[$rule];
         $d = @json_decode((string) @file_get_contents(throttle_file($k)), true);
-        if (is_array($d) && $d['n'] >= 5 && time() - $d['t'] < 900) {
-            return true;
+        if (is_array($d) && $d['n'] >= $max && time() - $d['t'] < $window) {
+            $wait = max($wait, $window - (time() - $d['t']));
         }
     }
-    return false;
+    return $wait;
 }
 
-function throttle_fail(string ...$keys): void
+function throttle_fail(): void
 {
-    foreach ($keys as $k) {
+    foreach (throttle_keys() as $rule => $k) {
+        $window = THROTTLE_RULES[$rule][1];
         $f = throttle_file($k);
-        $d = @json_decode((string) @file_get_contents($f), true);
-        if (!is_array($d) || time() - $d['t'] >= 900) {
+        $fh = @fopen($f, 'c+');
+        if (!$fh) {
+            continue;
+        }
+        flock($fh, LOCK_EX);
+        $d = json_decode((string) stream_get_contents($fh), true);
+        if (!is_array($d) || time() - $d['t'] >= $window) {
             $d = ['n' => 0, 't' => time()];
         }
         $d['n']++;
-        @file_put_contents($f, json_encode($d), LOCK_EX);
+        ftruncate($fh, 0);
+        rewind($fh);
+        fwrite($fh, json_encode($d));
+        flock($fh, LOCK_UN);
+        fclose($fh);
     }
 }
 
-function throttle_clear(string ...$keys): void
+/** Depois de um login certo, limpa só o contador do IP (o global continua a contar). */
+function throttle_clear_ip(): void
 {
-    foreach ($keys as $k) {
-        @unlink(throttle_file($k));
-    }
+    @unlink(throttle_file(throttle_keys()['ip']));
 }
 
 /* ---------- Métricas ao vivo ---------- */

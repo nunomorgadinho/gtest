@@ -3,11 +3,15 @@ declare(strict_types=1);
 
 /**
  * Gestão de utilizadores do dashboard (corre como master, por SSH).
+ * Cada utilizador entra com um PIN de 6 dígitos, que também o identifica.
  *
  *   php bin/user.php list
- *   php bin/user.php add <email> <admin|cliente> [nome]
- *   php bin/user.php passwd <email>
- *   php bin/user.php del <email>
+ *   php bin/user.php add <utilizador> <admin|cliente> [nome] [--gerar]
+ *   php bin/user.php pin <utilizador> [--gerar]
+ *   php bin/user.php del <utilizador>
+ *
+ * Sem --gerar, o PIN é pedido (sem aparecer no ecrã). Com --gerar, é criado um PIN
+ * aleatório e mostrado uma única vez.
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -19,28 +23,14 @@ require __DIR__ . '/../src/bootstrap.php';
 
 $file = MON_ROOT . '/config/users.php';
 $users = mon_users();
-[$cmd, $email, $role, $name] = array_pad(array_slice($argv, 1), 4, null);
-$email = $email !== null ? strtolower(trim($email)) : null;
+$args = array_values(array_filter(array_slice($argv, 1), static fn($a) => $a !== '--gerar'));
+$generate = in_array('--gerar', $argv, true);
+[$cmd, $id, $role, $name] = array_pad($args, 4, null);
+$id = $id !== null ? trim($id) : null;
 
-function ask_password(): string
+function fail(string $msg): never
 {
-    for ($try = 0; $try < 3; $try++) {
-        fwrite(STDOUT, 'Password (mínimo 12 caracteres): ');
-        shell_exec('stty -echo');
-        $p1 = rtrim((string) fgets(STDIN), "\r\n");
-        fwrite(STDOUT, "\nRepetir: ");
-        $p2 = rtrim((string) fgets(STDIN), "\r\n");
-        shell_exec('stty echo');
-        fwrite(STDOUT, "\n");
-        if (mb_strlen($p1) < 12) {
-            fwrite(STDERR, "Demasiado curta.\n");
-        } elseif ($p1 !== $p2) {
-            fwrite(STDERR, "Não coincidem.\n");
-        } else {
-            return $p1;
-        }
-    }
-    fwrite(STDERR, "Cancelado.\n");
+    fwrite(STDERR, $msg . "\n");
     exit(1);
 }
 
@@ -52,51 +42,87 @@ function save_users(string $file, array $users): void
     rename($tmp, $file);
 }
 
+/** Pede ou gera um PIN válido, forte e diferente dos PINs dos outros utilizadores. */
+function choose_pin(bool $generate, ?string $except): string
+{
+    if ($generate) {
+        do {
+            $pin = mon_pin_generate();
+        } while (mon_user_by_pin($pin, $except) !== null);
+        return $pin;
+    }
+    for ($try = 0; $try < 3; $try++) {
+        fwrite(STDOUT, 'PIN (' . MON_PIN_LEN . ' dígitos): ');
+        shell_exec('stty -echo 2>/dev/null');
+        $p1 = trim((string) fgets(STDIN));
+        fwrite(STDOUT, "\nRepetir: ");
+        $p2 = trim((string) fgets(STDIN));
+        shell_exec('stty echo 2>/dev/null');
+        fwrite(STDOUT, "\n");
+        if (!mon_pin_valid($p1)) {
+            fwrite(STDERR, 'O PIN tem de ter exatamente ' . MON_PIN_LEN . " dígitos.\n");
+        } elseif ($p1 !== $p2) {
+            fwrite(STDERR, "Não coincidem.\n");
+        } elseif (mon_pin_weak($p1)) {
+            fwrite(STDERR, "PIN demasiado fácil (repetições ou sequências). Escolhe outro.\n");
+        } elseif (mon_user_by_pin($p1, $except) !== null) {
+            fwrite(STDERR, "Esse PIN já está a ser usado por outro utilizador. Escolhe outro.\n");
+        } else {
+            return $p1;
+        }
+    }
+    fail('Cancelado.');
+}
+
 switch ($cmd) {
     case 'list':
         if (!$users) {
             echo "Sem utilizadores.\n";
         }
-        foreach ($users as $e => $u) {
-            printf("%-35s %-8s %s\n", $e, $u['role'], $u['name'] ?? '');
+        foreach ($users as $uid => $u) {
+            printf("%-25s %-8s %-25s %s\n", $uid, $u['role'], $u['name'] ?? '', empty($u['pin']) ? '(sem PIN)' : 'PIN definido');
         }
         break;
 
     case 'add':
-        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL) || !in_array($role, ['admin', 'cliente'], true)) {
-            fwrite(STDERR, "Uso: php bin/user.php add <email> <admin|cliente> [nome]\n");
-            exit(1);
+        if (!$id || !preg_match('/^[\w.@+-]{2,64}$/u', $id) || !in_array($role, ['admin', 'cliente'], true)) {
+            fail('Uso: php bin/user.php add <utilizador> <admin|cliente> [nome] [--gerar]');
         }
-        if (isset($users[$email])) {
-            fwrite(STDERR, "Já existe. Usa 'passwd' para mudar a password.\n");
-            exit(1);
+        if (isset($users[$id])) {
+            fail("Já existe. Usa 'pin' para mudar o PIN.");
         }
-        $users[$email] = ['role' => $role, 'name' => $name ?? '', 'hash' => password_hash(ask_password(), PASSWORD_DEFAULT)];
+        $pin = choose_pin($generate, null);
+        $users[$id] = ['role' => $role, 'name' => $name ?? '', 'pin' => password_hash($pin, PASSWORD_DEFAULT)];
         save_users($file, $users);
-        echo "Criado: $email ($role)\n";
+        echo "Criado: $id ($role)\n";
+        if ($generate) {
+            echo "PIN: $pin  (guarda-o agora; não volta a ser mostrado)\n";
+        }
         break;
 
-    case 'passwd':
-        if (!isset($users[$email])) {
-            fwrite(STDERR, "Utilizador não existe.\n");
-            exit(1);
+    case 'pin':
+        if (!isset($users[$id])) {
+            fail('Utilizador não existe.');
         }
-        $users[$email]['hash'] = password_hash(ask_password(), PASSWORD_DEFAULT);
+        $pin = choose_pin($generate, $id);
+        $users[$id]['pin'] = password_hash($pin, PASSWORD_DEFAULT);
+        unset($users[$id]['hash']); // password antiga (versões anteriores)
         save_users($file, $users);
-        echo "Password alterada.\n";
+        echo "PIN alterado para $id.\n";
+        if ($generate) {
+            echo "PIN: $pin  (guarda-o agora; não volta a ser mostrado)\n";
+        }
         break;
 
     case 'del':
-        if (!isset($users[$email])) {
-            fwrite(STDERR, "Utilizador não existe.\n");
-            exit(1);
+        if (!isset($users[$id])) {
+            fail('Utilizador não existe.');
         }
-        unset($users[$email]);
+        unset($users[$id]);
         save_users($file, $users);
-        echo "Removido: $email\n";
+        echo "Removido: $id\n";
         break;
 
     default:
-        fwrite(STDERR, "Comandos: list | add <email> <admin|cliente> [nome] | passwd <email> | del <email>\n");
-        exit(1);
+        fail("Comandos:\n  list\n  add <utilizador> <admin|cliente> [nome] [--gerar]\n  pin <utilizador> [--gerar]\n  del <utilizador>");
 }

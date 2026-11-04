@@ -298,3 +298,14 @@ a.rec-site:hover { color: var(--primary); text-decoration: underline; }
 .btn-link:hover { color: var(--primary-hov); text-decoration: underline; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sev-info { background: #0f5a4f; color: var(--wl-green-light); } }
 :root[data-theme="dark"] .sev-info { background: #0f5a4f; color: var(--wl-green-light); }
+
+/* ---------- Login por PIN ---------- */
+.login-card form > label { font-size: 13px; font-weight: 600; }
+.pin-input {
+  font: inherit; font-size: 30px; font-weight: 700; text-align: center; letter-spacing: .5em; padding: 10px 0 10px .5em;
+  width: 100%; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.pin-input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.pin-input:disabled { opacity: .5; }
+.login-card .note { margin: 0; }

@@ -111,7 +111,11 @@ Falta (no painel da Cloudways, nesta aplicação):
   1. Application Settings > General > Webroot:  public_html/public
   2. Application Settings > Varnish: desativado. O Varnish retira o cookie de
      sessão deste painel e impede o login.
-  3. Cria o primeiro utilizador:
-       php $DEST/bin/user.php add o-teu-email@widgilabs.com admin "Nome"
-       php $DEST/bin/user.php add email-do-cliente@exemplo.pt cliente "Nome"
+  3. Cria os utilizadores. Cada um entra com um PIN de 6 dígitos (--gerar cria
+     um PIN aleatório e mostra-o uma vez; sem --gerar, o PIN é pedido):
+       php $DEST/bin/user.php add nuno admin "Nuno" --gerar
+       php $DEST/bin/user.php add cliente cliente "Nome do cliente" --gerar
+     Contas de versões anteriores (email e password) precisam de um PIN:
+       php $DEST/bin/user.php list
+       php $DEST/bin/user.php pin <utilizador> --gerar
 EOF

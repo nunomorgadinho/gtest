@@ -6,7 +6,7 @@ declare(strict_types=1);
  */
 
 const MON_ROOT = __DIR__ . '/..';
-const MON_VERSION = '0.4.0';
+const MON_VERSION = '0.5.0';
 
 require __DIR__ . '/procfs.php';
 require __DIR__ . '/store.php';
@@ -15,6 +15,7 @@ require __DIR__ . '/traffic.php';
 require __DIR__ . '/apps.php';
 require __DIR__ . '/wpscan.php';
 require __DIR__ . '/advice.php';
+require __DIR__ . '/pins.php';
 
 function mon_config(): array
 {

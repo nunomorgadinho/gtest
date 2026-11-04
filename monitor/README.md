@@ -74,11 +74,14 @@ No topo de cada página há dois botões, lembrados em cada browser:
    (`wlmon`), e o login falha. Em alternativa, acrescenta `wlmon` às exclusões de
    cookies do Varnish. O painel nunca é guardado em cache, por isso o Varnish não
    traz vantagens aqui.
-5. Cria os utilizadores:
+5. Cria os utilizadores. Cada um entra com um **PIN de 6 dígitos**, que também
+   o identifica (por isso dois utilizadores nunca têm o mesmo PIN):
    ```bash
-   php /home/master/applications/<app>/public_html/bin/user.php add nuno@widgilabs.com admin "Nuno"
-   php /home/master/applications/<app>/public_html/bin/user.php add cliente@exemplo.pt cliente "Nome"
+   php /home/master/applications/<app>/public_html/bin/user.php add nuno admin "Nuno" --gerar
+   php /home/master/applications/<app>/public_html/bin/user.php add cliente cliente "Nome" --gerar
    ```
+   Com `--gerar` é criado um PIN aleatório, mostrado uma única vez. Sem
+   `--gerar`, o PIN é pedido no terminal (sem aparecer no ecrã).
 
 Para atualizar, volta a correr `bash install.sh <pasta-da-app>`: o código é
 substituído e `config/` e `data/` mantêm-se. Ao atualizar da fase 1, o instalador
@@ -111,17 +114,28 @@ sites com muitas imagens).
 | `hidden_apps` | Apps a esconder (staging, por exemplo) |
 | `retention_raw_hours`, `retention_rollup_days` | Retenção dos dados |
 
-## Utilizadores
+## Utilizadores e PIN
 
 ```bash
 php bin/user.php list
-php bin/user.php add <email> <admin|cliente> [nome]
-php bin/user.php passwd <email>
-php bin/user.php del <email>
+php bin/user.php add <utilizador> <admin|cliente> [nome] [--gerar]
+php bin/user.php pin <utilizador> [--gerar]
+php bin/user.php del <utilizador>
 ```
 
-Passwords com hash (`password_hash`), sessões com cookie `HttpOnly`/`SameSite`,
-CSRF no login e logout e bloqueio de 15 minutos após 5 tentativas falhadas.
+- O PIN é guardado só como hash (`password_hash`).
+- São recusados PINs fáceis (dígitos repetidos, sequências como 123456 ou
+  654321, padrões como 123123) e PINs já usados por outro utilizador.
+- Bloqueios: 5 PINs errados do mesmo IP bloqueiam esse IP durante 15 minutos;
+  20 PINs errados numa hora, de qualquer origem, bloqueiam o login durante uma
+  hora (impede ataques que vão trocando de IP). Com estes limites, adivinhar um
+  PIN levaria anos.
+- Sessões com cookie `HttpOnly`/`SameSite` e proteção CSRF.
+- Ao atualizar de uma versão com email e password, as contas existentes ficam
+  sem PIN até se correr `php bin/user.php pin <utilizador> --gerar`.
+
+Para uma camada extra, a Cloudways permite proteger a aplicação com password
+(HTTP auth) ou pode ser posta atrás do Cloudflare Access.
 
 ## Notas de medição
 
