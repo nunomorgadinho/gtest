@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Quem Sou Eu Hoje?</title>
+<style>
+  :root {
+    --azul: #5b9be6;
+    --lilas: #b7a6ec;
+    --rosa: #f2a0b5;
+    --tinta: #1f1a3a;
+    --creme: #fffaf0;
+    --botao: #2f8cf5;
+    --botao-escuro: #1a6fd6;
+    --amarelo: #ffc828;
+    --vermelho: #ff5a78;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; }
+  html { background: var(--rosa); }
+  body {
+    font-family: system-ui, -apple-system, "Roboto", "Segoe UI", sans-serif;
+    color: var(--tinta);
+    overflow-x: hidden;
+    user-select: none;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1;
+    background: linear-gradient(180deg, var(--azul) 0%, var(--lilas) 50%, var(--rosa) 100%);
+  }
+
+  /* ---------- Decoração flutuante ---------- */
+  .deco { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .deco span { position: absolute; font-size: 34px; animation: flutua 6s ease-in-out infinite; filter: drop-shadow(0 4px 6px rgba(0,0,0,.15)); }
+  .nuvem { position: absolute; width: 110px; height: 36px; background: #fff; border-radius: 40px; opacity: .9; animation: deriva 18s linear infinite; }
+  .nuvem::before, .nuvem::after { content: ""; position: absolute; background: #fff; border-radius: 50%; }
+  .nuvem::before { width: 50px; height: 50px; top: -26px; left: 16px; }
+  .nuvem::after { width: 40px; height: 40px; top: -18px; left: 52px; }
+  @keyframes flutua { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-14px) rotate(6deg); } }
+  @keyframes deriva { from { transform: translateX(-140px); } to { transform: translateX(110vw); } }
+
+  /* ---------- Estrutura de ecrãs ---------- */
+  main { position: relative; z-index: 1; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+  .ecra { display: none; width: 100%; max-width: 440px; animation: entra .35s ease-out; }
+  .ecra.ativo { display: block; }
+  @keyframes entra { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Ecrã inicial ---------- */
+  .arco {
+    position: relative;
+    background: linear-gradient(180deg, var(--creme) 0%, #fdf3f7 55%, #e3d9fb 100%);
+    border: 8px solid #6ab3f5;
+    border-radius: 200px 200px 28px 28px;
+    padding: 64px 24px 32px;
+    text-align: center;
+    box-shadow: 0 18px 40px rgba(60, 40, 120, .25);
+  }
+  .arco .estrela { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: 34px; }
+  .arco h1 { margin: 6px 0 4px; font-size: 40px; line-height: 1.05; font-weight: 900; letter-spacing: .5px; }
+  .arco h2 { margin: 8px 0 0; font-size: 19px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+  .arco p { margin: 14px 0 0; font-size: 15px; opacity: .8; }
+  .polegares { margin: 22px 0 6px; font-size: 40px; letter-spacing: 14px; }
+  .faixa { display: flex; justify-content: center; gap: 10px; margin-top: 20px; font-size: 28px; }
+  .faixa span { width: 50px; height: 50px; display: grid; place-items: center; background: #fff; border-radius: 50%; box-shadow: 0 6px 14px rgba(0,0,0,.12); }
+
+  .btn {
+    display: block; width: 100%; margin: 26px auto 0; padding: 18px 20px;
+    border: 0; border-radius: 999px;
+    background: linear-gradient(180deg, #4aa3ff, var(--botao));
+    color: #fff; font: inherit; font-size: 20px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;
+    box-shadow: 0 6px 0 var(--botao-escuro), 0 14px 24px rgba(30, 90, 200, .35);
+    cursor: pointer; transition: transform .08s;
+  }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--botao-escuro), 0 8px 14px rgba(30, 90, 200, .3); }
+  .btn.secundario { background: #fff; color: var(--tinta); box-shadow: 0 6px 0 #d7cdee, 0 12px 20px rgba(60,40,120,.18); font-size: 17px; }
+  .btn.secundario:active { box-shadow: 0 2px 0 #d7cdee; }
+  .pulsa { animation: pulsa 1.6s ease-in-out infinite; }
+  @keyframes pulsa { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+
+  /* ---------- Perguntas ---------- */
+  .topo { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .voltar { width: 44px; height: 44px; flex: none; border: 0; border-radius: 50%; background: rgba(255,255,255,.85); font-size: 22px; font-weight: 900; color: var(--tinta); cursor: pointer; }
+  .barra { flex: 1; height: 14px; background: rgba(255,255,255,.5); border-radius: 99px; overflow: hidden; }
+  .barra div { height: 100%; width: 0; background: linear-gradient(90deg, var(--amarelo), var(--vermelho)); border-radius: 99px; transition: width .35s ease; }
+  .contador { font-weight: 900; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.2); min-width: 44px; text-align: right; }
+
+  .cartao { background: var(--creme); border-radius: 28px; padding: 26px 20px 22px; box-shadow: 0 18px 40px rgba(60, 40, 120, .25); }
+  .cartao .emoji-grande { font-size: 64px; text-align: center; line-height: 1; }
+  .cartao h3 { margin: 14px 0 20px; font-size: 22px; line-height: 1.3; text-align: center; font-weight: 800; }
+  .opcoes { display: grid; gap: 12px; }
+  .opcao {
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 15px 16px;
+    border: 3px solid transparent; border-radius: 18px;
+    background: #fff; font: inherit; font-size: 16px; font-weight: 600; color: var(--tinta); text-align: left;
+    box-shadow: 0 4px 0 #e6def5; cursor: pointer; transition: transform .1s, border-color .15s, background .15s;
+  }
+  .opcao .letra { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; color: #fff; font-weight: 900; }
+  .opcao:nth-child(1) .letra { background: var(--vermelho); }
+  .opcao:nth-child(2) .letra { background: var(--botao); }
+  .opcao:nth-child(3) .letra { background: #f5a623; }
+  .opcao:nth-child(4) .letra { background: #9b6cf0; }
+  .opcao:active { transform: scale(.98); }
+  .opcao.escolhida { border-color: var(--botao); background: #eaf4ff; animation: abana .4s; }
+  @keyframes abana { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-2deg); } 75% { transform: rotate(2deg); } }
+
+  /* ---------- A analisar ---------- */
+  .analisar { text-align: center; color: #fff; }
+  .analisar .roda { font-size: 90px; display: inline-block; animation: gira 1.1s linear infinite; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  .analisar h3 { font-size: 24px; margin: 18px 0 8px; text-shadow: 0 2px 6px rgba(0,0,0,.2); }
+  .analisar p { font-size: 17px; min-height: 48px; margin: 0; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,.2); }
+
+  /* ---------- Resultado ---------- */
+  .resultado { text-align: center; }
+  .resultado .rotulo { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #8a7fb0; }
+  .resultado .avatar { font-size: 96px; line-height: 1; margin: 10px 0 4px; animation: salta 1s ease-in-out infinite; display: inline-block; }
+  @keyframes salta { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .resultado h3 { margin: 4px 0 10px; font-size: 28px; font-weight: 900; }
+  .resultado .descricao { font-size: 16px; line-height: 1.5; margin: 0 0 18px; }
+  .ficha { text-align: left; background: #fff; border-radius: 18px; padding: 6px 16px; margin-bottom: 18px; }
+  .ficha div { padding: 10px 0; border-bottom: 2px dashed #eee6f8; font-size: 15px; line-height: 1.4; }
+  .ficha div:last-child { border-bottom: 0; }
+  .ficha b { display: block; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: #8a7fb0; margin-bottom: 2px; }
+  .stats { text-align: left; }
+  .stats h4 { margin: 0 0 10px; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: #8a7fb0; text-align: center; }
+  .stat { margin-bottom: 10px; }
+  .stat .nome { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .stat .trilho { height: 12px; background: #eee6f8; border-radius: 99px; overflow: hidden; }
+  .stat .trilho div { height: 100%; width: 0; border-radius: 99px; transition: width 1s ease-out; }
+  .acoes { display: grid; gap: 4px; }
+
+  /* ---------- Confetti ---------- */
+  .confetti { position: fixed; top: -20px; z-index: 5; pointer-events: none; font-size: 22px; animation: cai linear forwards; }
+  @keyframes cai { to { transform: translateY(110vh) rotate(720deg); opacity: .8; } }
+
+  @media (max-height: 640px) {
+    .arco { padding-top: 54px; }
+    .arco h1 { font-size: 34px; }
+    .polegares { font-size: 32px; margin-top: 14px; }
+    .cartao .emoji-grande { font-size: 50px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deco" aria-hidden="true">
+  <div class="nuvem" style="top:8%; animation-delay:-3s"></div>
+  <div class="nuvem" style="top:72%; animation-delay:-11s; transform: scale(.8)"></div>
+  <span style="top:4%; left:6%">😄</span>
+  <span style="top:3%; right:8%; animation-delay:-2s">🎯</span>
+  <span style="top:20%; left:2%; animation-delay:-1s">⭐</span>
+  <span style="top:30%; right:3%; animation-delay:-3s">💖</span>
+  <span style="bottom:18%; left:4%; animation-delay:-4s">🌈</span>
+  <span style="bottom:8%; right:6%; animation-delay:-1.5s">✨</span>
+  <span style="bottom:3%; left:40%; animation-delay:-2.5s">😜</span>
+</div>
+
+<main>
+  <!-- Ecrã inicial -->
+  <section id="inicio" class="ecra ativo">
+    <div class="arco">
+      <div class="estrela">⭐</div>
+      <h1>QUEM SOU<br>EU HOJE?</h1>
+      <h2>Teste de personalidade divertido</h2>
+      <p>Responde a perguntas absurdas e descobre a tua verdadeira essência (de hoje).</p>
+      <div class="polegares">👍👍👍</div>
+      <div class="faixa"><span>😜</span><span>🥔</span><span>🦄</span><span>🐐</span></div>
+    </div>
+    <button class="btn pulsa" id="btnJogar">Clica para jogar!</button>
+  </section>
+
+  <!-- Perguntas -->
+  <section id="pergunta" class="ecra">
+    <div class="topo">
+      <button class="voltar" id="btnVoltar" aria-label="Pergunta anterior">‹</button>
+      <div class="barra"><div id="progresso"></div></div>
+      <div class="contador" id="contador">1/8</div>
+    </div>
+    <div class="cartao">
+      <div class="emoji-grande" id="pEmoji">🦆</div>
+      <h3 id="pTexto"></h3>
+      <div class="opcoes" id="pOpcoes"></div>
+    </div>
+  </section>
+
+  <!-- A analisar -->
+  <section id="analisar" class="ecra analisar">
+    <div class="roda">🔮</div>
+    <h3>A analisar a tua alma...</h3>
+    <p id="aTexto"></p>
+  </section>
+
+  <!-- Resultado -->
+  <section id="resultado" class="ecra">
+    <div class="cartao resultado">
+      <p class="rotulo">Hoje, tu és...</p>
+      <div class="avatar" id="rAvatar"></div>
+      <h3 id="rNome"></h3>
+      <p class="descricao" id="rDescricao"></p>
+      <div class="ficha">
+        <div><b>Superpoder</b><span id="rPoder"></span></div>
+        <div><b>Ponto fraco</b><span id="rFraco"></span></div>
+        <div><b>Previsão para hoje</b><span id="rPrevisao"></span></div>
+        <div><b>Melhor amigo(a) ideal</b><span id="rPar"></span></div>
+      </div>
+      <div class="stats">
+        <h4>A tua composição química</h4>
+        <div id="rStats"></div>
+      </div>
+    </div>
+    <div class="acoes">
+      <button class="btn" id="btnPartilhar">Partilhar resultado</button>
+      <button class="btn secundario" id="btnRepetir">Jogar outra vez</button>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Personalidades ----------
+  const TIPOS = {
+    preguica: {
+      nome: "Preguiça Filosófica", emoji: "🦥", cor: "#8bc34a",
+      descricao: "Não és preguiçoso(a): estás em modo de poupança de energia avançado. Pensas profundamente sobre a vida, de preferência deitado(a) e com uma manta.",
+      poder: "Adormecer em qualquer superfície em 4 segundos.",
+      fraco: "Despertadores e pessoas demasiado animadas às 8 da manhã.",
+      par: "batata"
+    },
+    caos: {
+      nome: "Furacão de Caos", emoji: "🌪️", cor: "#ff5a78",
+      descricao: "Entras numa sala e as coisas acontecem. Nem sempre boas, mas sempre memoráveis. O teu cérebro tem 47 separadores abertos e um deles está a tocar música.",
+      poder: "Transformar um plano simples numa aventura com polícia à mistura.",
+      fraco: "Botões que dizem \"não carregar\".",
+      par: "cabra"
+    },
+    batata: {
+      nome: "Batata Zen", emoji: "🥔", cor: "#d4a35a",
+      descricao: "Calma, versátil e sempre presente. Tal como a batata, combinas com tudo e nada te tira do sério. És o puré reconfortante da vida dos teus amigos.",
+      poder: "Manter a calma enquanto o mundo arde (e ainda fazer chá).",
+      fraco: "Fritadeiras. Por motivos óbvios.",
+      par: "preguica"
+    },
+    drama: {
+      nome: "Unicórnio Dramático", emoji: "🦄", cor: "#b07cf5",
+      descricao: "A tua vida é uma novela e tu és protagonista, realizador(a) e banda sonora. Até abrir um iogurte é um momento digno de Óscar.",
+      poder: "Chorar em câmara lenta, com vento no cabelo, sem ventoinha.",
+      fraco: "Ser ignorado(a) durante mais de 30 segundos.",
+      par: "robo"
+    },
+    robo: {
+      nome: "Robô Sobreorganizado", emoji: "🤖", cor: "#2f8cf5",
+      descricao: "Tens uma folha de Excel para as tuas folhas de Excel. As tuas meias estão catalogadas por estado emocional e o teu frigorífico tem etiquetas.",
+      poder: "Planear umas férias espontâneas com 6 meses de antecedência.",
+      fraco: "A palavra \"improvisar\".",
+      par: "drama"
+    },
+    cabra: {
+      nome: "Cabra Aventureira", emoji: "🐐", cor: "#f5a623",
+      descricao: "Sobes montanhas, telhados e mesas de jantar. Onde há um precipício, há uma oportunidade. A tua mãe já desistiu de te perguntar onde estás.",
+      poder: "Equilíbrio sobrenatural em sítios onde não devias estar.",
+      fraco: "Placas de \"Proibida a entrada\" (só te dão mais vontade).",
+      par: "caos"
+    }
+  };
+
+  // ---------- Perguntas absurdas ----------
+  const PERGUNTAS = [
+    { e: "🦆", t: "Um pato entra pela tua janela com uma mala de viagem. O que fazes?", o: [
+      ["Ofereço-lhe chá e pergunto como correu o voo.", { batata: 2, drama: 1 }],
+      ["Peço-lhe o NIF e abro uma folha de Excel.", { robo: 2 }],
+      ["Fujo com ele para Espanha.", { cabra: 2, caos: 1 }],
+      ["Finjo que estou a dormir até ele ir embora.", { preguica: 2 }] ] },
+    { e: "🥦", t: "Se fosses um legume, qual serias?", o: [
+      ["Uma batata. Versátil, calma, sempre presente.", { batata: 2 }],
+      ["Um pepino profundamente ofendido.", { drama: 2 }],
+      ["Um brócolo com plano de carreira a 10 anos.", { robo: 2 }],
+      ["Uma malagueta que ninguém pediu.", { caos: 2 }] ] },
+    { e: "🧊", t: "O teu frigorífico ganhou consciência. Qual é a primeira coisa que te diz?", o: [
+      ["\"Fecha a porta, estás a gastar luz.\"", { robo: 2 }],
+      ["\"Outra vez tu? São 3 da manhã.\"", { preguica: 2 }],
+      ["\"Vamos fugir juntos.\"", { cabra: 2 }],
+      ["\"Ninguém me compreende.\"", { drama: 2 }] ] },
+    { e: "💶", t: "Tens 24 horas para gastar um milhão de euros, mas só em coisas redondas.", o: [
+      ["Compro todas as rotundas de Portugal.", { caos: 2, robo: 1 }],
+      ["Um colchão feito de bolas de Berlim.", { preguica: 2 }],
+      ["Um balão de ar quente e desapareço.", { cabra: 2 }],
+      ["Uma bola de espelhos gigante para as minhas entradas triunfais.", { drama: 2 }] ] },
+    { e: "🦸", t: "Qual é o teu superpoder inútil preferido?", o: [
+      ["Saber sempre onde está o comando da TV.", { preguica: 2 }],
+      ["Falar fluentemente com pombos.", { caos: 1, cabra: 1 }],
+      ["Arrumar meias por estado emocional.", { robo: 2 }],
+      ["Ficar zen até numa fila das Finanças.", { batata: 2 }] ] },
+    { e: "🐿️", t: "Um esquilo desafia-te para um duelo. Que arma escolhes?", o: [
+      ["Uma colher de pau e demasiada confiança.", { caos: 2 }],
+      ["Argumentos lógicos e um PowerPoint.", { robo: 2 }],
+      ["Recuso. Sou demasiado zen para conflitos.", { batata: 2 }],
+      ["Aceito, mas só depois da sesta.", { preguica: 2 }] ] },
+    { e: "💃", t: "Como descreverias o teu estilo de dança?", o: [
+      ["Minhoca em pânico.", { caos: 2 }],
+      ["Interpretativo. Cada passo conta uma tragédia.", { drama: 2 }],
+      ["Balanço suave, ao ritmo de um tubérculo feliz.", { batata: 2 }],
+      ["Danço em cima de mesas, montanhas, onde calhar.", { cabra: 2 }] ] },
+    { e: "🐧", t: "Acordas e és um pinguim. Qual é a tua primeira ação?", o: [
+      ["Deslizo de barriga até ao café mais próximo.", { cabra: 1, caos: 1 }],
+      ["Faço uma lista de prós e contras de ser pinguim.", { robo: 2 }],
+      ["Volto a dormir. Isto resolve-se sozinho.", { preguica: 2 }],
+      ["Ligo às televisões. O país tem de saber.", { drama: 2 }] ] },
+    { e: "📜", t: "Qual destas frases é o teu lema de vida?", o: [
+      ["\"Se não está na agenda, não existe.\"", { robo: 2 }],
+      ["\"Amanhã também é dia.\"", { preguica: 2 }],
+      ["\"E se...?\"", { caos: 1, cabra: 1 }],
+      ["\"Respira. É só uma batata.\"", { batata: 2 }] ] },
+    { e: "🏝️", t: "Vais para uma ilha deserta. O que levas?", o: [
+      ["Uma cabra. Para ter com quem conversar.", { cabra: 2 }],
+      ["Um holofote. Para mim, claro.", { drama: 2 }],
+      ["Uma rede de descanso e zero planos.", { preguica: 1, batata: 1 }],
+      ["Fogo de artifício e más decisões.", { caos: 2 }] ] },
+    { e: "🔴", t: "Encontras um botão vermelho com a etiqueta \"NÃO CARREGAR\".", o: [
+      ["Carrego. Obviamente.", { caos: 2 }],
+      ["Leio o manual de instruções primeiro.", { robo: 2 }],
+      ["Carrego e filmo um vídeo dramático disso.", { drama: 2 }],
+      ["Encosto-me ao botão e adormeço.", { preguica: 2 }] ] },
+    { e: "🎙️", t: "O teu animal de estimação começa um podcast. Sobre o quê?", o: [
+      ["Os teus piores momentos. Já vai na 7.ª temporada.", { drama: 2 }],
+      ["Meditação guiada para batatas.", { batata: 2 }],
+      ["Viagens radicais pelo telhado do vizinho.", { cabra: 2 }],
+      ["Produtividade às segundas-feiras.", { robo: 2 }] ] },
+    { e: "🍕", t: "Alguém põe ananás na tua pizza sem perguntar. Reação?", o: [
+      ["Escrevo uma carta formal de reclamação, em triplicado.", { robo: 2 }],
+      ["Desmaio. Lentamente. Para a câmara.", { drama: 2 }],
+      ["Como na mesma. Tudo é bom com calma.", { batata: 2 }],
+      ["Junto-lhe gomas e chouriço. Vamos ver onde isto vai dar.", { caos: 2 }] ] },
+    { e: "🛒", t: "Estás no supermercado. Qual é a tua estratégia?", o: [
+      ["Lista por corredores, ordenada por temperatura.", { robo: 2 }],
+      ["Subo à prateleira mais alta só porque sim.", { cabra: 2 }],
+      ["Faço as compras online, deitado(a) no sofá.", { preguica: 2 }],
+      ["Saio com 12 coisas, nenhuma era da lista.", { caos: 2 }] ] }
+  ];
+
+  const PREVISOES = [
+    "Um pombo vai olhar para ti com respeito. Aproveita.",
+    "Vais encontrar 2 € num casaco antigo. Não gastes tudo em bolos.",
+    "Alguém vai dizer \"tás bom?\" e tu vais responder \"tás bom\" de volta.",
+    "Hoje é um excelente dia para não responder a emails.",
+    "Uma torrada vai cair com a manteiga para cima. Milagres acontecem.",
+    "Vais cantar uma música que odeias o dia todo.",
+    "Um gato vai ignorar-te de forma particularmente elegante.",
+    "Vais abrir o frigorífico 7 vezes à procura de algo que não existe.",
+    "O teu carregador vai estar exatamente onde não o procuraste.",
+    "Vais ter uma ideia genial no duche e esquecê-la ao secar o cabelo."
+  ];
+
+  const FRASES_ANALISE = [
+    "A consultar as estrelas e um polvo vidente...",
+    "A medir o teu nível de caos interior...",
+    "A comparar-te com 3 batatas e uma cabra...",
+    "A pedir uma segunda opinião ao teu frigorífico...",
+    "A calcular resultados com uma calculadora de 1997..."
+  ];
+
+  const NUM_PERGUNTAS = 8;
+
+  // ---------- Estado ----------
+  let ronda = [];
+  let atual = 0;
+  let respostas = [];
+  let bloqueado = false;
+
+  const $ = (id) => document.getElementById(id);
+
+  function mostra(id) {
+    document.querySelectorAll(".ecra").forEach((s) => s.classList.remove("ativo"));
+    $(id).classList.add("ativo");
+    window.scrollTo(0, 0);
+  }
+
+  function baralha(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function comecar() {
+    ronda = baralha(PERGUNTAS).slice(0, NUM_PERGUNTAS).map((p) => ({ ...p, o: baralha(p.o) }));
+    atual = 0;
+    respostas = [];
+    mostra("pergunta");
+    desenhaPergunta();
+  }
+
+  function desenhaPergunta() {
+    const p = ronda[atual];
+    $("pEmoji").textContent = p.e;
+    $("pTexto").textContent = p.t;
+    $("contador").textContent = (atual + 1) + "/" + ronda.length;
+    $("progresso").style.width = (atual / ronda.length * 100) + "%";
+    $("btnVoltar").style.visibility = atual > 0 ? "visible" : "hidden";
+
+    const caixa = $("pOpcoes");
+    caixa.innerHTML = "";
+    p.o.forEach((op, i) => {
+      const b = document.createElement("button");
+      b.className = "opcao";
+      if (respostas[atual] === i) b.classList.add("escolhida");
+      const l = document.createElement("span");
+      l.className = "letra";
+      l.textContent = "ABCD"[i];
+      const t = document.createElement("span");
+      t.textContent = op[0];
+      b.append(l, t);
+      b.addEventListener("click", () => escolhe(i, b));
+      caixa.appendChild(b);
+    });
+    bloqueado = false;
+  }
+
+  function escolhe(i, botao) {
+    if (bloqueado) return;
+    bloqueado = true;
+    respostas[atual] = i;
+    document.querySelectorAll(".opcao").forEach((b) => b.classList.remove("escolhida"));
+    botao.classList.add("escolhida");
+    setTimeout(() => {
+      if (atual < ronda.length - 1) {
+        atual++;
+        desenhaPergunta();
+      } else {
+        $("progresso").style.width = "100%";
+        analisa();
+      }
+    }, 380);
+  }
+
+  function voltar() {
+    if (atual > 0) {
+      atual--;
+      desenhaPergunta();
+      return true;
+    }
+    return false;
+  }
+
+  function analisa() {
+    mostra("analisar");
+    const frases = baralha(FRASES_ANALISE).slice(0, 3);
+    let k = 0;
+    $("aTexto").textContent = frases[0];
+    const t = setInterval(() => {
+      k++;
+      if (k < frases.length) {
+        $("aTexto").textContent = frases[k];
+      } else {
+        clearInterval(t);
+        mostraResultado();
+      }
+    }, 900);
+  }
+
+  function calcula() {
+    const pontos = {};
+    Object.keys(TIPOS).forEach((k) => (pontos[k] = 1)); // base para ninguém ficar a 0%
+    respostas.forEach((r, i) => {
+      const pesos = ronda[i].o[r][1];
+      for (const k in pesos) pontos[k] += pesos[k];
+    });
+    const max = Math.max(...Object.values(pontos));
+    const empatados = Object.keys(pontos).filter((k) => pontos[k] === max);
+    const vencedor = empatados[Math.floor(Math.random() * empatados.length)];
+    return { pontos, vencedor };
+  }
+
+  let ultimoTexto = "";
+
+  function mostraResultado() {
+    const { pontos, vencedor } = calcula();
+    const tipo = TIPOS[vencedor];
+    const previsao = PREVISOES[Math.floor(Math.random() * PREVISOES.length)];
+    const par = TIPOS[tipo.par];
+
+    $("rAvatar").textContent = tipo.emoji;
+    $("rNome").textContent = tipo.nome;
+    $("rDescricao").textContent = tipo.descricao;
+    $("rPoder").textContent = tipo.poder;
+    $("rFraco").textContent = tipo.fraco;
+    $("rPrevisao").textContent = previsao;
+    $("rPar").textContent = par.emoji + " " + par.nome;
+
+    // Percentagens que somam 100
+    const total = Object.values(pontos).reduce((a, b) => a + b, 0);
+    const ordenados = Object.keys(pontos).sort((a, b) => pontos[b] - pontos[a]);
+    const pct = {};
+    let soma = 0;
+    ordenados.forEach((k) => { pct[k] = Math.floor(pontos[k] / total * 100); soma += pct[k]; });
+    pct[ordenados[0]] += 100 - soma;
+
+    const stats = $("rStats");
+    stats.innerHTML = "";
+    ordenados.forEach((k) => {
+      const linha = document.createElement("div");
+      linha.className = "stat";
+      linha.innerHTML = '<div class="nome"><span></span><span></span></div><div class="trilho"><div></div></div>';
+      linha.querySelector(".nome span:first-child").textContent = TIPOS[k].emoji + " " + TIPOS[k].nome;
+      linha.querySelector(".nome span:last-child").textContent = pct[k] + "%";
+      const barra = linha.querySelector(".trilho div");
+      barra.style.background = TIPOS[k].cor;
+      stats.appendChild(linha);
+      requestAnimationFrame(() => requestAnimationFrame(() => (barra.style.width = pct[k] + "%")));
+    });
+
+    ultimoTexto =
+      "Fiz o teste \"Quem Sou Eu Hoje?\" e hoje sou " + tipo.emoji + " " + tipo.nome + "!\n\n" +
+      tipo.descricao + "\n\n" +
+      "Composição: " + ordenados.slice(0, 3).map((k) => pct[k] + "% " + TIPOS[k].nome).join(", ") + ".\n" +
+      "Previsão: " + previsao + "\n\nE tu, quem és hoje?";
+
+    mostra("resultado");
+    confetti();
+  }
+
+  function confetti() {
+    const simbolos = ["🎉", "⭐", "✨", "💖", "🎈", "🌈"];
+    for (let i = 0; i < 26; i++) {
+      const c = document.createElement("div");
+      c.className = "confetti";
+      c.textContent = simbolos[i % simbolos.length];
+      c.style.left = Math.random() * 100 + "vw";
+      c.style.animationDuration = 2 + Math.random() * 2 + "s";
+      c.style.animationDelay = Math.random() * .6 + "s";
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 5000);
+    }
+  }
+
+  function partilhar() {
+    if (window.AndroidApp && window.AndroidApp.share) {
+      window.AndroidApp.share(ultimoTexto);
+    } else if (navigator.share) {
+      navigator.share({ text: ultimoTexto }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(ultimoTexto).then(() => alert("Resultado copiado!"));
+    }
+  }
+
+  // Botão "voltar" do Android
+  window.handleBack = function () {
+    if ($("pergunta").classList.contains("ativo")) {
+      if (!voltar()) mostra("inicio");
+      return true;
+    }
+    if ($("resultado").classList.contains("ativo")) {
+      mostra("inicio");
+      return true;
+    }
+    return false;
+  };
+
+  $("btnJogar").addEventListener("click", comecar);
+  $("btnVoltar").addEventListener("click", voltar);
+  $("btnRepetir").addEventListener("click", comecar);
+  $("btnPartilhar").addEventListener("click", partilhar);
+})();
+</script>
+</body>
+</html>
