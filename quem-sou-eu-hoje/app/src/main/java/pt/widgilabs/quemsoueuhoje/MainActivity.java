@@ -30,6 +30,8 @@ public class MainActivity extends Activity {
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
+        // Deixa a música começar logo ao abrir a app.
+        settings.setMediaPlaybackRequiresUserGesture(false);
 
         webView.setWebViewClient(new WebViewClient());
         webView.addJavascriptInterface(new Bridge(), "AndroidApp");
@@ -47,6 +49,21 @@ public class MainActivity extends Activity {
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         webView.saveState(outState);
+    }
+
+    @Override
+    protected void onPause() {
+        // Silencia a música quando a app vai para segundo plano.
+        webView.evaluateJavascript("window.appPausa && window.appPausa()", null);
+        webView.onPause();
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        webView.onResume();
+        webView.evaluateJavascript("window.appRetoma && window.appRetoma()", null);
     }
 
     @SuppressWarnings("deprecation")

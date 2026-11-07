@@ -41,7 +41,17 @@
   @keyframes deriva { from { transform: translateX(-140px); } to { transform: translateX(110vw); } }
 
   /* ---------- Estrutura de ecrãs ---------- */
-  main { position: relative; z-index: 1; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+  main { position: relative; z-index: 1; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 72px 16px 24px; }
+
+  /* ---------- Botão de som ---------- */
+  .som {
+    position: fixed; top: 14px; right: 14px; z-index: 10;
+    width: 48px; height: 48px; border: 0; border-radius: 50%;
+    background: rgba(255,255,255,.9); font-size: 24px; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(60,40,120,.2);
+  }
+  .som.a-tocar { animation: bate .476s ease-in-out infinite; }
+  @keyframes bate { 0%,100% { transform: scale(1); } 15% { transform: scale(1.12); } }
   .ecra { display: none; width: 100%; max-width: 440px; animation: entra .35s ease-out; }
   .ecra.ativo { display: block; }
   @keyframes entra { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
@@ -151,13 +161,15 @@
   <div class="nuvem" style="top:8%; animation-delay:-3s"></div>
   <div class="nuvem" style="top:72%; animation-delay:-11s; transform: scale(.8)"></div>
   <span style="top:4%; left:6%">😄</span>
-  <span style="top:3%; right:8%; animation-delay:-2s">🎯</span>
+  <span style="top:3%; left:42%; animation-delay:-2s">🎯</span>
   <span style="top:20%; left:2%; animation-delay:-1s">⭐</span>
   <span style="top:30%; right:3%; animation-delay:-3s">💖</span>
   <span style="bottom:18%; left:4%; animation-delay:-4s">🌈</span>
   <span style="bottom:8%; right:6%; animation-delay:-1.5s">✨</span>
   <span style="bottom:3%; left:40%; animation-delay:-2.5s">😜</span>
 </div>
+
+<button class="som" id="btnSom" aria-label="Ligar ou desligar o som">🔊</button>
 
 <main>
   <!-- Ecrã inicial -->
@@ -219,6 +231,7 @@
   </section>
 </main>
 
+<script src="musica.js"></script>
 <script>
 (function () {
   "use strict";
@@ -426,6 +439,7 @@
   function escolhe(i, botao) {
     if (bloqueado) return;
     bloqueado = true;
+    Musica.efeito("clique");
     respostas[atual] = i;
     document.querySelectorAll(".opcao").forEach((b) => b.classList.remove("escolhida"));
     botao.classList.add("escolhida");
@@ -523,6 +537,7 @@
       "Previsão: " + previsao + "\n\nE tu, quem és hoje?";
 
     mostra("resultado");
+    Musica.efeito("fanfarra");
     confetti();
   }
 
@@ -562,6 +577,24 @@
     }
     return false;
   };
+
+  // ---------- Som ----------
+  function atualizaSom() {
+    const b = $("btnSom");
+    b.textContent = Musica.ligado() ? "🔊" : "🔇";
+    b.classList.toggle("a-tocar", Musica.ligado());
+  }
+  $("btnSom").addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    Musica.alterna();
+    atualizaSom();
+  });
+  // Tenta tocar logo; se o sistema exigir um toque, começa no primeiro toque.
+  Musica.tocar();
+  document.addEventListener("pointerdown", () => Musica.tocar());
+  window.appPausa = () => Musica.pausa();
+  window.appRetoma = () => Musica.retoma();
+  atualizaSom();
 
   $("btnJogar").addEventListener("click", comecar);
   $("btnVoltar").addEventListener("click", voltar);
