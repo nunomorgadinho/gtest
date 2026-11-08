@@ -144,8 +144,9 @@
   }
 
   // ---------- Jogada ----------
-  async function jogar() {
+  async function jogar(confirmadoId) {
     if (aPensar || !j) return;
+    if (typeof confirmadoId !== "string") confirmadoId = null;
     const texto = $("jInput").value.trim();
     if (!texto) { toast("Escreve (ou diz) alguma coisa primeiro!"); $("jInput").focus(); return; }
     const n = normaliza(texto);
@@ -169,7 +170,7 @@
         });
       } else {
         await new Promise((r) => setTimeout(r, 650)); // um pouco de suspense
-        v = window.ArbitroClassico.julgar({ atualId: atual().id, jogada: texto, usadosIds: j.corrente.map((e) => e.id) });
+        v = window.ArbitroClassico.julgar({ atualId: atual().id, jogada: texto, usadosIds: j.corrente.map((e) => e.id), confirmadoId });
         if (v.desconhecido || v.repetido) {
           const err = new Error(v.repetido
             ? v.jogada.emoji + " " + v.jogada.nome + " já foi usado nesta corrente. Tenta outra coisa!"
@@ -192,7 +193,27 @@
     aPensar = false;
     if (!j) return; // saiu entretanto
     $("jPensar").classList.add("escondido");
+    if (v.confirmar) { perguntaSeEra(v.jogada, texto); return; }
     mostraVeredito(v, texto);
+  }
+
+  // O árbitro clássico não tem a certeza do que escreveste: pergunta em vez de trocar
+  function perguntaSeEra(sugestao, texto) {
+    const r = $("jResultado");
+    r.innerHTML = "";
+    const caixa = document.createElement("div");
+    caixa.className = "caixa confirmar";
+    caixa.innerHTML = '<div class="titulo">🤔 Não conheço exatamente isso.</div><div class="grande"></div><p></p>';
+    caixa.querySelector(".grande").textContent = sugestao.emoji;
+    caixa.querySelector("p").textContent = "Querias dizer \u00ab" + sugestao.nome + "\u00bb?";
+    r.appendChild(caixa);
+    r.appendChild(botao("Sim, é isso ✓", "verde", () => { r.innerHTML = ""; jogar(sugestao.id); }));
+    r.appendChild(botao("Não, vou escrever outra coisa", "branco", () => {
+      r.innerHTML = "";
+      $("jZonaJogada").classList.remove("escondido");
+      $("jInput").value = texto;
+      $("jInput").focus();
+    }));
   }
 
   function mostraVeredito(v, texto) {
@@ -381,7 +402,7 @@
   $("btnDefinicoes").addEventListener("click", abreDefinicoes);
   $("chipArbitro").addEventListener("click", abreDefinicoes);
   $("jForm").addEventListener("submit", (ev) => { ev.preventDefault(); jogar(); });
-  $("btnJogar").addEventListener("click", jogar);
+  $("btnJogar").addEventListener("click", () => jogar());
   $("btnVoz").addEventListener("click", ouvir);
   $("btnDica").addEventListener("click", () => {
     if (!j || j.ia || aPensar) return;

@@ -19,7 +19,7 @@
     vela: ["Vela", "a", "🕯️", "fogo", "velas"],
     lava: ["Lava", "a", "🌋", "fogo quente", "magma"],
     vulcao: ["Vulcão", "o", "🌋", "fogo quente grande", "vulcoes"],
-    agua: ["Água", "a", "💧", "agua", "aguas gota liquido"],
+    agua: ["Água", "a", "💧", "agua", "aguas liquido"],
     chuva: ["Chuva", "a", "🌧️", "agua", "aguaceiro chuvada"],
     oceano: ["Oceano", "o", "🌊", "agua grande", "mar oceanos"],
     onda: ["Onda", "a", "🌊", "agua", "ondas"],
@@ -74,6 +74,10 @@
     balao: ["Balão", "o", "🎈", "plastico", "baloes"],
     bolha: ["Bolha de sabão", "a", "🫧", "fragil", "bolha bolhas"],
     vidro: ["Vidro", "o", "🪟", "vidro", "janela copo"],
+    casa: ["Casa", "a", "🏠", "casa", "casas predio apartamento"],
+    sapato: ["Sapato", "o", "👟", "tecido", "sapatos sapatilha bota botas"],
+    bola: ["Bola", "a", "⚽", "plastico", "bolas"],
+    tinta: ["Tinta", "a", "🎨", "quimico", "tintas"],
     metal: ["Metal", "o", "🔩", "metal", "ferro aco parafuso"],
     tesoura: ["Tesoura", "a", "✂️", "corte metal", "tesouras"],
     faca: ["Faca", "a", "🔪", "corte metal", "facas canivete"],
@@ -144,6 +148,12 @@
     macaco: ["Macaco", "o", "🐒", "animal", "macacos gorila chimpanze"],
     ovo: ["Ovo", "o", "🥚", "comida petisco", "ovos"],
     dinossauro: ["Dinossauro", "o", "🦖", "grande", "t rex tiranossauro"],
+    pato: ["Pato", "o", "🦆", "ave animal", "patos"],
+    pinguim: ["Pinguim", "o", "🐧", "ave animal", "pinguins"],
+    cavalo: ["Cavalo", "o", "🐴", "animal", "cavalos egua"],
+    vaca: ["Vaca", "a", "🐄", "animal", "vacas boi touro"],
+    porco: ["Porco", "o", "🐷", "animal", "porcos leitao"],
+    tigre: ["Tigre", "o", "🐯", "animal grande", "tigres"],
     // ---------- Fantasia ----------
     dragao: ["Dragão", "o", "🐉", "fogo grande fantasia", ""],
     cavaleiro: ["Cavaleiro", "o", "🛡️", "pessoa", "guerreiro"],
@@ -154,6 +164,9 @@
     bruxa: ["Bruxa", "a", "🧙", "fantasia pessoa", "feiticeira feiticeiro mago"],
     super_heroi: ["Super-herói", "o", "🦸", "pessoa fantasia", "super heroi superman heroi"],
     tesouro: ["Tesouro", "o", "🪙", "precioso", "ouro moedas de ouro"],
+    rei: ["Rei", "o", "👑", "pessoa", "rainha reis"],
+    espada: ["Espada", "a", "🗡️", "corte metal", "espadas sabre"],
+    escudo: ["Escudo", "o", "🛡️", "metal protecao", "escudos"],
     // ---------- Pessoas ----------
     bombeiro: ["Bombeiro", "o", "🧑‍🚒", "pessoa", "bombeiros"],
     canalizador: ["Canalizador", "o", "🔧", "pessoa", "picheleiro"],
@@ -165,7 +178,7 @@
     lenhador: ["Lenhador", "o", "🧔", "pessoa", ""],
     jardineiro: ["Jardineiro", "o", "🧑‍🌾", "pessoa", "agricultor"],
     programador: ["Programador", "o", "🧑‍💻", "pessoa", "informatico"],
-    mae: ["Mãe", "a", "👩", "pessoa", "mae avo"],
+    mae: ["Mãe", "a", "👩", "pessoa", "mae"],
     bebe: ["Bebé", "o", "👶", "pessoa", "bebe crianca"],
     pirata: ["Pirata", "o", "🏴‍☠️", "pessoa", "piratas"],
     policia: ["Polícia", "a", "👮", "pessoa", "policia agente"],
@@ -190,6 +203,9 @@
     sopa: ["Sopa", "a", "🍲", "comida quente", "caldo"],
     milho: ["Milho", "o", "🌽", "comida planta petisco", "pipocas"],
     dieta: ["Dieta", "a", "🥗", "ideia", "salada"],
+    maca: ["Maçã", "a", "🍏", "comida petisco", "macas"],
+    dente: ["Dente", "o", "🦷", "dente", "dentes"],
+    dentista: ["Dentista", "o", "🪥", "pessoa", "dentistas"],
     fome: ["Fome", "a", "😋", "estado", ""],
     // ---------- Ideias e sentimentos ----------
     ideia: ["Ideia", "a", "💡", "ideia", "ideias"],
@@ -373,7 +389,20 @@
     ["pirata", "regras", "ignora"], ["ferias", "segunda_feira", "cancelam"], ["bebe", "barulho", "faz mais"], ["tempo", "tornado", "acalma"],
     ["macaco", "cao", "goza com"], ["leao", "macaco", "assusta"], ["cimento", "erva", "tapa"], ["martelo", "cimento", "parte"],
     ["agua", "cimento", "infiltra-se n"], ["relampago", "para_raios", "cai sempre n"], ["ferrugem", "para_raios", "enferruja"],
-    ["ciume", "paciencia", "esgota"], ["riso", "ciume", "desarma"]
+    ["ciume", "paciencia", "esgota"], ["riso", "ciume", "desarma"],
+    ["tornado", "casa", "destelha"], ["termita", "casa", "rói as vigas d"], ["casa", "chuva", "protege d"], ["casa", "frio", "protege d"],
+    ["mosca", "cavalo", "não deixa em paz"], ["cobra", "cavalo", "assusta"], ["cavalo", "bicicleta", "é mais rápido do que"], ["cavalo", "erva", "come"],
+    ["mosca", "vaca", "chateia"], ["lobo", "vaca", "assusta"], ["vaca", "erva", "come"], ["lobo", "porco", "assusta"],
+    ["sabao", "porco", "dá banho a"], ["porco", "lama", "rebola n"], ["porco", "sujidade", "não tem medo d"], ["domador", "tigre", "doma"],
+    ["elefante", "tigre", "enfrenta"], ["tigre", "cabra", "assusta"], ["tigre", "macaco", "assusta"], ["calor", "pinguim", "incomoda"],
+    ["tubarao", "pinguim", "persegue"], ["pinguim", "frio", "aguenta"], ["pinguim", "peixe", "apanha"], ["raposa", "pato", "assusta"],
+    ["cao", "pato", "persegue"], ["pato", "pao", "come"], ["pato", "lagarta", "come"], ["rei", "regras", "faz"],
+    ["rei", "cavaleiro", "dá ordens a"], ["escudo", "espada", "trava"], ["martelo", "escudo", "amolga"], ["escudo", "prego", "trava"],
+    ["sapato", "prego", "protege d"], ["sapato", "lama", "atravessa"], ["sapato", "formiga", "pisa"], ["chocolate", "dente", "estraga"],
+    ["dentista", "dente", "trata"], ["dente", "pao", "trinca"], ["dente", "maca", "trinca"], ["faca", "maca", "descasca"],
+    ["lagarta", "maca", "come por dentro"], ["maca", "medico", "mantém longe"], ["maca", "fome", "engana"], ["cao", "bola", "apanha"],
+    ["bola", "vidro", "parte"], ["bola", "tedio", "acaba com"], ["agua", "tinta", "dilui"], ["esponja", "tinta", "limpa"],
+    ["tinta", "ferrugem", "protege contra"], ["tinta", "papel", "pinta"], ["dentista", "chocolate", "proíbe"]
   ].filter((p) => COISAS[p[0]] && COISAS[p[1]] && p[2]);
 
   // ---------- Índices ----------
@@ -387,11 +416,13 @@
 
   const PARAGENS = ["de", "do", "da", "dos", "das", "com", "sem", "para", "por"];
   const indice = new Map(); // forma normalizada -> id
+  const oficiais = new Set(); // nomes "verdadeiros" (não sinónimos)
   for (const [id, c] of Object.entries(COISAS)) {
     const palavras = (c[4] || "").split(" ").filter((w) => w.length > 2 && !PARAGENS.includes(w));
     const formas = [c[0], id.replace(/_/g, " ")].concat(palavras);
+    for (const f of [c[0], id.replace(/_/g, " ")]) { const n = normaliza(f); oficiais.add(n); oficiais.add(singular(n)); }
     // sinónimos com várias palavras vêm separados por espaço; junta pares comuns
-    const extra = (c[4] || "").match(/\b\w+ (de|do|da) \w+( \w+)?\b/g) || [];
+    const extra = (c[4] || "").match(/\b\w+ (?:de|do|da) \w+\b/g) || [];
     for (const f of formas.concat(extra)) {
       const n = normaliza(f);
       if (n && !indice.has(n)) indice.set(n, id);
@@ -410,31 +441,40 @@
     return d[a.length][b.length];
   }
 
-  function encontra(texto) {
+  /**
+   * Procura a coisa e diz como a encontrou:
+   *  "exato"      - nome da coisa (com ou sem artigo, plural ou acentos)
+   *  "sinonimo"   - um sinónimo conhecido ("mar" -> Oceano)
+   *  "aproximado" - parecido, provável erro de escrita: é preciso confirmar
+   *  "palavra"    - só uma das palavras é conhecida ("carro de bombeiros"): é preciso confirmar
+   */
+  function procura(texto) {
     const n = normaliza(texto);
     if (!n) return null;
-    if (indice.has(n)) return indice.get(n);
-    const s = singular(n);
-    if (indice.has(s)) return indice.get(s);
-    // Erros de escrita
-    let melhor = null, dist = 9;
-    for (const [forma, id] of indice) {
-      if (forma.length < 4) continue;
-      const lim = forma.length >= 8 ? 2 : 1;
-      const dd = distancia(n, forma);
-      if (dd <= lim && dd < dist) { dist = dd; melhor = id; }
+    for (const f of [n, singular(n), n.split(" ").map(singular).join(" ")]) {
+      if (indice.has(f)) return { id: indice.get(f), como: oficiais.has(f) ? "exato" : "sinonimo" };
     }
-    if (melhor) return melhor;
-    // A última palavra ("uma grande pedra", "fogo de artifício" não)
+    // Erros de escrita: só em palavras com 5 ou mais letras, a começar pela mesma letra
+    if (n.length >= 5) {
+      const lim = n.length >= 9 ? 2 : 1;
+      let melhor = null, dist = 9;
+      for (const [forma, id] of indice) {
+        if (forma[0] !== n[0] || forma.length < 4) continue;
+        const dd = distancia(n, forma);
+        if (dd <= lim && dd < dist) { dist = dd; melhor = id; }
+      }
+      if (melhor) return { id: melhor, como: "aproximado" };
+    }
+    // Uma das palavras de uma frase
     const palavras = n.split(" ").filter((w) => w.length > 2 && !PARAGENS.includes(w));
     if (palavras.length > 1) {
       for (const w of palavras) {
-        if (indice.has(w)) return indice.get(w);
-        if (indice.has(singular(w))) return indice.get(singular(w));
+        for (const f of [w, singular(w)]) if (indice.has(f)) return { id: indice.get(f), como: "palavra" };
       }
     }
     return null;
   }
+  const encontra = (texto) => { const r = procura(texto); return r ? r.id : null; };
 
   const comArtigo = (id) => { const c = COISAS[id]; return c[1] + " " + c[0].charAt(0).toLowerCase() + c[0].slice(1); };
   const capital = (t) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -482,25 +522,31 @@
     total: TODOS.length,
     encontra,
     /** Mesmo formato que o árbitro com IA, mais `desconhecido` quando não conhece a jogada. */
-    julgar({ atualId, jogada, usadosIds }) {
-      const id = encontra(jogada);
-      if (!id) return { desconhecido: true, valido: false, vence: false, jogada: { nome: jogada, emoji: "❓", explicacao: "" }, rival: null };
+    julgar({ atualId, jogada, usadosIds, confirmadoId }) {
+      const achado = confirmadoId ? { id: confirmadoId, como: "confirmado" } : procura(jogada);
+      if (!achado) return { desconhecido: true, valido: false, vence: false, jogada: { nome: jogada, emoji: "❓", explicacao: "" }, rival: null };
+      const id = achado.id;
+      if (achado.como === "aproximado" || achado.como === "palavra") {
+        return { confirmar: true, valido: false, vence: false, jogada: coisa(id), rival: null };
+      }
+      const nota = achado.como === "sinonimo" ? "(\u00ab" + jogada.trim() + "\u00bb conta como " + COISAS[id][0] + ") " : "";
       if (usadosIds.includes(id)) return { repetido: true, valido: false, vence: false, jogada: coisa(id), rival: null };
       const f = vence(id, atualId);
       if (!f) {
         const t = FRASES_DERROTA[Math.floor(Math.random() * FRASES_DERROTA.length)]
           .replace("{A}", capital(comArtigo(id))).replace("{a}", comArtigo(id)).replace("{b}", comArtigo(atualId));
-        return { valido: true, vence: false, jogada: coisa(id, t), rival: null };
+        return { valido: true, vence: false, jogada: coisa(id, nota + t), rival: null };
       }
       const opcoes = quemVence(id, usadosIds.concat(id));
       const r = opcoes.length ? opcoes[Math.floor(Math.random() * opcoes.length)] : null;
-      return { valido: true, vence: true, jogada: coisa(id, f), rival: r ? coisa(r, vence(r, id)) : null };
+      return { valido: true, vence: true, jogada: coisa(id, nota + f), rival: r ? coisa(r, vence(r, id)) : null };
     },
     dica(atualId, usadosIds) {
       const opcoes = quemVence(atualId, usadosIds);
       return opcoes.length ? coisa(opcoes[Math.floor(Math.random() * opcoes.length)]) : null;
     },
     coisa,
+    procura,
     // Para testes
     _vence: vence, _quemVence: quemVence, _todos: TODOS
   };

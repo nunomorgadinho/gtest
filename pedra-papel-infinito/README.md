@@ -4,7 +4,7 @@ Um pedra-papel-tesoura sem fim, para Android. Começa com uma **Pedra**: escreve
 
 ## Árbitros
 
-- **📚 Clássico (grátis, por defeito):** funciona sem internet. Conhece 213 coisas (natureza, animais, ferramentas, pessoas, comida, emoções...) e mais de 800 relações de quem vence quem, cada uma com a sua frase. Percebe erros de escrita, plurais, artigos e sinónimos. Se não conhecer a jogada, não perdes: tentas outra. Tem um botão 💡 de dica.
+- **📚 Clássico (grátis, por defeito):** funciona sem internet. Conhece 229 coisas (natureza, animais, ferramentas, pessoas, comida, emoções...) e mais de 900 relações de quem vence quem, cada uma com a sua frase. Percebe plurais, artigos e sinónimos (e avisa: «mar» conta como Oceano). Nunca troca a tua palavra às escondidas: se só encontrar algo parecido (erro de escrita) ou uma palavra de uma frase, pergunta «Querias dizer...?». Se não conhecer a jogada, não perdes: tentas outra. Tem um botão 💡 de dica.
 - **🤖 IA (opcional, paga):** o Claude, da Anthropic, aceita qualquer coisa e explica com humor. Precisa de internet e de uma chave da API (ver abaixo).
 
 O dicionário do árbitro clássico está em `app/src/main/assets/arbitro-classico.js` e é fácil de aumentar: cada coisa tem nome, emoji, etiquetas e sinónimos, e há regras por etiqueta (ex.: "água apaga fogo") e pares específicos (ex.: "o papel embrulha a pedra").
@@ -28,7 +28,7 @@ A chave fica guardada só no telemóvel e é enviada apenas para a Anthropic. Ca
 
 ## Instalar
 
-Descarrega `dist/PedraPapelInfinito-v1.1.apk` para o telemóvel Android (7.0 ou superior) e abre-o.
+Descarrega `dist/PedraPapelInfinito-v1.2.apk` para o telemóvel Android (7.0 ou superior) e abre-o.
 Pode ser preciso permitir "instalar apps de origem desconhecida". O APK está assinado com uma chave de debug.
 
 ## Estrutura
