@@ -60,6 +60,13 @@
   .modo b { display: block; font-size: 20px; font-weight: 900; }
   .modo span { display: block; font-size: 14px; line-height: 1.35; margin-top: 2px; }
   .modo .rec { margin-top: 6px; font-size: 12px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+  .arbitro-chip { margin: 18px auto 0; display: flex; align-items: center; gap: 8px; border: var(--borda); border-radius: 99px; background: var(--branco); box-shadow: 3px 3px 0 var(--tinta); padding: 8px 14px; font-weight: 800; font-size: 14px; }
+  .arbitro-chip small { font-weight: 600; opacity: .7; }
+  .opcao-arbitro { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; border: var(--borda); border-radius: 16px; background: var(--branco); padding: 14px; margin-top: 10px; }
+  .opcao-arbitro.ativa { background: var(--amarelo); box-shadow: 4px 4px 0 var(--tinta); }
+  .opcao-arbitro .ic { font-size: 32px; }
+  .opcao-arbitro b { display: block; font-size: 17px; }
+  .opcao-arbitro span { display: block; font-size: 13px; line-height: 1.35; margin-top: 2px; }
   .aviso-chave { margin-top: 18px; padding: 12px 14px; background: var(--lilas); border: var(--borda); border-radius: 14px; font-size: 14px; font-weight: 600; line-height: 1.4; }
 
   /* ---------- Jogo ---------- */
@@ -157,7 +164,7 @@
     <div class="logo">
       <div class="maos"><span>✊</span><span>✋</span><span>✌️</span></div>
       <h1>Pedra, Papel,<br><span class="inf">Infinito</span></h1>
-      <p>Começa com uma pedra. Escreve ou diz <b>qualquer coisa</b> que a vença. Depois, vence isso. E isso. Até ao infinito.</p>
+      <p>Começa com uma pedra. Escreve ou diz algo que a vença. Depois, vence isso. E isso. Até ao infinito.</p>
     </div>
     <div class="modos">
       <button class="modo" style="background:var(--amarelo)" data-modo="corrente">
@@ -166,10 +173,11 @@
       </button>
       <button class="modo" style="background:var(--azul);color:#fff" data-modo="duelo">
         <div class="ic">🤖</div>
-        <div><b>Duelo</b><span>A IA contra-ataca sempre. Tens de vencer a resposta dela.</span><div class="rec" id="recDuelo">Recorde: 0</div></div>
+        <div><b>Duelo</b><span>O rival contra-ataca sempre. Tens de vencer a resposta dele.</span><div class="rec" id="recDuelo">Recorde: 0</div></div>
       </button>
     </div>
-    <div class="aviso-chave escondido" id="avisoChave">🔑 Para jogar precisas de uma chave da API da Anthropic. Toca em ⚙️ para a configurar.</div>
+    <button class="arbitro-chip" id="chipArbitro"></button>
+    <div class="aviso-chave escondido" id="avisoChave">🔑 O árbitro IA precisa de uma chave da API da Anthropic. Toca em ⚙️ para a configurar, ou muda para o árbitro clássico (grátis).</div>
   </section>
 
   <!-- Jogo -->
@@ -192,6 +200,7 @@
       <form class="entrada" id="jForm" autocomplete="off">
         <input id="jInput" maxlength="60" placeholder="Escreve qualquer coisa..." enterkeyhint="send">
         <button type="button" class="icone" id="btnVoz" aria-label="Falar">🎤</button>
+        <button type="button" class="icone escondido" id="btnDica" aria-label="Dica">💡</button>
       </form>
       <button class="btn rosa jogar" id="btnJogar">Jogar ⚡</button>
       <div class="sugestoes" id="jSugestoes"></div>
@@ -224,6 +233,7 @@
 
 <div id="modais"></div>
 
+<script src="arbitro-classico.js"></script>
 <script src="arbitro.js"></script>
 <script src="jogo.js"></script>
 </body>

@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  const INICIO = { nome: "Pedra", emoji: "🪨", explicacao: "", autor: "inicio" };
+  const INICIO = { id: "pedra", nome: "Pedra", emoji: "🪨", explicacao: "", autor: "inicio" };
   const SUGESTOES_INICIAIS = ["Papel", "Martelo", "Lava", "Um geólogo", "Erosão", "Tempo"];
   const FRASES_PENSAR = [
     "A consultar o regulamento infinito...",
@@ -15,6 +15,9 @@
     "A rever a jogada em VAR..."
   ];
   const CHAVE_STORAGE = "ppi.chave";
+  const ARBITRO_STORAGE = "ppi.arbitro"; // "classico" (grátis, sem internet) ou "ia"
+  const usaIA = () => ler(ARBITRO_STORAGE, "classico") === "ia";
+  const chaveRecorde = (modo, ia) => modo + (ia ? "-ia" : "");
   const RECORDES_STORAGE = "ppi.recordes";
 
   const $ = (id) => document.getElementById(id);
@@ -80,15 +83,20 @@
 
   // ---------- Início ----------
   function atualizaInicio() {
-    $("recCorrente").textContent = "Recorde: " + (recordes.corrente || 0);
-    $("recDuelo").textContent = "Recorde: " + (recordes.duelo || 0);
-    $("avisoChave").classList.toggle("escondido", !!ler(CHAVE_STORAGE, ""));
+    const ia = usaIA();
+    $("recCorrente").textContent = "Recorde: " + (recordes[chaveRecorde("corrente", ia)] || 0);
+    $("recDuelo").textContent = "Recorde: " + (recordes[chaveRecorde("duelo", ia)] || 0);
+    $("chipArbitro").innerHTML = ia ? "🤖 Árbitro IA <small>· aceita qualquer coisa</small>"
+      : "📚 Árbitro clássico <small>· grátis, " + window.ArbitroClassico.total + " coisas</small>";
+    $("avisoChave").classList.toggle("escondido", !ia || !!ler(CHAVE_STORAGE, ""));
   }
 
   function comecar(modo) {
-    if (!ler(CHAVE_STORAGE, "")) { abreDefinicoes(); return; }
-    j = { modo, corrente: [Object.assign({}, INICIO)], pontos: 0 };
-    $("jModo").textContent = modo === "duelo" ? "Duelo contra a IA" : "Corrente";
+    const ia = usaIA();
+    if (ia && !ler(CHAVE_STORAGE, "")) { abreDefinicoes(); return; }
+    j = { modo, ia, corrente: [Object.assign({}, INICIO)], pontos: 0, dicas: 0 };
+    $("btnDica").classList.toggle("escondido", ia);
+    $("jModo").textContent = (modo === "duelo" ? "Duelo" : "Corrente") + (ia ? " · árbitro IA" : " · árbitro clássico");
     mostra("jogo");
     novaRonda();
   }
@@ -153,11 +161,23 @@
 
     let v;
     try {
-      v = await window.Arbitro.julgar(ler(CHAVE_STORAGE, ""), {
-        atual: atual().nome,
-        jogada: texto,
-        usadas: j.corrente.map((e) => e.nome)
-      });
+      if (j.ia) {
+        v = await window.Arbitro.julgar(ler(CHAVE_STORAGE, ""), {
+          atual: atual().nome,
+          jogada: texto,
+          usadas: j.corrente.map((e) => e.nome)
+        });
+      } else {
+        await new Promise((r) => setTimeout(r, 650)); // um pouco de suspense
+        v = window.ArbitroClassico.julgar({ atualId: atual().id, jogada: texto, usadosIds: j.corrente.map((e) => e.id) });
+        if (v.desconhecido || v.repetido) {
+          const err = new Error(v.repetido
+            ? v.jogada.emoji + " " + v.jogada.nome + " já foi usado nesta corrente. Tenta outra coisa!"
+            : "O árbitro clássico não conhece \"" + texto + "\". Tenta outra coisa, pede uma 💡 dica ou usa o árbitro IA nas ⚙️.");
+          err.tipo = "desconhecido";
+          throw err;
+        }
+      }
     } catch (erro) {
       clearInterval(intervalo);
       aPensar = false;
@@ -205,7 +225,7 @@
     confete([jogada.emoji, "✨", "⭐"]);
     j.pontos++;
     $("jPontos").textContent = j.pontos;
-    j.corrente.push({ nome: jogada.nome || texto, emoji: jogada.emoji || "❓", explicacao: jogada.explicacao, autor: "jogador" });
+    j.corrente.push({ id: jogada.id, nome: jogada.nome || texto, emoji: jogada.emoji || "❓", explicacao: jogada.explicacao, autor: "jogador" });
 
     if (j.modo === "duelo") {
       const rv = v.rival;
@@ -224,7 +244,7 @@
         rc.querySelector("b").textContent = rv.nome;
         rc.querySelector("p").textContent = rv.explicacao;
         r.appendChild(rc);
-        j.corrente.push({ nome: rv.nome, emoji: rv.emoji, explicacao: rv.explicacao, autor: "rival" });
+        j.corrente.push({ id: rv.id, nome: rv.nome, emoji: rv.emoji, explicacao: rv.explicacao, autor: "rival" });
         r.appendChild(botao("Contra-atacar ⚔️", "", novaRonda));
         rc.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 700);
@@ -243,14 +263,16 @@
 
   // ---------- Fim ----------
   function terminar(venceuRival) {
-    const anterior = recordes[j.modo] || 0;
+    const chave = chaveRecorde(j.modo, j.ia);
+    const anterior = recordes[chave] || 0;
     const novo = j.pontos > anterior;
-    if (novo) { recordes[j.modo] = j.pontos; gravar(RECORDES_STORAGE, JSON.stringify(recordes)); }
+    if (novo) { recordes[chave] = j.pontos; gravar(RECORDES_STORAGE, JSON.stringify(recordes)); }
 
     $("fEmoji").textContent = venceuRival ? "🏆" : j.pontos >= 10 ? "🔥" : j.pontos >= 5 ? "😎" : "💥";
-    $("fTitulo").textContent = venceuRival ? "Deixaste a IA sem palavras!" : j.modo === "duelo" ? "O rival venceu!" : "Fim da corrente!";
+    $("fTitulo").textContent = venceuRival ? "Deixaste o rival sem resposta!" : j.modo === "duelo" ? "O rival venceu!" : "Fim da corrente!";
     $("fPontos").textContent = j.pontos;
-    $("fRecorde").textContent = "Recorde (" + (j.modo === "duelo" ? "Duelo" : "Corrente") + "): " + Math.max(anterior, j.pontos);
+    $("fRecorde").textContent = "Recorde (" + (j.modo === "duelo" ? "Duelo" : "Corrente") + (j.ia ? ", IA" : "") + "): " + Math.max(anterior, j.pontos)
+      + (j.dicas ? " · " + j.dicas + (j.dicas === 1 ? " dica usada" : " dicas usadas") : "");
     $("fNovo").classList.toggle("escondido", !novo);
 
     const lista = $("fLista");
@@ -279,9 +301,16 @@
     const fundo = document.createElement("div");
     fundo.className = "fundo-modal";
     const temChave = !!ler(CHAVE_STORAGE, "");
+    const ia = usaIA();
     fundo.innerHTML =
       '<div class="modal">' +
-        "<h2>🔑 Chave do árbitro</h2>" +
+        "<h2>⚖️ Árbitro</h2>" +
+        '<button class="opcao-arbitro' + (ia ? "" : " ativa") + '" data-arbitro="classico"><span class="ic">📚</span><span><b>Clássico · grátis</b>' +
+          "<span>Funciona sem internet. Conhece " + window.ArbitroClassico.total + " coisas e as regras de quem vence quem.</span></span></button>" +
+        '<button class="opcao-arbitro' + (ia ? " ativa" : "") + '" data-arbitro="ia"><span class="ic">🤖</span><span><b>IA (Claude)</b>' +
+          "<span>Aceita qualquer coisa e explica com humor. Precisa de internet e de uma chave paga da Anthropic.</span></span></button>" +
+        '<div id="zonaChave"' + (ia ? "" : ' class="escondido"') + ">" +
+        '<h2 style="margin-top:22px">🔑 Chave da API</h2>' +
         "<p>O árbitro é o <b>Claude</b>, uma IA da Anthropic. Para ele julgar as tuas jogadas, precisas de uma chave da API:</p>" +
         "<ol><li>Cria uma conta em <code>console.anthropic.com</code></li><li>Adiciona crédito em <b>Billing</b></li><li>Em <b>API Keys</b>, cria uma chave e cola-a aqui</li></ol>" +
         '<label for="dChave">Chave da API</label>' +
@@ -289,10 +318,17 @@
         '<p class="nota">A chave fica guardada só neste telemóvel e é enviada apenas para a Anthropic. Cada jogada custa cerca de 1 a 2 cêntimos. Não partilhes esta app com a tua chave lá dentro.</p>' +
         '<button class="btn rosa" id="dGuardar">Guardar chave</button>' +
         (temChave ? '<button class="btn branco" id="dApagar">Apagar chave</button>' : "") +
+        "</div>" +
         '<button class="btn branco" id="dFechar">Fechar</button>' +
       "</div>";
     fundo.addEventListener("click", (ev) => { if (ev.target === fundo) fundo.remove(); });
     $("modais").appendChild(fundo);
+    fundo.querySelectorAll("[data-arbitro]").forEach((b) => b.addEventListener("click", () => {
+      gravar(ARBITRO_STORAGE, b.dataset.arbitro);
+      fundo.querySelectorAll("[data-arbitro]").forEach((x) => x.classList.toggle("ativa", x === b));
+      fundo.querySelector("#zonaChave").classList.toggle("escondido", b.dataset.arbitro !== "ia");
+      atualizaInicio();
+    }));
     const input = fundo.querySelector("#dChave");
     if (temChave) input.placeholder = "Chave guardada (•••• " + ler(CHAVE_STORAGE, "").slice(-4) + ")";
     fundo.querySelector("#dGuardar").addEventListener("click", () => {
@@ -343,9 +379,17 @@
   // ---------- Eventos ----------
   document.querySelectorAll("[data-modo]").forEach((b) => b.addEventListener("click", () => comecar(b.dataset.modo)));
   $("btnDefinicoes").addEventListener("click", abreDefinicoes);
+  $("chipArbitro").addEventListener("click", abreDefinicoes);
   $("jForm").addEventListener("submit", (ev) => { ev.preventDefault(); jogar(); });
   $("btnJogar").addEventListener("click", jogar);
   $("btnVoz").addEventListener("click", ouvir);
+  $("btnDica").addEventListener("click", () => {
+    if (!j || j.ia || aPensar) return;
+    const d = window.ArbitroClassico.dica(atual().id, j.corrente.map((e) => e.id));
+    if (!d) { toast("Não há mais nada no dicionário que vença isto!"); return; }
+    j.dicas++;
+    toast("💡 Pista: " + d.emoji + "  começa por \"" + d.nome.charAt(0) + "\" e tem " + d.nome.length + " letras.", 5000);
+  });
   if (!vozDisponivel()) $("btnVoz").classList.add("escondido");
   $("btnSair").addEventListener("click", () => { j = null; aPensar = false; atualizaInicio(); mostra("inicio"); });
   $("btnDeNovo").addEventListener("click", () => comecar(j.modo));
