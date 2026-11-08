@@ -79,15 +79,28 @@ three.js lá dentro). Abre-se em qualquer browser recente, no computador ou no t
 sem Internet. Pode também ser posto num alojamento web (itch.io, GitHub Pages, Netlify, etc.).
 Para o regenerar depois de mudar o código: `npm run build:web && python3 tools/make_html.py`.
 
+## Línguas
+
+O jogo está em **português de Portugal, português do Brasil, espanhol, francês e inglês**. A língua escolhe-se
+no menu ou na pausa (fica gravada) e, na primeira vez, segue a língua do aparelho.
+
+- O texto de referência é o português de Portugal, escrito diretamente no código com `_t('…')`
+  (modelos com `{0}`, `{1}` para valores). As outras línguas estão em `src/i18n/<língua>.json`.
+- `node tools/i18n_extract.mjs` recolhe todas as frases (código e `web/index.html`), escreve `src/i18n/keys.json`
+  e verifica cada língua: frases em falta e modelos com `{n}` ou etiquetas diferentes. Com `--list` mostra
+  as que faltam. Ao mudar ou acrescentar uma frase em português, basta traduzir as que o verificador indicar.
+- As placas e os ecrãs desenhados nas paredes ficam na língua com que o setor foi carregado; ao mudar de
+  língua a meio de um setor, passam à nova língua a partir do setor seguinte.
+
 ## Capítulos separados
 
 Cada capítulo existe também como jogo independente, com menu, gravação e final próprios:
 
 | | Android (APK) | Browser (HTML) |
 |---|---|---|
-| Capítulo 1 | [`EscapeTheLab-Cap1-3.2.apk`](dist/EscapeTheLab-Cap1-3.2.apk) · app "Escape the Lab 1" (`com.widgilabs.escapethelab.capitulo1`) | [`EscapeTheLab-Cap1.html`](dist/EscapeTheLab-Cap1.html) |
-| Capítulo 2 | [`EscapeTheLab-Cap2-3.2.apk`](dist/EscapeTheLab-Cap2-3.2.apk) · app "Escape the Lab 2" (`com.widgilabs.escapethelab.capitulo2`) | [`EscapeTheLab-Cap2.html`](dist/EscapeTheLab-Cap2.html) |
-| Os dois juntos | [`EscapeTheLab-3.2.apk`](dist/EscapeTheLab-3.2.apk) · app "Escape the Lab" | [`EscapeTheLab.html`](dist/EscapeTheLab.html) |
+| Capítulo 1 | [`EscapeTheLab-Cap1-3.3.apk`](dist/EscapeTheLab-Cap1-3.3.apk) · app "Escape the Lab 1" (`com.widgilabs.escapethelab.capitulo1`) | [`EscapeTheLab-Cap1.html`](dist/EscapeTheLab-Cap1.html) |
+| Capítulo 2 | [`EscapeTheLab-Cap2-3.3.apk`](dist/EscapeTheLab-Cap2-3.3.apk) · app "Escape the Lab 2" (`com.widgilabs.escapethelab.capitulo2`) | [`EscapeTheLab-Cap2.html`](dist/EscapeTheLab-Cap2.html) |
+| Os dois juntos | [`EscapeTheLab-3.3.apk`](dist/EscapeTheLab-3.3.apk) · app "Escape the Lab" | [`EscapeTheLab.html`](dist/EscapeTheLab.html) |
 
 As três apps têm identificadores diferentes e podem estar instaladas ao mesmo tempo. Para as gerar:
 
@@ -99,7 +112,7 @@ python3 tools/make_html.py --chapter 1; python3 tools/make_html.py --chapter 2; 
 
 ## Instalar
 
-O APK está em [`dist/EscapeTheLab-3.2.apk`](dist/EscapeTheLab-3.2.apk). Android 5.0 ou superior com WebGL.
+O APK está em [`dist/EscapeTheLab-3.3.apk`](dist/EscapeTheLab-3.3.apk). Android 5.0 ou superior com WebGL.
 Joga-se na horizontal.
 
 ## Originalidade (pronto a publicar)

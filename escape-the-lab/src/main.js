@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { snd } from './audio.js';
 import { SECTORS } from './sectors.js';
 import { SECTORS2 } from './sectors2.js';
+import { _t, LANGS, getLang, setLang, onLang } from './i18n.js';
 
 // ---------- Utilidades ----------
 const $ = (id) => document.getElementById(id);
@@ -70,20 +71,55 @@ function applyQuality() {
   renderer.toneMapping = quality === 'alta' ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.6;
   if (scene) scene.traverse((o) => { if (o.material) [].concat(o.material).forEach((m) => { m.needsUpdate = true; }); });
-  $('qBtn').textContent = 'GRÁFICOS: ' + (quality === 'alta' ? 'ALTA' : 'LEVE');
+  $('qBtn').textContent = _t('GRÁFICOS: {0}', quality === 'alta' ? _t('ALTA') : _t('LEVE'));
   resize();
 }
-function drawSnd() { const t = 'SOM: ' + (load('etl_mute') === '1' ? 'DESLIGADO' : 'LIGADO'); $('sndBtn').textContent = t; $('sndBtn2').textContent = t; }
+function drawSnd() { const t = _t('SOM: {0}', load('etl_mute') === '1' ? _t('DESLIGADO') : _t('LIGADO')); $('sndBtn').textContent = t; $('sndBtn2').textContent = t; }
 function toggleSnd() { const m = load('etl_mute') !== '1'; save('etl_mute', m ? '1' : '0'); snd.setMuted(m); drawSnd(); }
 $('sndBtn').addEventListener('click', toggleSnd); $('sndBtn2').addEventListener('click', toggleSnd);
+// Língua: textos fixos da página marcados com data-i18n (o original fica guardado no próprio elemento)
+function applyStatic() {
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    if (el.dataset.src === undefined) el.dataset.src = el.textContent.replace(/\s+/g, ' ').trim();
+    el.textContent = _t(el.dataset.src);
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+    if (el.dataset.src === undefined) el.dataset.src = el.innerHTML.replace(/\s+/g, ' ').trim();
+    el.innerHTML = _t(el.dataset.src);
+  });
+}
+['langSel', 'langSel2'].forEach((id) => {
+  const sel = $(id);
+  LANGS.forEach(([v, n]) => { const o = document.createElement('option'); o.value = v; o.textContent = '🌐 ' + n; sel.appendChild(o); });
+  sel.value = getLang();
+  sel.addEventListener('change', () => setLang(sel.value));
+});
+onLang((l) => {
+  $('langSel').value = l; $('langSel2').value = l;
+  applyStatic(); refreshMenu(); drawSnd(); applyQuality();
+  if (G && CH) renderInv();
+});
+applyStatic();
 drawSnd();
 $('qBtn').addEventListener('click', () => { quality = quality === 'alta' ? 'leve' : 'alta'; save('etl_q', quality); applyQuality(); });
 applyQuality();
 
 // ---------- Texturas procedimentais (ruído + mapas de relevo) ----------
+// Texto desenhado em placas: encolhe na horizontal para nunca sair da placa (traduções mais longas)
+function fitText(x, w) {
+  const ft = x.fillText.bind(x);
+  x.fillText = (t, px, py, mw) => {
+    if (mw === undefined && x.getTransform().isIdentity) {
+      const al = x.textAlign;
+      mw = al === 'center' ? Math.min(px, w - px) * 2 - 8 : (al === 'right' || al === 'end') ? px - 8 : w - px - 8;
+    }
+    return mw > 0 ? ft(t, px, py, mw) : ft(t, px, py);
+  };
+  return x;
+}
 function canvasTex(w, h, draw) {
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-  draw(cv.getContext('2d'), w, h);
+  draw(fitText(cv.getContext('2d'), w), w, h);
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return t;
@@ -257,7 +293,7 @@ function doorTex(info) {
     x.strokeStyle = '#2b3036'; x.lineWidth = 6; for (let k = 0; k < 4; k++) { x.beginPath(); x.moveTo(w / 2, h * 0.3); x.lineTo(w / 2 + Math.cos(k * 1.57 + 0.78) * 34, h * 0.3 + Math.sin(k * 1.57 + 0.78) * 34); x.stroke(); }
     x.fillStyle = info.color; x.globalAlpha = 0.85; x.fillRect(0, h * 0.48, w, h * 0.1); x.globalAlpha = 1;
     x.fillStyle = '#fff'; x.font = 'bold 24px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.fillText(info.label, w / 2, h * 0.53);
+    x.fillText(_t(info.label), w / 2, h * 0.53);
     x.save(); x.translate(0, h * 0.84); hazardStripes(x, w, h * 0.12, 18); x.restore();
     x.globalCompositeOperation = 'multiply'; x.drawImage(GRIME, 0, 0, w, h); x.globalCompositeOperation = 'source-over';
   });
@@ -391,9 +427,9 @@ function itemMesh(kind, color) {
 function addItem(id, x, y, z, onPick) {
   const it = ITEMS[id], g = itemMesh(it.kind, it.color);
   g.position.set(x, y, z); hitbox(g, 0.5, 0.35, 0.5); scene.add(g);
-  interact(g, () => 'Apanhar: ' + it.name, () => {
+  interact(g, () => _t('Apanhar: {0}', it.name), () => {
     G.inv[id] = true; scene.remove(g); snd.pick(); renderInv();
-    toast('Apanhaste: <b>' + it.name + '</b>.');
+    toast(_t('Apanhaste: <b>{0}</b>.', it.name));
     if (onPick) onPick();
   });
   G.anim.push({ card: g, y0: y });
@@ -406,16 +442,16 @@ function fragment(n, x, y, z, story) {
   const paper = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.01, 0.3), new THREE.MeshLambertMaterial({ color: 0xf4efe1, emissive: C.fragColor, emissiveIntensity: 0.25 }));
   g.add(paper); hitbox(g, 0.5, 0.35, 0.5); scene.add(g);
   const halo = glowSprite(x, y + 0.1, z, C.fragColor, 0.8, 0.35);
-  interact(g, () => 'Apanhar ' + C.fragItem, () => {
+  interact(g, () => _t('Apanhar {0}', C.fragItem), () => {
     CH.found[n - 1] = true; scene.remove(g); scene.remove(halo); snd.pick(); renderInv(); saveChapter();
-    showNote(C.fragName + ' ' + n + '/' + CH.frags.length + '\n\nDígito: ' + CH.frags[n - 1] + '\n\n' + story);
+    showNote(_t('{0} {1}/{2}\n\nDígito: {3}\n\n{4}', C.fragName, n, CH.frags.length, CH.frags[n - 1], story));
   });
   G.anim.push({ card: g, y0: y });
 }
 function renderInv() {
   const html = Object.keys(ITEMS).filter((k) => G.inv[k]).map((k) =>
-    '<div class="it" style="--c:' + ITEMS[k].css + '"><i></i>' + ITEMS[k].short + '</div>');
-  CH.found.forEach((f, i) => { if (f) html.push('<div class="frag">' + CHAP().fragLabel + (i + 1) + '·' + CH.frags[i] + '</div>'); });
+    '<div class="it" style="--c:' + ITEMS[k].css + '"><i></i>' + _t(ITEMS[k].short) + '</div>');
+  CH.found.forEach((f, i) => { if (f) html.push('<div class="frag">' + _t(CHAP().fragLabel) + (i + 1) + '·' + CH.frags[i] + '</div>'); });
   $('inv').innerHTML = html.join('');
   $('uvBtn').classList.toggle('hidden', !G.inv.uv);
 }
@@ -562,7 +598,7 @@ function powerOn(msg) {
   });
   G.emergency = [];
   if (SEC.onPower) SEC.onPower();
-  toast(msg || '⚡ Energia restabelecida!');
+  toast(msg || _t('⚡ Energia restabelecida!'));
 }
 function sign(text, x, y, z, rotY, bg, fg, w) {
   const t = textTex(256, 64, bg || '#1c2630', (c) => { c.fillStyle = fg || '#cfe3f3'; c.font = 'bold 28px sans-serif'; c.textAlign = 'center'; c.fillText(text, 128, 42); });
@@ -602,14 +638,14 @@ function doorPrompt(d) {
   if (d.open) return null;
   const info = d.info;
   if (info.prompt) return info.prompt(d);
-  if (info.lock) return G.inv[info.lock] ? 'Usar: ' + ITEMS[info.lock].name : 'Porta trancada (' + ITEMS[info.lock].name + ')';
-  return 'Abrir a porta';
+  if (info.lock) return G.inv[info.lock] ? _t('Usar: {0}', ITEMS[info.lock].name) : _t('Porta trancada ({0})', ITEMS[info.lock].name);
+  return _t('Abrir a porta');
 }
 function useDoor(d) {
   if (d.open) return;
   const info = d.info;
   if (info.use) { info.use(d); return; }
-  if (info.lock && !G.inv[info.lock]) { snd.deny(d.x, d.z); toast('Precisas de: <b>' + ITEMS[info.lock].name + '</b>.'); return; }
+  if (info.lock && !G.inv[info.lock]) { snd.deny(d.x, d.z); toast(_t('Precisas de: <b>{0}</b>.', ITEMS[info.lock].name)); return; }
   if (info.check) { const msg = info.check(d); if (msg) { snd.deny(d.x, d.z); toast(msg); return; } }
   openDoor(d);
 }
@@ -636,7 +672,7 @@ function keypadKey(k) {
   if (k === 'C') { kbuf = ''; drawKeypad(); return; }
   if (k === 'OK') {
     if (kbuf === kpad.code) { closeKeypad(); kpad.onOk(); }
-    else { snd.deny(); $('kdisp').textContent = 'ERRO'; $('kdisp').classList.add('err'); kbuf = ''; }
+    else { snd.deny(); $('kdisp').textContent = _t('ERRO'); $('kdisp').classList.add('err'); kbuf = ''; }
     return;
   }
   if (kbuf.length < kpad.code.length) { kbuf += k; drawKeypad(); }
@@ -676,9 +712,9 @@ function simonRound() {
   const len = simon.rounds[simon.round];
   simon.seq = []; for (let i = 0; i < len; i++) simon.seq.push(Math.floor(Math.random() * 4));
   simon.pos = 0; simon.busy = true;
-  $('simonMsg').textContent = 'Ronda ' + (simon.round + 1) + ' de ' + simon.rounds.length + ': observa...';
+  $('simonMsg').textContent = _t('Ronda {0} de {1}: observa...', simon.round + 1, simon.rounds.length);
   simon.seq.forEach((p, i) => setTimeout(() => simonFlash(p), 900 + i * 650));
-  setTimeout(() => { if (simon) { simon.busy = false; $('simonMsg').textContent = 'Repete a sequência.'; } }, 900 + simon.seq.length * 650);
+  setTimeout(() => { if (simon) { simon.busy = false; $('simonMsg').textContent = _t('Repete a sequência.'); } }, 900 + simon.seq.length * 650);
 }
 function simonFlash(p) {
   const el = document.querySelectorAll('.pad4 button')[p];
@@ -689,7 +725,7 @@ document.querySelectorAll('.pad4 button').forEach((b, i) => b.addEventListener('
   if (!simon || simon.busy) return;
   simonFlash(i);
   if (simon.seq[simon.pos] !== i) {
-    snd.simon(0, true); simon.busy = true; $('simonMsg').textContent = 'Errado! A sequência recomeça...';
+    snd.simon(0, true); simon.busy = true; $('simonMsg').textContent = _t('Errado! A sequência recomeça...');
     setTimeout(() => { if (simon) simonRound(); }, 1300);
     return;
   }
@@ -697,7 +733,7 @@ document.querySelectorAll('.pad4 button').forEach((b, i) => b.addEventListener('
   if (simon.pos === simon.seq.length) {
     simon.round++; simon.busy = true;
     if (simon.round === simon.rounds.length) {
-      $('simonMsg').textContent = 'ACESSO CONCEDIDO'; const cb = simon.onWin;
+      $('simonMsg').textContent = _t('ACESSO CONCEDIDO'); const cb = simon.onWin;
       setTimeout(() => { closeSimon(); cb(); }, 900);
     } else setTimeout(() => { if (simon) simonRound(); }, 900);
   }
@@ -724,8 +760,8 @@ function openPipes(opts) {
   }
   const turns = base.map(() => Math.floor(Math.random() * 4));
   pipes = { N, base, turns, src, onWin: opts.onWin, done: false };
-  $('pipes').querySelector('h3').textContent = opts.title || 'CIRCUITO DE REFRIGERAÇÃO';
-  $('pipes').querySelector('p').textContent = opts.text || 'Toca nas peças para as rodar até o líquido chegar a todos os tubos.';
+  $('pipes').querySelector('h3').textContent = opts.title || _t('CIRCUITO DE REFRIGERAÇÃO');
+  $('pipes').querySelector('p').textContent = opts.text || _t('Toca nas peças para as rodar até o líquido chegar a todos os tubos.');
   if (pipesLit().every(Boolean)) pipes.turns[src + 1]++;
   $('pipes').classList.remove('hidden'); drawPipes();
 }
@@ -759,7 +795,7 @@ function drawPipes() {
     if (i === src) { c.fillStyle = '#4fc3f7'; c.beginPath(); c.arc(x, y, T * 0.2, 0, 7); c.fill(); }
   }
   const n = lit.filter(Boolean).length;
-  $('pipeMsg').textContent = pipes.done ? 'REFRIGERAÇÃO RESTABELECIDA' : 'Fluxo: ' + Math.round(n / (N * N) * 100) + '%';
+  $('pipeMsg').textContent = pipes.done ? _t('REFRIGERAÇÃO RESTABELECIDA') : _t('Fluxo: {0}%', Math.round(n / (N * N) * 100));
 }
 $('pipeCv').addEventListener('click', (e) => {
   if (!pipes || pipes.done) return;
@@ -814,7 +850,7 @@ function dronesOff() {
   $('eye').classList.add('hidden');
 }
 function caught() {
-  snd.sting(); toast('<b>Foste detetado!</b> Voltaste ao último ponto seguro.');
+  snd.sting(); toast(_t('<b>Foste detetado!</b> Voltaste ao último ponto seguro.'));
   $('hit').classList.add('on'); setTimeout(() => $('hit').classList.remove('on'), 500);
   const [x, z, yaw] = G.checkpoint; G.x = x; G.z = z; G.yaw = yaw; G.pitch = 0;
   resetDrones(); G.grace = 2.5;
@@ -914,10 +950,10 @@ function drawLogic() {
   wire([[480, 135], [530, 135]], r.o1); wire([[480, 265], [530, 265]], r.o2);
   const gate = (x, y, name) => { c.fillStyle = '#1b2a33'; c.strokeStyle = '#7dffcf'; c.lineWidth = 2; c.fillRect(x, y, 80, 60); c.strokeRect(x, y, 80, 60); c.fillStyle = '#7dffcf'; c.font = 'bold 18px monospace'; c.textAlign = 'center'; c.fillText(name, x + 40, y + 37); };
   gate(230, 60, L.g[0]); gate(230, 220, L.g[1]); gate(400, 105, L.g[2]); gate(400, 235, L.g[3]);
-  L.inv.forEach((v, i) => { if (!v) return; c.fillStyle = '#ffb02e'; c.fillRect(110, sy[i] - 12, 30, 24); c.fillStyle = '#111'; c.font = 'bold 11px monospace'; c.textAlign = 'center'; c.fillText('NÃO', 125, sy[i] + 4); });
+  L.inv.forEach((v, i) => { if (!v) return; c.fillStyle = '#ffb02e'; c.fillRect(110, sy[i] - 12, 30, 24); c.fillStyle = '#111'; c.font = 'bold 11px monospace'; c.textAlign = 'center'; c.fillText(_t('NÃO'), 125, sy[i] + 4); });
   L.s.forEach((v, i) => { c.fillStyle = v ? '#4fe3ff' : '#2b3036'; c.beginPath(); c.arc(38, sy[i], 22, 0, 7); c.fill(); c.fillStyle = v ? '#05202a' : '#9aa3ad'; c.font = 'bold 18px monospace'; c.textAlign = 'center'; c.fillText(v ? '1' : '0', 38, sy[i] + 6); });
   [[135, r.o1], [265, r.o2]].forEach(([y, v]) => { c.fillStyle = v ? '#ffe28a' : '#3a3020'; c.beginPath(); c.arc(548, y, 18, 0, 7); c.fill(); });
-  $('logicMsg').textContent = L.done ? 'CIRCUITO FECHADO' : 'Acende as duas lâmpadas ao mesmo tempo.';
+  $('logicMsg').textContent = L.done ? _t('CIRCUITO FECHADO') : _t('Acende as duas lâmpadas ao mesmo tempo.');
 }
 $('logicCv').addEventListener('click', (e) => {
   if (!logic || logic.done) return;
@@ -995,7 +1031,7 @@ function drawLaser() {
   c.strokeStyle = 'rgba(255,60,40,.9)'; c.lineWidth = 3; c.shadowColor = '#ff3b2a'; c.shadowBlur = 12; c.beginPath();
   tr.pts.forEach(([col, row], k) => { const x = X(Math.min(col, N)), y = Y(row); if (k) c.lineTo(x, y); else c.moveTo(X(-1) + T / 3, y); });
   c.stroke(); c.shadowBlur = 0;
-  $('laserMsg').textContent = laser.done ? 'RECETOR ATIVADO' : 'Toca nos espelhos para os rodar e leva o laser até ao recetor verde.';
+  $('laserMsg').textContent = laser.done ? _t('RECETOR ATIVADO') : _t('Toca nos espelhos para os rodar e leva o laser até ao recetor verde.');
 }
 $('laserCv').addEventListener('click', (e) => {
   if (!laser || laser.done) return;
@@ -1032,7 +1068,7 @@ function drawSlide() {
     if (t === 8 && !slide.done) return;
     c.drawImage(slide.img, (t % 3) * 100, Math.floor(t / 3) * 100, 100, 100, (i % 3) * T + 2, Math.floor(i / 3) * T + 2, T - 4, T - 4);
   });
-  $('slideMsg').textContent = slide.done ? 'FOTOGRAFIA RECOMPOSTA' : 'Toca numa peça ao lado do espaço vazio para a deslizar.';
+  $('slideMsg').textContent = slide.done ? _t('FOTOGRAFIA RECOMPOSTA') : _t('Toca numa peça ao lado do espaço vazio para a deslizar.');
 }
 $('slideCv').addEventListener('click', (e) => {
   if (!slide || slide.done) return;
@@ -1055,7 +1091,7 @@ function openRadio(opts) {
 }
 function radioUpd(quiet) {
   const f = parseFloat($('radioIn').value), clar = Math.max(0, 1 - Math.abs(f - radio.freq) / 2.5);
-  $('radioFreq').textContent = f.toFixed(1) + ' MHz';
+  $('radioFreq').textContent = _t('{0} MHz', f.toFixed(1));
   $('radioBar').style.width = Math.round(clar * 100) + '%';
   if (!quiet) snd.staticBurst(clar);
   if (!radio.done && Math.abs(f - radio.freq) < 0.05) {
@@ -1089,7 +1125,7 @@ document.querySelectorAll('#clock [data-k]').forEach((b) => b.addEventListener('
   snd.clickTick();
   if (k === 'ok') {
     if (clock.h === clock.target[0] && clock.m === clock.target[1]) { const cb = clock.onWin; closeClock(); cb(); return; }
-    snd.deny(); $('clockMsg').textContent = 'Nada acontece.'; return;
+    snd.deny(); $('clockMsg').textContent = _t('Nada acontece.'); return;
   }
   $('clockMsg').textContent = ''; drawClock();
 }));
@@ -1105,7 +1141,7 @@ function openMix(opts) {
   mix = { target: opts.target, sel: [], onWin: opts.onWin };
   const box = $('mixVials'); box.innerHTML = '';
   VIALS.forEach(([n, c], i) => {
-    const b = document.createElement('button'); b.innerHTML = '<i style="background:' + rgb(c) + '"></i>' + n;
+    const b = document.createElement('button'); b.innerHTML = '<i style="background:' + rgb(c) + '"></i>' + _t(n);
     b.addEventListener('click', () => {
       const k = mix.sel.indexOf(i);
       if (k >= 0) mix.sel.splice(k, 1); else if (mix.sel.length < 3) mix.sel.push(i);
@@ -1119,13 +1155,13 @@ function openMix(opts) {
 function drawMix() {
   document.querySelectorAll('#mixVials button').forEach((b, i) => b.classList.toggle('on', mix.sel.includes(i)));
   $('mixResult').style.background = mix.sel.length ? rgb(mixColor(mix.sel)) : 'transparent';
-  $('mixMsg').textContent = mix.sel.length + ' de 3 frascos escolhidos';
+  $('mixMsg').textContent = _t('{0} de 3 frascos escolhidos', mix.sel.length);
 }
 $('mixBtn').addEventListener('click', () => {
   if (!mix || mix.sel.length !== 3) { snd.deny(); return; }
   snd.mix();
-  if (rgb(mixColor(mix.sel)) === rgb(mixColor(mix.target))) { const cb = mix.onWin; $('mixMsg').textContent = 'Mistura correta!'; setTimeout(() => { closeMix(); cb(); }, 1300); }
-  else { $('mixMsg').textContent = 'A cor não corresponde à receita. A mistura foi para o lixo.'; mix.sel = []; setTimeout(drawMix, 1500); }
+  if (rgb(mixColor(mix.sel)) === rgb(mixColor(mix.target))) { const cb = mix.onWin; $('mixMsg').textContent = _t('Mistura correta!'); setTimeout(() => { closeMix(); cb(); }, 1300); }
+  else { $('mixMsg').textContent = _t('A cor não corresponde à receita. A mistura foi para o lixo.'); mix.sel = []; setTimeout(drawMix, 1500); }
 });
 function closeMix() { mix = null; $('mix').classList.add('hidden'); }
 $('mixClose').addEventListener('click', closeMix);
@@ -1180,11 +1216,11 @@ function enterSector(i) {
   $('fade').classList.add('on');
   setTimeout(() => {
     loadSector(i);
-    $('fadeT1').textContent = SEC.title; $('fadeT2').textContent = SEC.subtitle;
+    $('fadeT1').textContent = _t(SEC.title); $('fadeT2').textContent = _t(SEC.subtitle);
     setTimeout(() => {
       $('fade').classList.remove('on'); setState('play');
       const msg = CH.pending || SEC.intro; CH.pending = null;
-      if (msg) setTimeout(() => toast(msg), 600);
+      if (msg) setTimeout(() => toast(_t(msg)), 600);
     }, 2800);
   }, 900);
 }
@@ -1194,7 +1230,7 @@ function nextSector() {
   snd.elevator(2.6);
   // se o jogador não apanhou o fragmento deste setor, guarda-o na mesma
   const fn = SEC.frag || (CH.ch === 1 && secIdx < 4 ? secIdx + 1 : 0);
-  if (fn && !CH.found[fn - 1]) { CH.found[fn - 1] = true; CH.pending = 'Encontraste no bolso um papel amarrotado: <b>' + CHAP().fragLabel + fn + ' · ' + CH.frags[fn - 1] + '</b>.'; }
+  if (fn && !CH.found[fn - 1]) { CH.found[fn - 1] = true; CH.pending = _t('Encontraste no bolso um papel amarrotado: <b>{0}{1} · {2}</b>.', CHAP().fragLabel, fn, CH.frags[fn - 1]); }
   if (secIdx + 1 < CHAP().sectors.length) enterSector(secIdx + 1);
 }
 // Final do capítulo: o elevador sobe... e para.
@@ -1206,7 +1242,7 @@ function playEnding() {
   const fx = { elevator: () => snd.elevator(7), sting: () => snd.sting(), radio: () => snd.radio(), door: () => snd.door(G.x, G.z) };
   $('story').classList.remove('hidden'); $('storyText').innerHTML = '';
   lines.forEach(([ms, txt, f]) => setTimeout(() => {
-    const p = document.createElement('p'); p.textContent = txt; $('storyText').appendChild(p);
+    const p = document.createElement('p'); p.textContent = _t(txt); $('storyText').appendChild(p);
     while ($('storyText').children.length > 4) $('storyText').removeChild($('storyText').firstChild);
     requestAnimationFrame(() => p.classList.add('in'));
     if (fx[f]) fx[f]();
@@ -1216,10 +1252,9 @@ function playEnding() {
     const best = parseFloat(load('etl_best_ch' + CH.ch)), rec = !best || CH.time < best;
     if (rec) save('etl_best_ch' + CH.ch, CH.time.toFixed(1));
     save('etl_ch' + CH.ch + '_done', '1'); save('etl_save_c' + CH.ch, ''); if (CH.ch === 1) save('etl_save', '');
-    $('winTitle').innerHTML = 'FIM DO<br><span>CAPÍTULO ' + CH.ch + '</span>';
-    $('winNext').textContent = C.next;
-    $('winTxt').innerHTML = 'Tempo do capítulo: <b>' + fmtTime(CH.time) + '</b>' + (rec ? ' (novo recorde!)' : '<br>Melhor tempo: ' + fmtTime(best)) +
-      '<br><br>' + C.endText;
+    $('winTitle').innerHTML = _t('FIM DO<br><span>CAPÍTULO {0}</span>', CH.ch);
+    $('winNext').textContent = _t(C.next);
+    $('winTxt').innerHTML = _t('Tempo do capítulo: <b>{0}</b>{1}<br><br>{2}', fmtTime(CH.time), rec ? _t(' (novo recorde!)') : _t('<br>Melhor tempo: {0}', fmtTime(best)), C.endText);
     setState('end'); refreshMenu();
   }, lines[lines.length - 1][0] + 5200);
 }
@@ -1228,9 +1263,9 @@ function refreshMenu() {
   [[1, 'contBtn', 'best1'], [2, 'cont2Btn', 'best2']].forEach(([n, btn, bt]) => {
     const sv = loadChapter(n);
     $(btn).classList.toggle('hidden', !sv);
-    if (sv) $(btn).textContent = 'CONTINUAR — ' + CHAPTERS[n].sectors[sv.sec].title.split(' — ')[0];
+    if (sv) $(btn).textContent = _t('CONTINUAR — {0}', _t(CHAPTERS[n].sectors[sv.sec].title).split(' — ')[0]);
     const b = parseFloat(load('etl_best_ch' + n));
-    $(bt).textContent = b ? 'Melhor tempo: ' + fmtTime(b) : (load('etl_ch' + n + '_done') ? 'Concluído' : '');
+    $(bt).textContent = b ? _t('Melhor tempo: {0}', fmtTime(b)) : (load('etl_ch' + n + '_done') ? _t('Concluído') : '');
   });
 }
 function startNew(n) { audio(); newChapter(n); enterSector(0); }
@@ -1444,7 +1479,7 @@ function update(dt) {
     if (target) $('prompt').textContent = target.p;
     $('timer').textContent = fmtTime(totalTime());
     $('objText').textContent = SEC.objective(G);
-    $('secTxt').textContent = SEC.title;
+    $('secTxt').textContent = _t(SEC.title);
     if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').style.opacity = 0; }
   }
 }
