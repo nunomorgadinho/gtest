@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pedra, Papel, Infinito</string>
+    <string name="share_title">Partilhar</string>
+    <string name="voz_prompt">O que vence isto?</string>
+</resources>

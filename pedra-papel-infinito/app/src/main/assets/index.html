@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Pedra, Papel, Infinito</title>
+<style>
+  :root {
+    --fundo: #fff6e0;
+    --tinta: #161124;
+    --amarelo: #ffd23f;
+    --rosa: #ff5fa2;
+    --azul: #3fa7ff;
+    --verde: #2ee59d;
+    --vermelho: #ff4d4d;
+    --lilas: #b69cff;
+    --branco: #ffffff;
+    --borda: 3px solid var(--tinta);
+    --sombra: 5px 5px 0 var(--tinta);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; background: var(--fundo); }
+  body { font-family: "Space Grotesk", system-ui, -apple-system, "Roboto", "Segoe UI", sans-serif; color: var(--tinta); font-size: 16px; overflow-x: hidden;
+    background-image: radial-gradient(rgba(22,17,36,.09) 1.2px, transparent 1.2px); background-size: 18px 18px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  input { font: inherit; }
+  .escondido { display: none !important; }
+
+  .caixa { background: var(--branco); border: var(--borda); border-radius: 18px; box-shadow: var(--sombra); }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: var(--borda); border-radius: 16px; box-shadow: var(--sombra); padding: 15px 16px; font-size: 18px; font-weight: 800; background: var(--amarelo); transition: transform .08s, box-shadow .08s; }
+  .btn:active { transform: translate(4px, 4px); box-shadow: 1px 1px 0 var(--tinta); }
+  .btn.rosa { background: var(--rosa); color: var(--branco); }
+  .btn.azul { background: var(--azul); color: var(--branco); }
+  .btn.verde { background: var(--verde); }
+  .btn.branco { background: var(--branco); }
+  .btn:disabled { opacity: .55; }
+  .btn small { font-weight: 600; font-size: 13px; opacity: .85; }
+
+  main { max-width: 520px; margin: 0 auto; padding: 18px 16px 28px; padding-top: max(18px, env(safe-area-inset-top)); min-height: 100vh; display: flex; flex-direction: column; }
+  .ecra { display: none; flex: 1; flex-direction: column; animation: entra .3s ease-out; }
+  .ecra.ativo { display: flex; }
+  @keyframes entra { from { opacity: 0; transform: translateY(10px); } }
+
+  /* ---------- Início ---------- */
+  .topo-inicio { display: flex; justify-content: flex-end; }
+  .icone { width: 50px; height: 50px; border: var(--borda); border-radius: 14px; box-shadow: 4px 4px 0 var(--tinta); background: var(--branco); font-size: 22px; display: grid; place-items: center; }
+  .icone:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--tinta); }
+  .logo { text-align: center; margin: 10px 0 18px; }
+  .maos { font-size: 58px; letter-spacing: 4px; display: inline-flex; gap: 6px; }
+  .maos span { display: inline-block; animation: maos 1.4s ease-in-out infinite; }
+  .maos span:nth-child(2) { animation-delay: .15s; } .maos span:nth-child(3) { animation-delay: .3s; }
+  @keyframes maos { 50% { transform: translateY(-10px) rotate(-8deg); } }
+  .logo h1 { margin: 6px 0 0; font-size: 40px; line-height: .95; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; }
+  .logo h1 .inf { display: inline-block; background: var(--rosa); color: var(--branco); padding: 2px 12px 6px; border: var(--borda); border-radius: 14px; box-shadow: var(--sombra); transform: rotate(-3deg); margin-top: 8px; }
+  .logo p { margin: 16px auto 0; max-width: 340px; line-height: 1.45; font-weight: 500; }
+  .modos { display: grid; gap: 14px; margin-top: 8px; }
+  .modo { text-align: left; padding: 16px; border: var(--borda); border-radius: 18px; box-shadow: var(--sombra); display: flex; gap: 14px; align-items: center; }
+  .modo:active { transform: translate(4px, 4px); box-shadow: 1px 1px 0 var(--tinta); }
+  .modo .ic { font-size: 38px; width: 58px; height: 58px; border: var(--borda); border-radius: 14px; background: var(--branco); display: grid; place-items: center; flex: none; }
+  .modo b { display: block; font-size: 20px; font-weight: 900; }
+  .modo span { display: block; font-size: 14px; line-height: 1.35; margin-top: 2px; }
+  .modo .rec { margin-top: 6px; font-size: 12px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+  .aviso-chave { margin-top: 18px; padding: 12px 14px; background: var(--lilas); border: var(--borda); border-radius: 14px; font-size: 14px; font-weight: 600; line-height: 1.4; }
+
+  /* ---------- Jogo ---------- */
+  .barra-jogo { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .pontuacao { flex: 1; display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 22px; }
+  .pontuacao .pill { background: var(--amarelo); border: var(--borda); border-radius: 99px; padding: 4px 14px; box-shadow: 3px 3px 0 var(--tinta); }
+  .pontuacao small { font-size: 13px; font-weight: 700; opacity: .7; }
+
+  .corrente { display: flex; gap: 8px; overflow-x: auto; padding: 4px 4px 10px; margin: 0 -4px 6px; scrollbar-width: none; }
+  .corrente::-webkit-scrollbar { display: none; }
+  .elo { flex: none; display: flex; align-items: center; gap: 4px; background: var(--branco); border: 2px solid var(--tinta); border-radius: 99px; padding: 4px 10px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .elo.rival { background: var(--lilas); }
+  .seta { flex: none; align-self: center; font-weight: 900; opacity: .5; }
+
+  .arena { position: relative; padding: 22px 18px 20px; text-align: center; margin-bottom: 16px; }
+  .arena .etiqueta { position: absolute; top: -14px; left: 16px; background: var(--azul); color: var(--branco); border: var(--borda); border-radius: 10px; padding: 2px 10px; font-size: 12px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+  .arena .grande { font-size: 84px; line-height: 1.1; display: inline-block; animation: aparece .4s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes aparece { from { transform: scale(.3) rotate(-20deg); opacity: 0; } }
+  .arena .nome { font-size: 28px; font-weight: 900; margin-top: 2px; word-wrap: break-word; }
+  .arena .por { font-size: 13px; font-weight: 700; opacity: .65; margin-top: 4px; }
+  .pergunta { font-size: 22px; font-weight: 900; text-align: center; margin: 4px 0 12px; }
+  .pergunta em { font-style: normal; background: var(--amarelo); padding: 0 6px; border-radius: 6px; }
+
+  .entrada { display: flex; gap: 10px; }
+  .entrada input { flex: 1; min-width: 0; padding: 15px 14px; border: var(--borda); border-radius: 16px; box-shadow: var(--sombra); background: var(--branco); outline: none; font-size: 17px; font-weight: 600; }
+  .entrada input:focus { background: #fffdf5; }
+  .entrada .icone { width: 56px; height: auto; font-size: 24px; }
+  .entrada .icone.a-ouvir { background: var(--rosa); animation: pulsa .8s infinite alternate; }
+  @keyframes pulsa { to { transform: scale(1.08); } }
+  .jogar { margin-top: 12px; }
+  .sugestoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; justify-content: center; }
+  .sugestoes button { border: 2px solid var(--tinta); background: var(--branco); border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 700; }
+  .dica { text-align: center; font-size: 13px; opacity: .65; margin-top: 12px; font-weight: 600; }
+
+  /* ---------- A pensar ---------- */
+  .pensar { text-align: center; padding: 28px 16px; }
+  .pensar .balanca { font-size: 64px; display: inline-block; animation: balanca 1s ease-in-out infinite; }
+  @keyframes balanca { 0%,100% { transform: rotate(-14deg); } 50% { transform: rotate(14deg); } }
+  .pensar b { display: block; font-size: 20px; margin-top: 8px; }
+  .pensar span { display: block; font-size: 14px; margin-top: 6px; opacity: .7; font-weight: 600; min-height: 20px; }
+
+  /* ---------- Veredito ---------- */
+  .veredito { padding: 18px; text-align: center; margin-bottom: 14px; animation: carimbo .35s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes carimbo { from { transform: scale(1.4) rotate(6deg); opacity: 0; } }
+  .veredito.ganhou { background: var(--verde); }
+  .veredito.perdeu { background: var(--vermelho); color: var(--branco); }
+  .veredito .selo { display: inline-block; font-size: 26px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; border: var(--borda); border-color: currentColor; border-radius: 12px; padding: 2px 14px; transform: rotate(-4deg); }
+  .veredito .duelo { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 14px 0 8px; font-size: 44px; }
+  .veredito .duelo i { font-style: normal; font-size: 16px; font-weight: 900; }
+  .veredito p { margin: 6px 0 0; font-size: 16px; line-height: 1.45; font-weight: 600; }
+  .rival-caixa { padding: 16px; text-align: center; margin-bottom: 14px; background: var(--lilas); animation: entra .35s ease-out; }
+  .rival-caixa .titulo { font-weight: 900; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; }
+  .rival-caixa .grande { font-size: 56px; margin: 6px 0 2px; }
+  .rival-caixa b { font-size: 22px; }
+  .rival-caixa p { margin: 6px 0 0; font-weight: 600; line-height: 1.4; }
+
+  /* ---------- Fim ---------- */
+  .fim { text-align: center; }
+  .fim .grande { font-size: 76px; }
+  .fim h2 { margin: 6px 0 4px; font-size: 32px; font-weight: 900; text-transform: uppercase; }
+  .fim .pontos { display: inline-block; font-size: 56px; font-weight: 900; background: var(--amarelo); border: var(--borda); border-radius: 18px; box-shadow: var(--sombra); padding: 0 22px; margin: 10px 0 6px; }
+  .fim .rec { font-weight: 800; }
+  .fim .novo { display: inline-block; background: var(--rosa); color: var(--branco); border: var(--borda); border-radius: 10px; padding: 2px 10px; font-weight: 900; transform: rotate(-3deg); margin-top: 8px; }
+  .lista-final { text-align: left; padding: 14px; margin: 18px 0; max-height: 34vh; overflow-y: auto; }
+  .lista-final div { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 2px dashed rgba(22,17,36,.15); font-weight: 700; }
+  .lista-final div:last-child { border-bottom: 0; }
+  .lista-final div span:first-child { font-size: 24px; width: 32px; text-align: center; }
+  .lista-final div small { margin-left: auto; font-size: 11px; font-weight: 800; opacity: .6; text-transform: uppercase; }
+  .acoes { display: grid; gap: 12px; margin-top: auto; }
+
+  /* ---------- Janela ---------- */
+  .fundo-modal { position: fixed; inset: 0; z-index: 50; background: rgba(22,17,36,.45); display: flex; align-items: flex-end; justify-content: center; animation: entra .2s; }
+  .modal { width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; background: var(--fundo); border: var(--borda); border-bottom: 0; border-radius: 22px 22px 0 0; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); }
+  .modal h2 { margin: 0 0 10px; font-size: 24px; font-weight: 900; }
+  .modal p, .modal li { line-height: 1.5; font-size: 15px; }
+  .modal ol { padding-left: 20px; margin: 8px 0; }
+  .modal label { display: block; font-size: 12px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; margin: 14px 0 8px; }
+  .modal input { width: 100%; padding: 14px; border: var(--borda); border-radius: 14px; background: var(--branco); outline: none; font-size: 15px; font-family: ui-monospace, monospace; }
+  .modal .btn { margin-top: 12px; }
+  .nota { font-size: 13px; opacity: .75; line-height: 1.45; }
+  code { background: var(--branco); border: 2px solid var(--tinta); border-radius: 6px; padding: 0 4px; font-size: 13px; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60; max-width: calc(100% - 32px); background: var(--tinta); color: var(--branco); border-radius: 14px; padding: 12px 16px; font-weight: 700; font-size: 15px; box-shadow: 4px 4px 0 var(--rosa); animation: entra .25s; text-align: center; }
+
+  .confete { position: fixed; top: -20px; z-index: 70; pointer-events: none; font-size: 22px; animation: cai linear forwards; }
+  @keyframes cai { to { transform: translateY(110vh) rotate(600deg); } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <!-- Início -->
+  <section class="ecra ativo" id="inicio">
+    <div class="topo-inicio"><button class="icone" id="btnDefinicoes" aria-label="Definições">⚙️</button></div>
+    <div class="logo">
+      <div class="maos"><span>✊</span><span>✋</span><span>✌️</span></div>
+      <h1>Pedra, Papel,<br><span class="inf">Infinito</span></h1>
+      <p>Começa com uma pedra. Escreve ou diz <b>qualquer coisa</b> que a vença. Depois, vence isso. E isso. Até ao infinito.</p>
+    </div>
+    <div class="modos">
+      <button class="modo" style="background:var(--amarelo)" data-modo="corrente">
+        <div class="ic">⛓️</div>
+        <div><b>Corrente</b><span>Cada coisa tem de vencer a anterior. Quanto vais aguentar?</span><div class="rec" id="recCorrente">Recorde: 0</div></div>
+      </button>
+      <button class="modo" style="background:var(--azul);color:#fff" data-modo="duelo">
+        <div class="ic">🤖</div>
+        <div><b>Duelo</b><span>A IA contra-ataca sempre. Tens de vencer a resposta dela.</span><div class="rec" id="recDuelo">Recorde: 0</div></div>
+      </button>
+    </div>
+    <div class="aviso-chave escondido" id="avisoChave">🔑 Para jogar precisas de uma chave da API da Anthropic. Toca em ⚙️ para a configurar.</div>
+  </section>
+
+  <!-- Jogo -->
+  <section class="ecra" id="jogo">
+    <div class="barra-jogo">
+      <button class="icone" id="btnSair" aria-label="Sair">←</button>
+      <div class="pontuacao"><span class="pill" id="jPontos">0</span><small id="jModo">Corrente</small></div>
+    </div>
+    <div class="corrente" id="jCorrente"></div>
+
+    <div class="caixa arena" id="jArena">
+      <span class="etiqueta">A vencer</span>
+      <div class="grande" id="jEmoji">🪨</div>
+      <div class="nome" id="jNome">Pedra</div>
+      <div class="por" id="jPor"></div>
+    </div>
+
+    <div id="jZonaJogada">
+      <div class="pergunta">O que vence <em id="jPergunta">Pedra</em>?</div>
+      <form class="entrada" id="jForm" autocomplete="off">
+        <input id="jInput" maxlength="60" placeholder="Escreve qualquer coisa..." enterkeyhint="send">
+        <button type="button" class="icone" id="btnVoz" aria-label="Falar">🎤</button>
+      </form>
+      <button class="btn rosa jogar" id="btnJogar">Jogar ⚡</button>
+      <div class="sugestoes" id="jSugestoes"></div>
+    </div>
+
+    <div class="caixa pensar escondido" id="jPensar">
+      <div class="balanca">⚖️</div>
+      <b>O árbitro está a pensar...</b>
+      <span id="jPensarFrase"></span>
+    </div>
+
+    <div id="jResultado"></div>
+  </section>
+
+  <!-- Fim -->
+  <section class="ecra fim" id="fim">
+    <div class="grande" id="fEmoji">💥</div>
+    <h2 id="fTitulo">Fim da corrente!</h2>
+    <div class="pontos" id="fPontos">0</div>
+    <div class="rec" id="fRecorde"></div>
+    <div><span class="novo escondido" id="fNovo">NOVO RECORDE!</span></div>
+    <div class="caixa lista-final" id="fLista"></div>
+    <div class="acoes">
+      <button class="btn rosa" id="btnDeNovo">Jogar outra vez</button>
+      <button class="btn branco" id="btnPartilhar">Partilhar a corrente 📤</button>
+      <button class="btn branco" id="btnMenu">Menu</button>
+    </div>
+  </section>
+</main>
+
+<div id="modais"></div>
+
+<script src="arbitro.js"></script>
+<script src="jogo.js"></script>
+</body>
+</html>

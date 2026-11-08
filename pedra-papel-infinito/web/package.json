@@ -1,0 +1,14 @@
+{
+  "name": "pedra-papel-infinito-arbitro",
+  "version": "1.0.0",
+  "description": "Árbitro com IA do Pedra, Papel, Infinito",
+  "scripts": {
+    "build": "esbuild src/arbitro.js --bundle --format=iife --global-name=Arbitro --target=chrome100 --minify --legal-comments=eof --outfile=../app/src/main/assets/arbitro.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
+    "esbuild": "^0.28.2",
+    "zod": "^4.6.7"
+  },
+  "private": true
+}
