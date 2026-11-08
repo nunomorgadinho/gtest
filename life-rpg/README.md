@@ -6,7 +6,6 @@ Transforma a vida real num RPG. Objetivos, XP, níveis, missões e conquistas.
 
 - **Dashboard** em estilo escuro com vidro e néon: anel de progresso de nível, vida, ouro, dias seguidos, grelha de hábitos dos últimos 7 dias e gráfico de evolução do XP.
 - **Oráculo 🔮:** assistente que dá conselhos com base no teu progresso (o que fazer agora, resumo da semana, quanto falta para subir). Funciona offline, com regras fixas, sem inteligência artificial.
-
 - **Herói:** nome, avatar e classe (Guerreiro(a), Mago(a), Bardo, Paladino ou Druida). A classe dá +10% XP no seu atributo.
 - **5 atributos** com nível próprio: 💪 Força, 🧠 Mente, 💬 Carisma, 🛡️ Disciplina e 🧘 Espírito.
 - **Diárias:** hábitos que se repetem todos os dias, com sequências 🔥 e bónus de XP por sequência.
