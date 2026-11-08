@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build:web": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --outfile=web/game.js"
+    "build:web": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --outfile=web/game.js",
+    "build:c1": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --define:__CHAPTER__=1 --outfile=build-web/game-c1.js",
+    "build:c2": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --define:__CHAPTER__=2 --outfile=build-web/game-c2.js",
+    "build:all": "npm run build:web && npm run build:c1 && npm run build:c2"
   },
   "dependencies": {
     "@fontsource/saira-stencil-one": "5.2.6",

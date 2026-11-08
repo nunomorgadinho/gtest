@@ -88,6 +88,7 @@
   .chap { flex:1 1 240px; min-width:0; background:rgba(10,20,26,.7); border:1px solid var(--line); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px; align-items:stretch; text-align:left; }
   .chap b { font-family:var(--chap); font-weight:400; color:var(--acc); letter-spacing:.14em; font-size:14px; } .chap h2 { font-family:var(--chap); font-weight:400; margin:0; font-size:27px; letter-spacing:.02em; } .chap span { color:#9fb3c2; font-size:13px; }
   .chap .btn { min-width:0; padding:12px 16px; font-size:15px; }
+  .chap[hidden] { display:none; } .chaps.single { max-width:360px; }
   #eye { position:absolute; left:50%; top:62px; transform:translateX(-50%); background:rgba(80,10,10,.85); border:1px solid #ff3b2a; color:#ffd0c8; border-radius:999px; padding:5px 14px; font-weight:900; letter-spacing:.1em; font-size:12px; }
   #hit { position:fixed; inset:0; pointer-events:none; background:radial-gradient(ellipse at center, transparent 40%, rgba(255,30,20,.6)); opacity:0; transition:opacity .4s; }
   #hit.on { opacity:1; transition:none; }
@@ -131,9 +132,9 @@
   <h1>ESCAPE<br><span>THE LAB</span></h1>
   <p>Acordas sem memória numa instalação subterrânea selada. Cartões de acesso, enigmas, drones de vigilância e alguém que parece querer ajudar-te a fugir. Ou será que não?</p>
   <div class="chaps">
-    <div class="chap"><b>CAPÍTULO 1</b><h2>Protocolo Ómega</h2><span>5 setores · cerca de 25 min</span>
+    <div class="chap" data-ch="1"><b>CAPÍTULO 1</b><h2>Protocolo Ómega</h2><span>5 setores · cerca de 25 min</span>
       <button class="btn hidden" id="contBtn">CONTINUAR</button><button class="btn ghost" id="playBtn">NOVO JOGO</button><span id="best1"></span></div>
-    <div class="chap"><b>CAPÍTULO 2</b><h2>Teste 8</h2><span>8 setores · cerca de 1 hora</span>
+    <div class="chap" data-ch="2"><b>CAPÍTULO 2</b><h2>Teste 8</h2><span>8 setores · cerca de 1 hora</span>
       <button class="btn hidden" id="cont2Btn">CONTINUAR</button><button class="btn ghost" id="play2Btn">NOVO JOGO</button><span id="best2"></span></div>
   </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button class="btn ghost" id="qBtn">GRÁFICOS: ALTA</button><button class="btn ghost" id="sndBtn">SOM: LIGADO</button></div>

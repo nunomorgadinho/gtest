@@ -463,6 +463,9 @@ const CHAPTERS = {
   }
 };
 const CHAP = () => CHAPTERS[CH.ch];
+// Versões separadas: compiladas com --define:__CHAPTER__=1 (ou 2) mostram só esse capítulo
+const ONLY = typeof __CHAPTER__ !== 'undefined' ? __CHAPTER__ : 0;
+if (ONLY === 1) CHAPTERS[1].next = 'A HISTÓRIA CONTINUA NO CAPÍTULO 2';
 function newChapter(n) {
   const c = CHAPTERS[n || 1];
   CH = { ch: n || 1, sec: 0, frags: new Array(c.frags).fill(0).map(() => Math.floor(Math.random() * 10)), found: new Array(c.frags).fill(false), time: 0 };
@@ -1447,8 +1450,12 @@ function update(dt) {
 }
 
 makeTextures();
-newChapter(1);
+newChapter(ONLY || 1);
 loadSector(0, true);
+if (ONLY) {
+  document.querySelectorAll('.chap').forEach((c) => { c.hidden = Number(c.dataset.ch) !== ONLY; });
+  document.querySelector('.chaps').classList.add('single');
+}
 G.yaw = 0.6; // vista do menu
 refreshMenu();
 requestAnimationFrame(frame);
