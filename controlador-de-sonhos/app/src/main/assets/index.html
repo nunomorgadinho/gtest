@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Controlador de Sonhos</title>
+<style>
+  :root {
+    --texto: #fdfaff;
+    --suave: #c9bfe8;
+    --ouro: #ffe08a;
+    --rosa: #ff8fd1;
+    --ciano: #7fe7ff;
+    --roxo: #9b7bff;
+    --vidro: rgba(255, 255, 255, .1);
+    --borda: rgba(255, 255, 255, .2);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0620; }
+  body { font-family: "Nunito", system-ui, -apple-system, "Roboto", "Segoe UI", sans-serif; color: var(--texto); user-select: none; -webkit-user-select: none; touch-action: none; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .escondido { display: none !important; }
+
+  /* ---------- HUD ---------- */
+  .hud { position: fixed; left: 0; right: 0; top: 0; z-index: 5; padding: 12px 14px 0; padding-top: max(12px, env(safe-area-inset-top)); pointer-events: none; }
+  .hud .linha { display: flex; align-items: center; gap: 10px; }
+  .vidas { flex: 1; font-size: 20px; letter-spacing: 2px; filter: drop-shadow(0 0 6px rgba(127,231,255,.6)); }
+  .relogio { font-size: 26px; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 14px rgba(255,224,138,.7); font-variant-numeric: tabular-nums; }
+  .pontos { flex: 1; text-align: right; font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; text-shadow: 0 0 10px rgba(255,143,209,.7); }
+  .hud .linha2 { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .lucidez { flex: 1; height: 10px; border-radius: 99px; background: rgba(255,255,255,.15); overflow: hidden; border: 1px solid rgba(255,255,255,.15); }
+  .lucidez div { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--ciano), var(--roxo), var(--rosa)); box-shadow: 0 0 12px var(--rosa); transition: width .2s; }
+  .lucidez.cheia div { animation: pulsa .6s ease-in-out infinite alternate; }
+  .rot-luc { font-size: 12px; font-weight: 800; color: var(--suave); letter-spacing: .5px; }
+  .combo { min-width: 38px; text-align: right; font-weight: 900; color: var(--ouro); text-shadow: 0 0 10px rgba(255,224,138,.8); }
+  .btn-pausa { pointer-events: auto; width: 42px; height: 42px; border-radius: 14px; border: 1px solid var(--borda); background: var(--vidro); backdrop-filter: blur(6px); font-size: 18px; font-weight: 900; }
+  @keyframes pulsa { to { filter: brightness(1.5); } }
+
+  .btn-lucido { position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 6; border: 0; padding: 16px 26px; border-radius: 99px; font-weight: 900; font-size: 17px; letter-spacing: 1px; color: #1b0b3a;
+    background: linear-gradient(90deg, var(--ciano), var(--roxo), var(--rosa), var(--ouro)); background-size: 300% 100%; animation: arco 2s linear infinite, salta .8s ease-in-out infinite alternate; box-shadow: 0 0 30px rgba(255,143,209,.7); }
+  @keyframes arco { to { background-position: 300% 0; } }
+  @keyframes salta { to { transform: translateX(-50%) scale(1.06); } }
+
+  .faixa { position: fixed; left: 0; right: 0; top: 38%; z-index: 7; text-align: center; pointer-events: none; animation: faixa 2.4s ease-out forwards; }
+  .faixa small { display: block; font-size: 13px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: var(--suave); }
+  .faixa b { display: block; font-size: 30px; font-weight: 900; text-shadow: 0 0 20px rgba(155,123,255,.9); margin-top: 4px; }
+  @keyframes faixa { 0% { opacity: 0; transform: scale(.8); } 15% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
+
+  .flash { position: fixed; inset: 0; z-index: 4; pointer-events: none; background: radial-gradient(circle, transparent 40%, rgba(255, 40, 90, .55)); animation: flash .45s ease-out forwards; }
+  @keyframes flash { to { opacity: 0; } }
+
+  /* ---------- Ecrãs ---------- */
+  .ecra { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 22px; text-align: center; animation: entra .4s ease-out; overflow-y: auto; }
+  .ecra.escurecer { background: rgba(8, 4, 24, .6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  @keyframes entra { from { opacity: 0; transform: translateY(14px); } }
+  .titulo { font-size: 44px; line-height: 1.02; font-weight: 900; margin: 0; letter-spacing: .5px;
+    background: linear-gradient(180deg, #fff 10%, var(--ouro) 60%, var(--rosa)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 4px 18px rgba(155,123,255,.7)); }
+  .titulo span { display: block; font-size: 26px; letter-spacing: 6px; margin-top: 6px; }
+  .lua { font-size: 76px; animation: flutua 3s ease-in-out infinite; filter: drop-shadow(0 0 30px rgba(255,224,138,.7)); }
+  @keyframes flutua { 50% { transform: translateY(-10px) rotate(-6deg); } }
+  .sub { color: var(--suave); line-height: 1.5; max-width: 340px; margin: 14px auto 0; font-size: 15px; }
+  .btn { display: block; width: 100%; max-width: 320px; margin: 12px auto 0; border: 0; border-radius: 99px; padding: 17px; font-size: 18px; font-weight: 900; letter-spacing: .5px;
+    background: linear-gradient(135deg, var(--ouro), var(--rosa)); color: #2a0f4a; box-shadow: 0 8px 30px rgba(255,143,209,.45); }
+  .btn:active { transform: scale(.97); }
+  .btn.secundario { background: var(--vidro); color: var(--texto); border: 1px solid var(--borda); box-shadow: none; font-size: 16px; padding: 14px; }
+  .recordes { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
+  .recordes div { background: var(--vidro); border: 1px solid var(--borda); border-radius: 16px; padding: 10px 16px; min-width: 110px; }
+  .recordes small { display: block; font-size: 11px; font-weight: 800; color: var(--suave); letter-spacing: 1px; text-transform: uppercase; }
+  .recordes b { font-size: 22px; font-weight: 900; }
+  .canto { position: fixed; top: max(14px, env(safe-area-inset-top)); right: 14px; z-index: 11; width: 46px; height: 46px; border-radius: 16px; border: 1px solid var(--borda); background: var(--vidro); font-size: 20px; }
+
+  .grande { font-size: 70px; filter: drop-shadow(0 0 24px rgba(255,224,138,.6)); }
+  .resultado h2 { margin: 6px 0 2px; font-size: 30px; font-weight: 900; }
+  .resultado .hora { color: var(--suave); font-weight: 700; }
+  .estatisticas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 330px; margin: 18px auto 6px; }
+  .estatisticas div { background: var(--vidro); border: 1px solid var(--borda); border-radius: 16px; padding: 12px 8px; }
+  .estatisticas small { display: block; font-size: 11px; font-weight: 800; color: var(--suave); letter-spacing: 1px; text-transform: uppercase; }
+  .estatisticas b { font-size: 22px; font-weight: 900; }
+  .novo-recorde { color: var(--ouro); font-weight: 900; letter-spacing: 1px; animation: pulsa .5s infinite alternate; }
+
+  .ajuda { max-width: 380px; text-align: left; }
+  .ajuda h2 { text-align: center; font-size: 26px; margin: 0 0 12px; }
+  .ajuda .item { display: flex; gap: 12px; align-items: center; padding: 9px 12px; background: var(--vidro); border: 1px solid var(--borda); border-radius: 14px; margin-bottom: 8px; font-size: 14px; line-height: 1.4; color: var(--suave); }
+  .ajuda .item b { color: var(--texto); }
+  .ajuda .item span:first-child { font-size: 28px; flex: none; width: 40px; text-align: center; }
+</style>
+</head>
+<body>
+
+<canvas id="tela"></canvas>
+
+<!-- HUD -->
+<div class="hud escondido" id="hud">
+  <div class="linha">
+    <div class="vidas" id="hVidas"></div>
+    <div class="relogio" id="hRelogio">23:00</div>
+    <div class="pontos" id="hPontos">0</div>
+  </div>
+  <div class="linha2">
+    <span class="rot-luc">LUCIDEZ</span>
+    <div class="lucidez" id="hLucidezCaixa"><div id="hLucidez"></div></div>
+    <span class="combo" id="hCombo"></span>
+    <button class="btn-pausa" id="btnPausa" aria-label="Pausa">II</button>
+  </div>
+</div>
+<button class="btn-lucido escondido" id="btnLucido">✨ SONHO LÚCIDO ✨</button>
+
+<!-- Menu -->
+<section class="ecra" id="menu">
+  <div class="lua">🌜</div>
+  <h1 class="titulo">Controlador<span>DE SONHOS</span></h1>
+  <p class="sub">Guia o sonhador pela noite. Apanha estrelas, foge dos pesadelos e chega às 7 da manhã descansado(a).</p>
+  <button class="btn" id="btnJogar">Jogar</button>
+  <button class="btn secundario" id="btnAjuda">Como jogar</button>
+  <div class="recordes">
+    <div><small>Recorde</small><b id="mRecorde">0</b></div>
+    <div><small>Melhor noite</small><b id="mNoite">1</b></div>
+  </div>
+</section>
+<button class="canto" id="btnSom" aria-label="Som">🔊</button>
+
+<!-- Como jogar -->
+<section class="ecra escurecer escondido" id="ajuda">
+  <div class="ajuda">
+    <h2>Como jogar</h2>
+    <div class="item"><span>👆</span><div><b>Arrasta o dedo</b> em qualquer parte do ecrã para guiar o sonhador.</div></div>
+    <div class="item"><span>⭐</span><div><b>Estrelas, luas e doces</b> dão pontos. Apanha vários seguidos para fazer combos.</div></div>
+    <div class="item"><span>👻</span><div><b>Pesadelos</b> brilham a vermelho. Cada toque tira-te um 💤 de sono.</div></div>
+    <div class="item"><span>✨</span><div><b>Fragmentos de lucidez</b> enchem a barra. Cheia, ativa o <b>Sonho Lúcido</b>: os pesadelos viram pontos.</div></div>
+    <div class="item"><span>🐑</span><div><b>Ovelha</b> abranda o tempo. <b>🧸 Peluche</b> devolve um 💤.</div></div>
+    <div class="item"><span>⏰</span><div>Sobrevive até às <b>07:00</b> para ganhares a noite. Ao amanhecer, cuidado com os despertadores!</div></div>
+    <button class="btn" id="btnAjudaOk">Percebi!</button>
+  </div>
+</section>
+
+<!-- Pausa -->
+<section class="ecra escurecer escondido" id="pausa">
+  <div class="grande">⏸️</div>
+  <h2 style="font-size:30px;margin:8px 0 0">Pausa</h2>
+  <p class="sub">O sonhador espera por ti, a ressonar baixinho.</p>
+  <button class="btn" id="btnContinuar">Continuar</button>
+  <button class="btn secundario" id="btnSair">Voltar ao menu</button>
+</section>
+
+<!-- Fim da noite -->
+<section class="ecra escurecer resultado escondido" id="fim">
+  <div class="grande" id="fIcone">☀️</div>
+  <h2 id="fTitulo"></h2>
+  <div class="hora" id="fHora"></div>
+  <div class="novo-recorde escondido" id="fRecorde">★ NOVO RECORDE ★</div>
+  <div class="estatisticas">
+    <div><small>Pontos</small><b id="fPontos">0</b></div>
+    <div><small>Recorde</small><b id="fMelhor">0</b></div>
+    <div><small>Estrelas</small><b id="fEstrelas">0</b></div>
+    <div><small>Combo máx.</small><b id="fCombo">x1</b></div>
+  </div>
+  <p class="sub" id="fFrase"></p>
+  <button class="btn" id="btnFimPrincipal">Jogar outra vez</button>
+  <button class="btn secundario" id="btnFimMenu">Menu</button>
+</section>
+
+<script src="jogo.js"></script>
+</body>
+</html>
