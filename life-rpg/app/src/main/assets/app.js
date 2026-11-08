@@ -9,11 +9,11 @@
   // Dados fixos
   // =====================================================================
   const ATRIBUTOS = {
-    forca:      { nome: "Força",      emoji: "💪", cor: "#ff6b6b", desc: "Saúde e exercício" },
-    mente:      { nome: "Mente",      emoji: "🧠", cor: "#4fc3ff", desc: "Estudo e aprendizagem" },
-    carisma:    { nome: "Carisma",    emoji: "💬", cor: "#ff8bd0", desc: "Relações e vida social" },
-    disciplina: { nome: "Disciplina", emoji: "🛡️", cor: "#ffc94a", desc: "Trabalho e organização" },
-    espirito:   { nome: "Espírito",   emoji: "🧘", cor: "#4ade80", desc: "Bem-estar e descanso" }
+    forca:      { nome: "Força",      emoji: "💪", cor: "#ff4d6d", desc: "Saúde e exercício" },
+    mente:      { nome: "Mente",      emoji: "🧠", cor: "#19b8ff", desc: "Estudo e aprendizagem" },
+    carisma:    { nome: "Carisma",    emoji: "💬", cor: "#c26bff", desc: "Relações e vida social" },
+    disciplina: { nome: "Disciplina", emoji: "🛡️", cor: "#ff9a3c", desc: "Trabalho e organização" },
+    espirito:   { nome: "Espírito",   emoji: "🧘", cor: "#2bff88", desc: "Bem-estar e descanso" }
   };
 
   const CLASSES = {
@@ -27,10 +27,10 @@
   const AVATARES = ["🧙", "🧝", "🦸", "🥷", "🧛", "🧜", "🧚", "🤴", "👸", "🧑‍🚀", "🦊", "🐉"];
 
   const DIFICULDADES = {
-    facil:   { nome: "Fácil",   xp: 10, cor: "#4ade80" },
-    media:   { nome: "Média",   xp: 20, cor: "#4fc3ff" },
-    dificil: { nome: "Difícil", xp: 40, cor: "#ffc94a" },
-    epica:   { nome: "Épica",   xp: 80, cor: "#ff6b9d" }
+    facil:   { nome: "Fácil",   xp: 10, cor: "#2bff88" },
+    media:   { nome: "Média",   xp: 20, cor: "#19b8ff" },
+    dificil: { nome: "Difícil", xp: 40, cor: "#ff9a3c" },
+    epica:   { nome: "Épica",   xp: 80, cor: "#ff4d8d" }
   };
 
   const TAMANHOS = {
@@ -114,7 +114,7 @@
 
   function estadoNovo(heroi) {
     const h = hoje();
-    const d = (titulo, dif, atr) => ({ id: id(), titulo, dif, atr, sequencia: 0, ultimo: null, criada: h });
+    const d = (titulo, dif, atr) => ({ id: id(), titulo, dif, atr, sequencia: 0, ultimo: null, feitos: [], criada: h });
     return {
       versao: 1,
       heroi,
@@ -146,6 +146,7 @@
       conquistas: {},
       stats: { concluidas: 0, epicas: 0, objetivos: 0, compras: 0, diasPerfeitos: 0, madrugador: 0, coruja: 0, maxSequencia: 0 },
       historico: {},
+      missoesDia: {},
       ultimoDia: h,
       ultimoPerfeito: null,
       som: true
@@ -195,7 +196,7 @@
   let filaEventos = [];
 
   /** Dá XP, ouro e progresso no atributo. Devolve o XP efetivo. */
-  function ganha(xpBase, atr, origem) {
+  function ganha(xpBase, atr, origem, contaMissao) {
     const classeAtr = CLASSES[estado.heroi.classe].atr;
     const xp = Math.round(xpBase * (atr === classeAtr ? 1.1 : 1));
     const ouro = Math.max(1, Math.round(xpBase / 2));
@@ -207,6 +208,7 @@
     estado.ouro += ouro;
     estado.hp = Math.min(hpMax(), estado.hp + 2);
     estado.historico[hoje()] = (estado.historico[hoje()] || 0) + xp;
+    if (contaMissao) estado.missoesDia[hoje()] = (estado.missoesDia[hoje()] || 0) + 1;
 
     const h = new Date().getHours();
     if (h < 8) estado.stats.madrugador++;
@@ -277,11 +279,12 @@
     acao(() => {
       d.sequencia = d.ultimo === ontem() ? d.sequencia + 1 : 1;
       d.ultimo = hoje();
+      d.feitos = (d.feitos || []).concat(hoje()).slice(-120);
       estado.stats.maxSequencia = Math.max(estado.stats.maxSequencia, d.sequencia);
       estado.stats.concluidas++;
       if (d.dif === "epica") estado.stats.epicas++;
       const bonus = Math.min(10, Math.floor(d.sequencia / 3) * 2);
-      ganha(DIFICULDADES[d.dif].xp + bonus, d.atr, origem);
+      ganha(DIFICULDADES[d.dif].xp + bonus, d.atr, origem, true);
       if (estado.ultimoPerfeito !== hoje() && estado.diarias.length > 0 && estado.diarias.every((x) => x.ultimo === hoje())) {
         estado.ultimoPerfeito = hoje();
         estado.stats.diasPerfeitos++;
@@ -297,7 +300,7 @@
       m.feita = Date.now();
       estado.stats.concluidas++;
       if (m.dif === "epica") estado.stats.epicas++;
-      ganha(DIFICULDADES[m.dif].xp, m.atr, origem);
+      ganha(DIFICULDADES[m.dif].xp, m.atr, origem, true);
     }, "Missão cumprida!", origem);
   }
 
@@ -509,7 +512,7 @@
       if (editar) {
         Object.assign(item, { titulo: t, dif, atr });
       } else if (tipoFinal === "diaria") {
-        estado.diarias.push({ id: id(), titulo: t, dif, atr, sequencia: 0, ultimo: null, criada: hoje() });
+        estado.diarias.push({ id: id(), titulo: t, dif, atr, sequencia: 0, ultimo: null, feitos: [], criada: hoje() });
       } else {
         estado.missoes.push({ id: id(), titulo: t, dif, atr, feita: null });
       }
@@ -702,20 +705,77 @@
     document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("ativo", b.dataset.sep === separador));
     document.querySelectorAll(".separador").forEach((s) => s.classList.toggle("ativo", s.id === "sep-" + separador));
     $("fab").classList.toggle("escondido", !["missoes", "objetivos", "loja"].includes(separador));
+    $("btnOraculo").classList.toggle("escondido", separador !== "heroi");
     const porFazer = estado.diarias.filter((d) => d.ultimo !== hoje()).length;
     $("pontoMissoes").textContent = porFazer;
     $("pontoMissoes").classList.toggle("escondido", porFazer === 0);
   }
 
+  const TITULOS_SEP = { heroi: "Dashboard", missoes: "Missões", objetivos: "Objetivos", conquistas: "Conquistas", loja: "Loja" };
   function renderTopo() {
     const n = infoNivel(estado.xp);
-    $("tAvatar").textContent = estado.heroi.avatar;
-    $("tNivel").textContent = "Nv " + n.nivel;
-    $("tXp").textContent = n.atual + "/" + n.precisa + " XP";
-    $("tHp").textContent = "❤️ " + estado.hp + "/" + hpMax();
-    $("tXpBarra").style.width = (n.atual / n.precisa * 100) + "%";
-    $("tHpBarra").style.width = Math.max(0, estado.hp / hpMax() * 100) + "%";
+    $("tTitulo").textContent = TITULOS_SEP[separador];
+    $("tNivel").textContent = estado.heroi.avatar + " Nv " + n.nivel;
     $("tOuro").textContent = "🪙 " + estado.ouro;
+    $("tXpBarra").style.width = (n.atual / n.precisa * 100) + "%";
+  }
+
+  const NOMES_DIAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  function ultimosDias(n) {
+    const r = [];
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      r.push({ k: chave(d), nome: NOMES_DIAS[d.getDay()], hoje: i === 0 });
+    }
+    return r;
+  }
+
+  /** Curva suave (Catmull-Rom para Bézier) pelos pontos dados. */
+  function caminhoSuave(pts) {
+    let d = "M" + pts[0][0] + "," + pts[0][1];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+      const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      d += " C" + c1.map((v) => v.toFixed(1)).join(",") + " " + c2.map((v) => v.toFixed(1)).join(",") + " " + p2[0].toFixed(1) + "," + p2[1].toFixed(1);
+    }
+    return d;
+  }
+
+  function graficoXp(dias) {
+    const W = 340, H = 190, esq = 30, dir = 8, cima = 10, baixo = 26;
+    const vals = dias.map((d) => estado.historico[d.k] || 0);
+    const max = Math.max(40, ...vals);
+    const passo = Math.ceil(max / 4 / 10) * 10;
+    const topo = passo * 4;
+    const x = (i) => esq + i * (W - esq - dir) / (dias.length - 1);
+    const y = (v) => cima + (H - cima - baixo) * (1 - v / topo);
+    const pts = vals.map((v, i) => [x(i), y(v)]);
+    const linha = caminhoSuave(pts);
+    const area = linha + " L" + x(dias.length - 1) + "," + y(0) + " L" + x(0) + "," + y(0) + " Z";
+    const iMax = vals.indexOf(Math.max(...vals));
+    let grelha = "";
+    for (let g = 0; g <= 4; g++) {
+      const v = passo * g;
+      grelha += '<line x1="' + esq + '" x2="' + (W - dir) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="rgba(255,255,255,.06)"/>' +
+        '<text x="0" y="' + (y(v) + 4) + '" fill="#6b717c" font-size="10">' + v + "</text>";
+    }
+    const rotulos = dias.map((d, i) => '<text x="' + x(i) + '" y="' + (H - 6) + '" fill="' + (d.hoje ? "#f2f4f7" : "#6b717c") + '" font-size="10" text-anchor="middle">' + (d.hoje ? "Hoje" : d.nome) + "</text>").join("");
+    const marca = vals[iMax] > 0
+      ? '<line x1="' + pts[iMax][0] + '" x2="' + pts[iMax][0] + '" y1="' + pts[iMax][1] + '" y2="' + y(0) + '" stroke="rgba(255,255,255,.18)"/>' +
+        '<circle cx="' + pts[iMax][0] + '" cy="' + pts[iMax][1] + '" r="5" fill="#050608" stroke="#f2f4f7" stroke-width="2"/>'
+      : "";
+    return '<svg class="grafico-svg" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">' +
+      '<defs><linearGradient id="gLinha" x1="0" x2="1"><stop offset="0" stop-color="#19b8ff"/><stop offset=".5" stop-color="#8b5cf6"/><stop offset="1" stop-color="#ff4d6d"/></linearGradient>' +
+      '<linearGradient id="gArea" x1="0" x2="1"><stop offset="0" stop-color="#19b8ff"/><stop offset="1" stop-color="#ff4d6d"/></linearGradient>' +
+      '<linearGradient id="gFade" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' +
+      '<mask id="mFade"><rect width="' + W + '" height="' + H + '" fill="url(#gFade)"/></mask>' +
+      '<filter id="fBrilho" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="4"/></filter></defs>' +
+      grelha +
+      '<path d="' + area + '" fill="url(#gArea)" mask="url(#mFade)"/>' +
+      '<path d="' + linha + '" fill="none" stroke="url(#gLinha)" stroke-width="5" opacity=".55" filter="url(#fBrilho)"/>' +
+      '<path d="' + linha + '" fill="none" stroke="url(#gLinha)" stroke-width="2.5" stroke-linecap="round"/>' +
+      marca + rotulos + "</svg>";
   }
 
   function renderHeroi() {
@@ -723,50 +783,141 @@
     const cl = CLASSES[estado.heroi.classe];
     const feitasHoje = estado.diarias.filter((d) => d.ultimo === hoje()).length;
     const c = contexto();
+    const pct = Math.round(n.atual / n.precisa * 100);
+    const dias = ultimosDias(7);
+    const xpSemana = dias.reduce((s, d) => s + (estado.historico[d.k] || 0), 0);
+    const missoesSemana = dias.reduce((s, d) => s + ((estado.missoesDia || {})[d.k] || 0), 0);
+    const desbloqueadas = Object.keys(estado.conquistas).length;
+    const hpPct = Math.max(0, estado.hp / hpMax() * 100);
+
+    // Grelha de hábitos: uma linha por diária, uma coluna por dia
+    let grelha = '<div class="habitos" style="grid-template-columns: minmax(100px, 2.6fr) repeat(7, minmax(22px, 1fr))"><span></span>' +
+      dias.map((d) => '<span class="dia' + (d.hoje ? " hoje" : "") + '">' + d.nome.slice(0, 3) + "</span>").join("");
+    estado.diarias.slice(0, 7).forEach((h) => {
+      const cor = ATRIBUTOS[h.atr].cor;
+      grelha += '<span class="nome">' + esc(h.titulo) + "</span>" +
+        dias.map((d) => '<span class="ponto' + ((h.feitos || []).includes(d.k) ? " on" : "") + '" style="--c:' + cor + '"></span>').join("");
+    });
+    grelha += "</div>";
 
     let atributos = "";
     for (const [k, a] of Object.entries(ATRIBUTOS)) {
       const i = infoNivelAtr(estado.atr[k]);
       atributos += '<div class="atributo"><div class="ic">' + a.emoji + '</div><div class="meio">' +
-        '<div class="cima">' + a.nome + (k === cl.atr ? ' <span style="color:var(--ouro)">★</span>' : "") + "<span>Nv " + i.nivel + "</span></div>" +
-        "<small>" + a.desc + " · " + i.atual + "/" + i.precisa + '</small><div class="barra"><div style="width:' + (i.atual / i.precisa * 100) + "%;background:" + a.cor + '"></div></div></div></div>';
+        '<div class="cima"><span style="color:var(--texto)">' + a.nome + (k === cl.atr ? ' <span style="color:var(--verde);font-size:12px">★ classe</span>' : "") + "</span><span>Nv " + i.nivel + "</span></div>" +
+        "<small>" + a.desc + " · " + i.atual + "/" + i.precisa + '</small><div class="barra"><div style="width:' + (i.atual / i.precisa * 100) + "%;background:" + a.cor + ";color:" + a.cor + '"></div></div></div></div>';
     }
-
-    const nomesDias = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-    const dias = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      dias.push({ k: chave(d), nome: i === 0 ? "Hoje" : nomesDias[d.getDay()], xp: estado.historico[chave(d)] || 0 });
-    }
-    const maxXp = Math.max(50, ...dias.map((d) => d.xp));
-    const grafico = dias.map((d) =>
-      '<div class="col' + (d.nome === "Hoje" ? " hoje" : "") + '"><span class="valor">' + (d.xp || "") + '</span><div class="bar' + (d.xp ? "" : " zero") + '" style="height:' + Math.max(4, d.xp / maxXp * 90) + '%"></div><span class="dia">' + d.nome + "</span></div>").join("");
-
-    const desbloqueadas = Object.keys(estado.conquistas).length;
 
     $("sep-heroi").innerHTML =
-      '<div class="cartao heroi">' +
-        '<button class="config" data-acao="definicoes" aria-label="Definições">⚙️</button>' +
-        '<div class="avatar">' + estado.heroi.avatar + '<span class="nv">Nv ' + n.nivel + "</span></div>" +
-        '<div class="nome">' + esc(estado.heroi.nome) + "</div>" +
-        '<div class="titulo">' + esc(titulo(n.nivel)) + " · " + cl.emoji + " " + cl.nome + "</div>" +
-        '<div class="rotulo-barra"><span>Experiência</span><b>' + n.atual + " / " + n.precisa + " XP</b></div>" +
-        '<div class="barra xp grossa"><div style="width:' + (n.atual / n.precisa * 100) + '%"></div></div>' +
-        '<div class="rotulo-barra"><span>Vida</span><b>' + estado.hp + " / " + hpMax() + " HP</b></div>" +
-        '<div class="barra hp grossa"><div style="width:' + Math.max(0, estado.hp / hpMax() * 100) + '%"></div></div>' +
-        '<div class="resumo">' +
-          "<div><b>" + feitasHoje + "/" + estado.diarias.length + "</b><span>Diárias hoje</span></div>" +
-          "<div><b>" + c.diasSeguidos + "🔥</b><span>Dias seguidos</span></div>" +
-          "<div><b>" + desbloqueadas + "/" + CONQUISTAS.length + "</b><span>Conquistas</span></div>" +
-        "</div>" +
+      '<div class="perfil"><div class="av">' + estado.heroi.avatar + '</div><div style="flex:1;min-width:0">' +
+        '<div class="nome">' + esc(estado.heroi.nome) + '</div><div class="sub"><b>' + esc(titulo(n.nivel)) + "</b> · " + cl.emoji + " " + cl.nome + "</div></div>" +
+        '<button class="icone-btn" data-acao="definicoes" aria-label="Definições"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div>' +
+
+      '<div class="cartao brilho"><div class="cab-cartao"><h4>Progresso de nível</h4><span>Nv ' + n.nivel + " → " + (n.nivel + 1) + "</span></div>" +
+        '<div class="foco"><div class="anel" style="--p:' + pct + '%"><div class="trilho"></div><div class="glow"></div><div class="arco"></div><div class="interior"></div>' +
+          '<div class="valor"><div><b>' + pct + "%</b><small>" + n.atual + "/" + n.precisa + " XP</small></div></div></div>" +
+          '<div class="dados"><div><span>Diárias hoje:</span><b>' + feitasHoje + " de " + estado.diarias.length + "</b></div>" +
+          "<div><span>Ritmo:</span><b>" + (c.diasSeguidos >= 3 ? "Em chamas 🔥" : xpSemana >= 150 ? "Alto" : xpSemana > 0 ? "A aquecer" : "Por começar") + "</b></div></div></div></div>" +
+
+      '<div class="grelha-2" style="margin-top:12px">' +
+        '<div class="cartao mini"><div class="rot"><i style="color:var(--hp);background:var(--hp)"></i>Vida</div><div class="num">' + estado.hp + "<small> / " + hpMax() + '</small></div><div class="barra hp"><div style="width:' + hpPct + '%"></div></div></div>' +
+        '<div class="cartao mini"><div class="rot"><i style="color:var(--ouro);background:var(--ouro)"></i>Ouro</div><div class="num">' + estado.ouro + '<small> 🪙</small></div><div class="nota" style="font-size:12px">Gasta na loja</div></div>' +
+        '<div class="cartao mini"><div class="rot"><i style="color:var(--laranja);background:var(--laranja)"></i>Dias seguidos</div><div class="num">' + c.diasSeguidos + '<small> 🔥</small></div><div class="nota" style="font-size:12px">A ganhar XP</div></div>' +
+        '<div class="cartao mini"><div class="rot"><i style="color:var(--verde);background:var(--verde)"></i>Conquistas</div><div class="num">' + desbloqueadas + "<small> / " + CONQUISTAS.length + '</small></div><div class="barra xp"><div style="width:' + (desbloqueadas / CONQUISTAS.length * 100) + '%"></div></div></div>' +
       "</div>" +
-      "<h3>Atributos</h3>" +
-      '<div class="cartao">' + atributos + "</div>" +
-      "<h3>XP nos últimos 7 dias</h3>" +
-      '<div class="cartao"><div class="grafico">' + grafico + "</div></div>" +
+
+      '<div class="cartao" style="margin-top:12px"><div class="cab-cartao"><h4>Grelha de hábitos</h4><span>7 dias</span></div>' +
+        (estado.diarias.length ? grelha : '<p class="nota" style="margin:0">Cria diárias para veres aqui os teus hábitos.</p>') + "</div>" +
+
+      '<div class="cartao" style="margin-top:12px"><div class="cab-cartao" style="align-items:flex-start"><h4>Evolução</h4>' +
+        '<div class="legenda"><div><span><i style="background:var(--ciano)"></i>XP</span><b>' + xpSemana + '</b></div><div><span><i style="background:var(--hp)"></i>Missões</span><b>' + missoesSemana + "</b></div></div></div>" +
+        graficoXp(dias) + "</div>" +
+
+      '<h3>Atributos</h3><div class="cartao">' + atributos + "</div>" +
+
       "<h3>Como funciona</h3>" +
-      '<div class="cartao nota">Completa <b>diárias</b> (hábitos) e <b>missões</b> para ganhar XP e ouro. Cada uma treina um atributo; o da tua classe (★) rende +10% XP. ' +
-      "Divide os grandes sonhos em <b>objetivos</b> com passos. Diárias falhadas tiram " + PENALIZACAO_HP + " HP no dia seguinte. Gasta o ouro na <b>loja</b> em recompensas reais.</div>";
+      '<div class="cartao nota">Completa <b>diárias</b> (hábitos) e <b>missões</b> para ganhar XP e ouro. Cada uma treina um atributo; o da tua classe rende +10% XP. ' +
+      "Divide os grandes sonhos em <b>objetivos</b> com passos. Diárias falhadas tiram " + PENALIZACAO_HP + " HP no dia seguinte. Gasta o ouro na <b>loja</b> em recompensas reais. " +
+      "Toca no 🔮 para pedir conselhos ao Oráculo.</div>";
+  }
+
+  // =====================================================================
+  // Oráculo: assistente com conselhos gerados a partir do teu progresso
+  // =====================================================================
+  const FRASES_MOTIVACAO = [
+    "Os heróis não nascem prontos. Sobem de nível uma missão de cada vez.",
+    "Um pequeno passo hoje vale mais do que um plano perfeito para amanhã.",
+    "O dragão mais difícil é começar. Depois de começares, já ganhaste metade da batalha.",
+    "Disciplina é escolher o que queres mais em vez do que queres agora.",
+    "Até as lendas tiveram um dia 1. O teu progresso conta, mesmo quando parece pouco.",
+    "Faz hoje aquilo que o teu eu de amanhã vai agradecer.",
+    "Não precisas de ser perfeito(a). Precisas de aparecer."
+  ];
+
+  function respostaOraculo(pergunta) {
+    const n = infoNivel(estado.xp);
+    const c = contexto();
+    const porFazer = estado.diarias.filter((d) => d.ultimo !== hoje());
+    const missoes = estado.missoes.filter((m) => !m.feita);
+    const fraco = Object.keys(ATRIBUTOS).sort((a, b) => estado.atr[a] - estado.atr[b])[0];
+    const forte = Object.keys(ATRIBUTOS).sort((a, b) => estado.atr[b] - estado.atr[a])[0];
+
+    if (pergunta === "agora") {
+      const doFraco = porFazer.find((d) => d.atr === fraco) || missoes.find((m) => m.atr === fraco);
+      const alvo = doFraco || porFazer[0] || missoes[0];
+      if (!alvo) return "Não tens nada pendente. Que tal criar uma missão nova ou dar um passo num objetivo? 🎯";
+      const tipo = estado.diarias.includes(alvo) ? "diária" : "missão";
+      return "Sugiro a " + tipo + " \"" + alvo.titulo + "\" (+" + DIFICULDADES[alvo.dif].xp + " XP)." +
+        (alvo.atr === fraco ? "\nTreina " + ATRIBUTOS[fraco].emoji + " " + ATRIBUTOS[fraco].nome + ", o teu atributo mais fraco." : "") +
+        (porFazer.length > 1 ? "\nAinda tens " + porFazer.length + " diárias por fazer hoje." : "");
+    }
+    if (pergunta === "semana") {
+      const dias = ultimosDias(7);
+      const xp = dias.reduce((s, d) => s + (estado.historico[d.k] || 0), 0);
+      const ativos = dias.filter((d) => estado.historico[d.k] > 0).length;
+      let r = "Esta semana ganhaste " + xp + " XP em " + ativos + (ativos === 1 ? " dia" : " dias") + ".\n" +
+        "Ponto forte: " + ATRIBUTOS[forte].emoji + " " + ATRIBUTOS[forte].nome + ". A melhorar: " + ATRIBUTOS[fraco].emoji + " " + ATRIBUTOS[fraco].nome + ".";
+      if (c.diasSeguidos >= 3) r += "\nEstás com " + c.diasSeguidos + " dias seguidos. Não quebres a corrente! 🔥";
+      if (estado.hp < hpMax() * 0.4) r += "\n⚠️ A tua vida está baixa (" + estado.hp + " HP). Faz as diárias ou compra uma poção.";
+      return r;
+    }
+    if (pergunta === "nivel") {
+      const falta = n.precisa - n.atual;
+      const media = Math.ceil(falta / DIFICULDADES.media.xp);
+      return "Faltam " + falta + " XP para o nível " + (n.nivel + 1) + ".\nIsso são cerca de " + media + (media === 1 ? " missão média" : " missões médias") + "." +
+        (titulo(n.nivel + 1) !== titulo(n.nivel) ? "\nNo próximo nível ganhas o título \"" + titulo(n.nivel + 1) + "\"! ✨" : "");
+    }
+    return FRASES_MOTIVACAO[Math.floor(Math.random() * FRASES_MOTIVACAO.length)] + " 💪";
+  }
+
+  function abreOraculo() {
+    const m = abreModal(
+      '<div class="cab-chat"><div class="av">🔮</div><div><h2>Oráculo</h2><small>Conselhos com base no teu progresso</small></div>' +
+      '<button class="icone-btn fechar" data-fechar aria-label="Fechar">✕</button></div>' +
+      '<div class="chat" id="chat"></div>' +
+      '<div class="sugestoes">' +
+        '<button data-p="agora">O que faço agora?</button>' +
+        '<button data-p="semana">Como estou esta semana?</button>' +
+        '<button data-p="nivel">Quanto falta para subir?</button>' +
+        '<button data-p="motiva">Motiva-me</button>' +
+      "</div>"
+    );
+    const chat = m.querySelector("#chat");
+    const bolha = (texto, quem) => {
+      const b = document.createElement("div");
+      b.className = "bolha " + quem;
+      b.textContent = texto;
+      chat.appendChild(b);
+      chat.scrollTop = chat.scrollHeight;
+      return b;
+    };
+    bolha("Saudações, " + estado.heroi.nome + "! Sou o Oráculo. Em que te posso ajudar na tua aventura?", "oraculo");
+    m.querySelector("[data-fechar]").addEventListener("click", () => fechaModal());
+    m.querySelectorAll("[data-p]").forEach((b) => b.addEventListener("click", () => {
+      bolha(b.textContent, "eu");
+      const pensa = bolha("•••", "oraculo escrever");
+      setTimeout(() => { pensa.remove(); bolha(respostaOraculo(b.dataset.p), "oraculo"); }, 650);
+    }));
   }
 
   function etiquetas(item, extra) {
@@ -883,14 +1034,14 @@
   function renderCriacao() {
     const el = $("criacao");
     el.innerHTML =
-      '<div class="logo"><span class="esp">⚔️</span><h1>LIFE RPG</h1><p>A tua vida é a aventura. Completa missões reais, ganha XP, sobe de nível e desbloqueia conquistas.</p></div>' +
+      '<div class="logo"><div class="marca">⚔️ Life RPG</div><h1>Cria o teu herói</h1><p>A tua vida é a aventura. Completa missões reais, ganha XP, sobe de nível e desbloqueia conquistas.</p></div>' +
       '<div class="cartao">' +
         '<div class="campo"><label for="cNome">Nome do herói</label><input type="text" id="cNome" maxlength="24" placeholder="Como te chamas, aventureiro(a)?"></div>' +
         '<div class="campo"><span class="lbl">Avatar</span><div class="fichas avatares">' + AVATARES.map((a, i) =>
           '<label><input type="radio" name="cavatar" value="' + a + '"' + (i === 0 ? " checked" : "") + "><span>" + a + "</span></label>").join("") + "</div></div>" +
         '<div class="campo"><span class="lbl">Classe (+10% XP no atributo)</span><div class="fichas classes">' + Object.entries(CLASSES).map(([k, c], i) =>
           '<label class="classe"><input type="radio" name="cclasse" value="' + k + '"' + (i === 0 ? " checked" : "") + "><span>" + c.emoji + " " + c.nome + "<small>" + ATRIBUTOS[c.atr].emoji + " " + ATRIBUTOS[c.atr].nome + "</small></span></label>").join("") + "</div></div>" +
-        '<button class="btn ouro" id="cComecar">Começar a aventura</button>' +
+        '<button class="btn" id="cComecar">Começar a aventura</button>' +
       "</div>" +
       '<p class="nota" style="text-align:center;margin-top:14px">Vais começar com algumas missões de exemplo. Podes editá-las ou apagá-las.</p>';
     el.querySelector("#cComecar").addEventListener("click", () => {
@@ -930,6 +1081,7 @@
     }
   });
 
+  $("btnOraculo").addEventListener("click", abreOraculo);
   $("fab").addEventListener("click", () => {
     if (separador === "missoes") formMissao(segMissoes === "diarias" ? "diaria" : "missao");
     else if (separador === "objetivos") formObjetivo();
@@ -953,6 +1105,15 @@
     for (const k of Object.keys(base)) if (e[k] === undefined) e[k] = base[k];
     for (const k of Object.keys(base.stats)) if (e.stats[k] === undefined) e.stats[k] = 0;
     for (const k of Object.keys(base.atr)) if (e.atr[k] === undefined) e.atr[k] = 0;
+    e.diarias.forEach((d) => {
+      if (!Array.isArray(d.feitos)) {
+        d.feitos = [];
+        if (d.ultimo) {
+          const fim = new Date(d.ultimo + "T12:00:00");
+          for (let i = Math.max(1, d.sequencia) - 1; i >= 0; i--) { const x = new Date(fim); x.setDate(x.getDate() - i); d.feitos.push(chave(x)); }
+        }
+      }
+    });
     return e;
   }
 
