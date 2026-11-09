@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistente de Pagamentos</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #fff; --text: #1d2330; --muted: #6b7280;
+    --me: #1f6feb; --me-text: #fff; --bot: #eef0f3; --border: #e3e6ea;
+    --mb: #0a7f5a; --pending: #b7791f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111418; --panel: #1a1e24; --text: #e6e9ee; --muted: #9aa3ae;
+      --bot: #242a32; --border: #2c333c; --mb: #34c38f; --pending: #e0a43a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  .app { max-width: 720px; margin: 0 auto; height: 100dvh; display: flex; flex-direction: column; background: var(--panel); border-inline: 1px solid var(--border); }
+  header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  header h1 { margin: 0; font-size: 17px; }
+  header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  #log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 85%; padding: 9px 13px; border-radius: 14px; white-space: pre-wrap; word-wrap: break-word; }
+  .me { align-self: flex-end; background: var(--me); color: var(--me-text); border-bottom-right-radius: 4px; }
+  .bot { align-self: flex-start; background: var(--bot); border-bottom-left-radius: 4px; }
+  .typing { color: var(--muted); font-style: italic; }
+  .card { align-self: flex-start; border: 2px solid var(--mb); border-radius: 12px; padding: 12px 14px; min-width: 240px; }
+  .card h2 { margin: 0 0 8px; font-size: 14px; color: var(--mb); text-transform: uppercase; letter-spacing: .04em; }
+  .card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; }
+  .card dt { color: var(--muted); }
+  .card dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .status { margin-top: 10px; font-weight: 600; }
+  .status.pendente { color: var(--pending); }
+  .status.pago { color: var(--mb); }
+  .card button { margin-top: 8px; font-size: 12px; }
+  form { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+  input { flex: 1; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; min-width: 0; }
+  button { padding: 10px 16px; border: 0; border-radius: 10px; background: var(--me); color: #fff; font: inherit; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Assistente de Pagamentos</h1>
+    <p>Escolha o que pretende e pague por referência Multibanco.</p>
+  </header>
+  <div id="log" aria-live="polite"></div>
+  <form id="f">
+    <input id="q" autocomplete="off" placeholder="Escreva a sua mensagem…" maxlength="2000" required>
+    <button id="send">Enviar</button>
+  </form>
+</div>
+<script>
+  const log = document.getElementById("log");
+  const form = document.getElementById("f");
+  const input = document.getElementById("q");
+  const sendBtn = document.getElementById("send");
+
+  let sessionId;
+  try { sessionId = sessionStorage.getItem("sid"); } catch {}
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    try { sessionStorage.setItem("sid", sessionId); } catch {}
+  }
+
+  function add(cls, text) {
+    const el = document.createElement("div");
+    el.className = "msg " + cls;
+    el.textContent = text;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+    return el;
+  }
+
+  const polling = new Map();
+
+  function addPaymentCard(p) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<h2>Pagamento Multibanco</h2><dl>
+      <dt>Entidade</dt><dd></dd><dt>Referência</dt><dd></dd><dt>Montante</dt><dd></dd></dl>
+      <div class="status"></div>`;
+    const dds = card.querySelectorAll("dd");
+    dds[0].textContent = p.entity;
+    dds[1].textContent = p.reference;
+    dds[2].textContent = Number(p.amount).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
+    if (p.expiryDate) {
+      card.querySelector("dl").insertAdjacentHTML("beforeend", "<dt>Validade</dt><dd></dd>");
+      card.querySelectorAll("dd")[3].textContent = p.expiryDate;
+    }
+    const status = card.querySelector(".status");
+    const setStatus = (s) => {
+      status.className = "status " + s;
+      status.textContent = s === "pago" ? "✔ Pagamento recebido" : "A aguardar pagamento…";
+    };
+    setStatus(p.status);
+    log.appendChild(card);
+    log.scrollTop = log.scrollHeight;
+
+    // Botão de simulação (só funciona com o servidor em modo sandbox)
+    const sim = document.createElement("button");
+    sim.type = "button";
+    sim.textContent = "Simular pagamento (sandbox)";
+    sim.onclick = async () => {
+      const r = await fetch(`/api/dev/simulate-payment/${encodeURIComponent(p.orderId)}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }),
+      });
+      if (!r.ok) sim.remove();
+    };
+    card.appendChild(sim);
+
+    const timer = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/orders/${encodeURIComponent(p.orderId)}?sessionId=${encodeURIComponent(sessionId)}`);
+        if (!r.ok) return;
+        const o = await r.json();
+        setStatus(o.status);
+        if (o.status === "pago") { clearInterval(timer); sim.remove(); }
+      } catch {}
+    }, 5000);
+    polling.set(p.orderId, timer);
+  }
+
+  async function send(text) {
+    add("me", text);
+    const typing = add("bot typing", "A escrever…");
+    input.disabled = sendBtn.disabled = true;
+    try {
+      const r = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, message: text }),
+      });
+      const data = await r.json();
+      typing.remove();
+      if (!r.ok) { add("bot", data.error || "Ocorreu um erro."); return; }
+      add("bot", data.reply);
+      for (const p of data.payments || []) addPaymentCard(p);
+    } catch {
+      typing.remove();
+      add("bot", "Sem ligação ao servidor. Tente novamente.");
+    } finally {
+      input.disabled = sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    send(text);
+  });
+
+  add("bot", "Olá! Sou o assistente de pagamentos. Posso mostrar-lhe os nossos produtos e gerar uma referência Multibanco para pagar. Em que posso ajudar?");
+  input.focus();
+</script>
+</body>
+</html>

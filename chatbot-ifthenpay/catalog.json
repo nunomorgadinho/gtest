@@ -1,0 +1,6 @@
+[
+  { "id": "consulta-30", "nome": "Consulta de 30 minutos", "preco": 25.0 },
+  { "id": "consulta-60", "nome": "Consulta de 60 minutos", "preco": 45.0 },
+  { "id": "workshop", "nome": "Inscrição no workshop mensal", "preco": 60.0 },
+  { "id": "ebook", "nome": "E-book \"Guia Prático\"", "preco": 9.9 }
+]
