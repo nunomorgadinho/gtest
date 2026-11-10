@@ -174,6 +174,17 @@
           }],
           ['Fechar', 'link', closeApk]
         ]);
+      } else if (window.claude && claude.use) {
+        // página publicada no claude.ai: só se pode oferecer .zip, por isso o APK vai lá dentro
+        claude.use('downloads').then((dl) => {
+          if (!dl) throw { code: 'unavailable' };
+          return dl.save({ filename: res.fileName.replace(/\.apk$/, '') + '-apk.zip', data: MDJApk.zipOne(res.fileName, res.bytes) });
+        }).then(() => {
+          apkDialog('✅', 'APK pronto!', '<b>' + esc(res.fileName) + '</b> (' + kb + ') vai dentro do ficheiro .zip.<br><br>Abre o .zip no telemóvel Android (7.0 ou mais recente), toca no APK e aceita instalar apps de fontes desconhecidas.', [['Fechar', 'big', closeApk]]);
+        }, (e) => {
+          const msg = e && e.code === 'declined' ? 'Cancelaste a transferência.' : 'Esta página não consegue descarregar ficheiros aqui. Usa a app Mago dos Jogos ou o ficheiro HTML.';
+          apkDialog('ℹ️', 'APK não descarregado', msg, [['Fechar', 'big', closeApk]]);
+        });
       } else {
         const url = URL.createObjectURL(new Blob([res.bytes], { type: 'application/vnd.android.package-archive' }));
         const a = document.createElement('a'); a.href = url; a.download = res.fileName; document.body.appendChild(a); a.click(); a.remove();

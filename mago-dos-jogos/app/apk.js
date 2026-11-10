@@ -206,5 +206,10 @@
     return { bytes: apk, pkg, fileName: fileName(cfg.name), label: fitLabel(cfg.name) };
   }
 
-  root.MDJApk = { build, bytesToB64, b64ToBytes, sha256, crc32, drawIcon, packageFor, fileName };
+  // um ZIP com um só ficheiro (usado onde não se pode descarregar .apk diretamente)
+  function zipOne(name, data) {
+    const z = writeZip([{ name, method: 0, time: 0, date: (46 << 9) | (1 << 5) | 1, crc: crc32(data), usize: data.length, data }]);
+    return concat([z.body, z.cd, z.eocd]);
+  }
+  root.MDJApk = { zipOne, build, bytesToB64, b64ToBytes, sha256, crc32, drawIcon, packageFor, fileName };
 })(window);
