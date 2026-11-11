@@ -4,21 +4,38 @@ plugins {
 
 android {
     namespace 'pt.widgilabs.pedrapapelinfinito'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId 'pt.widgilabs.pedrapapelinfinito'
         minSdk 24
-        targetSdk 34
-        versionCode 3
-        versionName '1.2'
+        targetSdk 36
+        versionCode 4
+        versionName '1.3'
+    }
+
+    // Chave de upload para a Google Play: lida de keystore.properties (fora do git).
+    // Sem esse ficheiro, ou com -PassinarComDebug, usa a chave de debug (APK para instalar diretamente).
+    def propsChave = rootProject.file('keystore.properties')
+    def usarChaveUpload = propsChave.exists() && !project.hasProperty('assinarComDebug')
+
+    signingConfigs {
+        upload {
+            if (propsChave.exists()) {
+                def p = new Properties()
+                propsChave.withInputStream { p.load(it) }
+                storeFile file(p['storeFile'])
+                storePassword p['storePassword']
+                keyAlias p['keyAlias']
+                keyPassword p['keyPassword']
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            // Assinado com a chave de debug para poder ser instalado diretamente.
-            signingConfig signingConfigs.debug
+            signingConfig usarChaveUpload ? signingConfigs.upload : signingConfigs.debug
         }
     }
 

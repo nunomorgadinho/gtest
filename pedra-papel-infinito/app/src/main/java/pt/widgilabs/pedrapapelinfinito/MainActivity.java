@@ -4,9 +4,13 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.graphics.Insets;
+import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
+import android.view.WindowInsets;
 import android.webkit.JavascriptInterface;
+import android.window.OnBackInvokedDispatcher;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -44,6 +48,22 @@ public class MainActivity extends Activity {
 
         setContentView(webView);
 
+        // Android 15+: a app ocupa o ecrã todo (edge-to-edge). Deixa espaço para as barras
+        // do sistema e para o teclado, para nada ficar escondido por baixo delas.
+        if (Build.VERSION.SDK_INT >= 35) {
+            webView.setOnApplyWindowInsetsListener((v, insets) -> {
+                Insets i = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime() | WindowInsets.Type.displayCutout());
+                v.setPadding(i.left, i.top, i.right, i.bottom);
+                return WindowInsets.CONSUMED;
+            });
+        }
+
+        // Android 13+: botão "voltar" com o sistema novo (com alvo API 36 o onBackPressed deixa de ser chamado).
+        if (Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::tratarVoltar);
+        }
+
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState);
         } else {
@@ -69,15 +89,20 @@ public class MainActivity extends Activity {
         webView.evaluateJavascript("window.recebeVoz && window.recebeVoz(" + JSONObject.quote(texto) + ")", null);
     }
 
+    /** Deixa o jogo decidir: fecha janelas abertas ou volta ao início; se não houver nada a fazer, sai. */
+    private void tratarVoltar() {
+        webView.evaluateJavascript("window.handleBack ? window.handleBack() : false", value -> {
+            if (!"true".equals(value)) {
+                finish();
+            }
+        });
+    }
+
     @SuppressWarnings("deprecation")
     @Override
     public void onBackPressed() {
-        // Deixa o jogo decidir: fecha janelas abertas ou volta ao início.
-        webView.evaluateJavascript("window.handleBack ? window.handleBack() : false", value -> {
-            if (!"true".equals(value)) {
-                MainActivity.super.onBackPressed();
-            }
-        });
+        // Só usado em Android 12 ou anterior.
+        tratarVoltar();
     }
 
     @Override

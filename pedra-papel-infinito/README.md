@@ -28,7 +28,7 @@ A chave fica guardada só no telemóvel e é enviada apenas para a Anthropic. Ca
 
 ## Instalar
 
-Descarrega `dist/PedraPapelInfinito-v1.2.apk` para o telemóvel Android (7.0 ou superior) e abre-o.
+Descarrega `dist/PedraPapelInfinito-v1.3.apk` para o telemóvel Android (7.0 ou superior) e abre-o.
 Pode ser preciso permitir "instalar apps de origem desconhecida". O APK está assinado com uma chave de debug.
 
 ## Estrutura
@@ -40,10 +40,26 @@ Pode ser preciso permitir "instalar apps de origem desconhecida". O APK está as
 
 ## Compilar
 
-Requer Node 18+, JDK 17+ e o Android SDK (plataforma 34).
+Requer Node 18+, JDK 17+ e o Android SDK (plataforma 36).
 
 ```sh
 cd web && npm install && npm run build && cd ..
 echo "sdk.dir=/caminho/para/android-sdk" > local.properties
-./gradlew assembleRelease
+./gradlew assembleRelease -PassinarComDebug   # APK para instalar diretamente
+./gradlew bundleRelease                        # AAB para a Google Play (precisa da chave de upload)
 ```
+
+## Publicar na Google Play
+
+- A app tem como alvo o Android 16 (API 36), o mínimo exigido pela Google Play para apps novas desde 31/08/2026.
+- `dist/PedraPapelInfinito-v1.3.aab` é o ficheiro a carregar na Play Console, assinado com a chave de upload.
+- A chave de upload **não está no repositório**. Para gerar um AAB novo, cria `keystore.properties` (ignorado pelo git) nesta pasta:
+
+```properties
+storeFile=/caminho/para/pedra-papel-infinito-upload.jks
+storePassword=...
+keyAlias=upload
+keyPassword=...
+```
+
+Sem esse ficheiro, o build usa a chave de debug (serve para testar, não para a Play Store).

@@ -5,3 +5,8 @@ local.properties
 web/node_modules/
 *.apk
 !dist/*.apk
+keystore.properties
+*.jks
+*.keystore
+*.aab
+!dist/*.aab
