@@ -1,0 +1,1663 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Sala dos Enigmas</title>
+<style>
+/* Layout: um ecrã de cada vez, cartão central com barra de estado no topo (vidas, nível, pontos) */
+:root {
+  --bg: #13212b;
+  --bg-2: #1b2f3c;
+  --panel: #213a49;
+  --line: #2f4f62;
+  --fg: #eef3f1;
+  --muted: #9db3bd;
+  --accent: #f2b544;
+  --accent-ink: #2a1c00;
+  --good: #4fc98a;
+  --warn: #f2b544;
+  --bad: #ef6a5b;
+  --font: "Trebuchet MS", "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: "Roboto Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: radial-gradient(120% 80% at 50% 0%, var(--bg-2), var(--bg) 70%);
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 16px;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: env(safe-area-inset-top, 0px) 16px env(safe-area-inset-bottom, 0px);
+  display: flex; flex-direction: column;
+}
+#app { flex: 1; display: flex; flex-direction: column; max-width: 480px; width: 100%; margin: 0 auto; padding-block: 12px 20px; gap: 14px; }
+
+.hud { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-variant-numeric: tabular-nums; }
+.hud-stats { flex: 1; min-width: auto; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.hud-stats[hidden] { display: none !important; }
+.hud-tools { margin-left: auto; display: flex; gap: 6px; }
+.lives { font-size: 18px; letter-spacing: 1px; white-space: nowrap; color: var(--bad); }
+.lives .off { color: var(--line); }
+.chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; white-space: nowrap; font-size: 14px; color: var(--muted); }
+.chip b { color: var(--fg); }
+
+.screen { flex: 1; display: flex; flex-direction: column; gap: 16px; animation: in .25s ease-out; }
+@keyframes in { from { opacity: .4; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .screen, .shake, .pop { animation: none !important; } }
+
+h1 { font-size: 34px; line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-size: 24px; margin: 0; text-wrap: balance; }
+p { margin: 0; line-height: 1.5; color: var(--muted); }
+.eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: 12px; color: var(--accent); font-weight: 700; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.big { font-family: var(--mono); font-size: 34px; text-align: center; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+
+button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.btn { background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 18px; padding: 15px 18px; border-radius: 14px; box-shadow: 0 4px 0 #b9801c; transition: transform .06s; }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #b9801c; }
+.btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); box-shadow: none; }
+.btn[disabled] { opacity: .45; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row > * { flex: 1; }
+
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.opts.one { grid-template-columns: 1fr; }
+.opt { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 14px 12px; font-size: 18px; min-height: 56px; text-align: center; }
+.opt:active { background: var(--line); }
+.opt.right { background: var(--good); color: #06281a; border-color: var(--good); }
+.opt.wrong { background: var(--bad); color: #300; border-color: var(--bad); }
+
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.key { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; font-size: 22px; padding: 12px 0; font-family: var(--mono); }
+.key:active { background: var(--line); }
+.key.ok { background: var(--good); color: #06281a; border-color: var(--good); font-family: var(--font); font-weight: 700; font-size: 18px; }
+
+.progress { display: flex; gap: 6px; }
+.progress i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.progress i.done { background: var(--good); }
+.progress i.now { background: var(--accent); }
+
+.slots { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; min-height: 52px; }
+.slot { width: 40px; height: 48px; border-radius: 10px; border-bottom: 3px solid var(--line); background: var(--bg-2); font-family: var(--mono); font-size: 24px; display: grid; place-items: center; }
+.tiles { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.tile { width: 46px; height: 50px; border-radius: 10px; background: var(--fg); color: var(--bg); font-family: var(--mono); font-size: 24px; font-weight: 700; box-shadow: 0 3px 0 var(--muted); }
+.tile[disabled] { opacity: .15; }
+
+.guesses { display: flex; flex-direction: column; gap: 6px; max-height: 210px; overflow-y: auto; }
+.guess { display: flex; gap: 6px; justify-content: center; }
+.g { width: 46px; height: 46px; border-radius: 10px; display: grid; place-items: center; font-family: var(--mono); font-size: 22px; font-weight: 700; background: var(--bg-2); border: 1px solid var(--line); }
+.g.hit { background: var(--good); color: #06281a; border-color: var(--good); }
+.g.near { background: var(--warn); color: var(--accent-ink); border-color: var(--warn); }
+.g.miss { background: #34505f; color: var(--muted); }
+.legend { display: flex; gap: 14px; justify-content: center; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+
+.lights { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: min(100%, 300px); margin: 0 auto; }
+.light { aspect-ratio: 1; max-width: 100%; border-radius: 16px; background: #1a2b36; border: 1px solid var(--line); transition: background .15s, box-shadow .15s; }
+.light.on { background: var(--accent); box-shadow: 0 0 24px rgba(242,181,68,.55); border-color: var(--accent); }
+
+.simon { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(100%, 300px); margin: 0 auto; }
+.pad { aspect-ratio: 1; max-width: 100%; border-radius: 22px; opacity: .45; transition: opacity .1s, transform .1s; }
+.pad.lit { opacity: 1; transform: scale(1.03); }
+.pad:nth-child(1) { background: #4fc98a; } .pad:nth-child(2) { background: #ef6a5b; }
+.pad:nth-child(3) { background: #5aa9f2; } .pad:nth-child(4) { background: #f2b544; }
+
+.hanoi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.peg { position: relative; height: 170px; border-radius: 12px; background: var(--bg-2); border: 2px solid var(--line); display: flex; flex-direction: column-reverse; align-items: center; padding: 10px 4px; gap: 4px; }
+.peg::before { content: ""; position: absolute; bottom: 10px; top: 18px; width: 6px; border-radius: 3px; background: var(--line); left: calc(50% - 3px); }
+.peg.sel { border-color: var(--accent); }
+.disc { position: relative; height: 24px; border-radius: 8px; }
+.disc.up { transform: translateY(-10px); }
+.d1 { width: 40%; background: #5aa9f2; } .d2 { width: 60%; background: #4fc98a; }
+.d3 { width: 80%; background: #ef6a5b; } .d4 { width: 96%; background: #f2b544; }
+
+.toast { position: fixed; left: 16px; right: 16px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); max-width: 448px; margin: 0 auto; padding: 14px 16px; border-radius: 14px; font-weight: 700; text-align: center; z-index: 10; }
+.toast.good { background: var(--good); color: #06281a; }
+.toast.bad { background: var(--bad); color: #300; }
+.shake { animation: shake .35s; }
+@keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.pop { animation: pop .3s; }
+@keyframes pop { 50% { transform: scale(1.08); } }
+
+.levels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lv { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 14px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.lv b { color: var(--accent); font-family: var(--mono); }
+.spacer { flex: 1; }
+.center { text-align: center; }
+.stars { font-size: 40px; text-align: center; color: var(--accent); letter-spacing: 6px; }
+.chip.tool { min-width: 44px; min-height: 36px; font-weight: 700; font-size: 13px; letter-spacing: .06em; color: var(--fg); }
+.chip.tool[hidden] { display: none; }
+.chip.music { min-width: 44px; min-height: 36px; font-size: 18px; color: var(--accent); line-height: 1; }
+.chip.music[aria-pressed="false"] { color: var(--line); text-decoration: line-through; }
+@media (max-width: 400px) {
+  #lvlLabel { display: none; }
+  .chip { padding: 5px 8px; font-size: 13px; }
+  .chip.tool, .chip.music { min-width: 36px; }
+  .lives { font-size: 15px; letter-spacing: 0; }
+}
+.sheet { position: fixed; inset: 0; background: rgba(5,12,17,.7); display: flex; align-items: flex-end; justify-content: center; z-index: 30; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.sheet-panel { width: 100%; max-width: 448px; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.lang-opt { display: flex; align-items: center; gap: 14px; text-align: left; }
+.lang-opt b { font-family: var(--mono); font-size: 14px; color: var(--accent); min-width: 28px; }
+.lang-opt.right b { color: inherit; }
+button.lv { font: inherit; text-align: left; cursor: pointer; }
+button.lv:active { background: var(--line); }
+button.lv .lv-st { margin-left: auto; font-size: 12px; color: var(--accent); letter-spacing: 1px; }
+.hint-small { font-size: 13px; text-align: center; }
+/* Conquistas: uma cor por raridade */
+.r-comum { --r: #b8c4ca; } .r-incomum { --r: #4fc98a; } .r-raro { --r: #5aa9f2; }
+.r-epico { --r: #b77cf2; } .r-especial { --r: #f27ab8; } .r-lendaria { --r: #f2b544; }
+.ach-head { display: flex; align-items: center; gap: 10px; }
+.ach-head .spacer { flex: 1; }
+.ach-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.ach-bar i { display: block; height: 100%; background: var(--accent); }
+.ach-list { display: flex; flex-direction: column; gap: 16px; padding-bottom: 8px; }
+.ach-group { display: flex; flex-direction: column; gap: 8px; }
+.ach-group h3 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--r); display: flex; justify-content: space-between; }
+.ach-group h3 span { color: var(--muted); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.ach { display: flex; gap: 12px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+.ach .medal { flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; font-weight: 700; background: var(--r); color: var(--bg); }
+.ach.locked { opacity: .5; }
+.ach.locked .medal { background: transparent; border: 2px dashed var(--r); color: var(--r); }
+.ach.got { border-color: var(--r); }
+.r-lendaria.ach.got { box-shadow: 0 0 18px rgba(242,181,68,.35); }
+.ach-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ach-text b { font-size: 16px; }
+.ach-text small { color: var(--muted); font-size: 14px; line-height: 1.35; }
+.ach-toasts { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; max-width: 448px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; z-index: 20; pointer-events: none; }
+.ach-toast { display: flex; gap: 12px; align-items: center; background: var(--bg-2); border: 2px solid var(--r); border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: drop .35s ease-out; }
+.ach-toast .medal { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--r); color: var(--bg); font-weight: 700; }
+.ach-toast small { display: block; color: var(--r); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+@keyframes drop { from { transform: translateY(-20px); opacity: 0; } to { transform: none; opacity: 1; } }
+.reset-box { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.btn.danger { background: var(--bad); color: #300; box-shadow: 0 4px 0 #a8473b; }
+.btn.danger:active { box-shadow: 0 1px 0 #a8473b; }
+.btn.ghost.danger-text { color: var(--bad); border-color: rgba(239,106,91,.45); }
+/* 1: Encontra o diferente */
+.time-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.time-bar i { display: block; height: 100%; width: 100%; background: var(--good); transition: width .1s linear; }
+.time-bar i.low { background: var(--bad); }
+.odd-grid { display: grid; gap: 6px; width: min(100%, 340px); margin: 0 auto; }
+.odd-cell { aspect-ratio: 1; min-width: 0; max-width: 100%; overflow: hidden; display: grid; place-items: center; padding: 18%; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); }
+.odd-cell.found { background: var(--good); border-color: var(--good); }
+.odd-cell.nope { background: var(--bad); border-color: var(--bad); }
+.odd-ic { width: 100%; height: 100%; display: block; }
+.odd-ch { font-family: var(--mono); font-size: clamp(18px, 6vw, 28px); font-weight: 700; color: var(--fg); line-height: 1; }
+/* 2: Padrões de formas */
+.opts.four { grid-template-columns: repeat(4, 1fr); }
+.shapes { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.shape { width: 38px; height: 38px; display: grid; place-items: center; }
+.shape.slot-q { border: 2px dashed var(--accent); border-radius: 10px; color: var(--accent); font-weight: 700; font-size: 20px; }
+.shape-opt { display: grid; place-items: center; padding: 10px; }
+.shape-opt .shape { width: 40px; height: 40px; }
+/* 6: Tubos */
+.screen-part { display: flex; flex-direction: column; gap: 16px; }
+.btn.ghost.switch-btn { font-size: 15px; color: var(--muted); border-style: dashed; }
+.pipes-wrap { position: relative; width: min(100%, 320px); margin: 0 auto; padding: 0 18px; }
+.pipes { display: grid; gap: 3px; aspect-ratio: 1; }
+.pipe-cell { min-width: 0; aspect-ratio: 1; padding: 0; border-radius: 8px; background: var(--bg-2); border: 1px solid var(--line); overflow: hidden; }
+.pipe { display: block; width: 100%; height: 100%; transition: transform .15s ease-out; }
+.pipe svg line { stroke: #5c7889; } .pipe svg circle { fill: #5c7889; }
+.pipe-cell.wet .pipe svg line { stroke: #5aa9f2; } .pipe-cell.wet .pipe svg circle { fill: #5aa9f2; }
+.pipe-cell.wet { background: rgba(90,169,242,.12); }
+.pipe-mark { position: absolute; transform: translateY(-50%); font-size: 14px; color: var(--muted); }
+.pipe-mark.in { left: 0; } .pipe-mark.out { right: 0; }
+.pipe-mark.wet { color: #5aa9f2; }
+/* 8: Labirinto */
+.maze { display: grid; width: min(100%, 340px); margin: 0 auto; aspect-ratio: 1; border-radius: 6px; background: var(--bg-2); touch-action: none; }
+.mc { position: relative; display: grid; place-items: center; border: 2px solid transparent; }
+.mc.wn { border-top-color: var(--fg); } .mc.we { border-right-color: var(--fg); }
+.mc.ws { border-bottom-color: var(--fg); } .mc.ww { border-left-color: var(--fg); }
+.mc.trail { background: rgba(242,181,68,.12); }
+.mc.exit { background: rgba(79,201,138,.35); }
+.me { width: 62%; height: 62%; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px rgba(242,181,68,.7); }
+.dpad { display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 56px); gap: 8px; justify-content: center; grid-template-areas: ". up ." "left down right"; }
+.dpad .up { grid-area: up; } .dpad .left { grid-area: left; } .dpad .right { grid-area: right; } .dpad .down { grid-area: down; }
+/* 9: Pares */
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: min(100%, 340px); margin: 0 auto; }
+.card-t { aspect-ratio: 3 / 4; min-width: 0; border-radius: 12px; display: grid; place-items: center; font-size: 26px; font-weight: 700; color: var(--accent); background: linear-gradient(145deg, #2a4a5e, #1b3140); border: 2px solid var(--line); transition: transform .15s; }
+.card-t.up { background: var(--fg); border-color: var(--fg); transform: scale(1.03); }
+.card-t.done { background: rgba(79,201,138,.18); border-color: var(--good); }
+/* 10: Deslizante */
+.slide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: min(100%, 280px); margin: 0 auto; }
+.tile-s { aspect-ratio: 1; min-width: 0; border-radius: 14px; font-family: var(--mono); font-size: 34px; font-weight: 700; background: var(--fg); color: var(--bg); box-shadow: 0 4px 0 var(--muted); }
+.tile-s.ok { background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 0 #b9801c; }
+.tile-s.empty { background: transparent; box-shadow: none; border: 2px dashed var(--line); }
+/* 11: Copia o desenho */
+.paint { display: grid; gap: 5px; width: min(100%, 300px); margin: 0 auto; }
+.px { aspect-ratio: 1; min-width: 0; border-radius: 8px; background: var(--bg-2); border: 1px solid var(--line); }
+.px.on { background: #b77cf2; border-color: #b77cf2; }
+.px.miss { box-shadow: inset 0 0 0 3px var(--good); }
+.px.bad { box-shadow: inset 0 0 0 3px var(--bad); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <div class="hud-stats" id="hud" hidden>
+      <div class="lives" id="lives" aria-label="Vidas"></div>
+      <div class="chip"><span id="lvlLabel">Nível</span> <b id="lvl">1</b>/<span id="lvlTotal">12</span></div>
+      <div class="chip"><b id="score">0</b> pts</div>
+    </div>
+    <div class="hud-tools">
+      <button class="chip tool" id="restartBtn" aria-label="Recomeçar o jogo" hidden>↺</button>
+      <button class="chip tool" id="langBtn" aria-label="Língua">PT</button>
+      <button class="chip music" id="musicBtn" aria-pressed="true" aria-label="Música de fundo">♪</button>
+    </div>
+  </div>
+  <main id="screen" class="screen"></main>
+  <div class="ach-toasts" id="achToasts" aria-live="polite"></div>
+</div>
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const screen = $("#screen");
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pick = (a, n) => shuffle(a).slice(0, n);
+const h = (tag, attrs = {}, ...kids) => {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "html") el.innerHTML = v;
+    else el.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null) el.append(k.nodeType ? k : document.createTextNode(k));
+  return el;
+};
+
+/* ---------- Som ---------- */
+let audio;
+function ac() {
+  audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+  if (audio.state === "suspended" && !document.hidden) audio.resume();
+  return audio;
+}
+function beep(freq = 440, dur = 0.12, type = "sine") {
+  try {
+    ac();
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.15, audio.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + dur);
+    o.connect(g).connect(audio.destination); o.start(); o.stop(audio.currentTime + dur);
+  } catch (e) {}
+}
+const sGood = () => { beep(660, .1); setTimeout(() => beep(880, .15), 90); };
+const sBad = () => beep(160, .25, "square");
+
+/* ---------- Música de fundo ----------
+   Gerada em tempo real (sem ficheiros): baixo, acordes suaves e um arpejo
+   em Lá menor, 80 bpm, ciclo de 8 compassos. */
+const Music = (() => {
+  const midi = n => 440 * Math.pow(2, (n - 69) / 12);
+  const EIGHTH = 60 / 80 / 2;
+  const BARS = [ // [baixo, notas do arpejo]
+    [45, [69, 72, 76]], [41, [65, 69, 72]], [48, [67, 72, 76]], [43, [67, 71, 74]],
+    [45, [69, 72, 76]], [41, [65, 69, 72]], [50, [65, 69, 74]], [40, [64, 68, 71]]
+  ];
+  const ARP = [0, 1, 2, 1, 0, 2, 1, 2];
+  let on = true, master = null, timer = null, step = 0, next = 0;
+  try { on = localStorage.getItem("enigmas-music") !== "off"; } catch (e) {}
+
+  function voice(type, freq, t, dur, vol, attack = 0.01) {
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function schedule() {
+    while (next < audio.currentTime + 0.25) {
+      const bar = Math.floor(step / 8) % BARS.length, s = step % 8;
+      const [bass, notes] = BARS[bar];
+      if (s === 0) {
+        notes.forEach(n => voice("sine", midi(n - 12), next, EIGHTH * 8.5, 0.035, 0.8));
+        voice("triangle", midi(bass), next, EIGHTH * 3.5, 0.16);
+      }
+      if (s === 4) voice("triangle", midi(bass), next, EIGHTH * 3.5, 0.12);
+      if (!(s === 7 && bar % 2)) voice("triangle", midi(notes[ARP[s]]), next, EIGHTH * 1.6, s % 2 ? 0.04 : 0.06);
+      next += EIGHTH; step++;
+    }
+  }
+  function start() {
+    if (!on || master) return;
+    try {
+      ac();
+      master = audio.createGain();
+      master.gain.setValueAtTime(0, audio.currentTime);
+      master.gain.linearRampToValueAtTime(0.6, audio.currentTime + 2);
+      master.connect(audio.destination);
+      step = 0; next = audio.currentTime + 0.1;
+      schedule(); timer = setInterval(schedule, 60);
+    } catch (e) { master = null; }
+  }
+  function stop() {
+    if (!master) return;
+    const m = master; master = null; clearInterval(timer);
+    m.gain.cancelScheduledValues(audio.currentTime);
+    m.gain.setValueAtTime(m.gain.value, audio.currentTime);
+    m.gain.linearRampToValueAtTime(0, audio.currentTime + 0.4);
+    setTimeout(() => m.disconnect(), 600);
+  }
+  function toggle() {
+    on = !on;
+    try { localStorage.setItem("enigmas-music", on ? "on" : "off"); } catch (e) {}
+    on ? start() : stop(); paint();
+    if (typeof Ach !== "undefined") Ach.unlock("maestro");
+  }
+  function paint() { const b = $("#musicBtn"); b.setAttribute("aria-pressed", on); b.title = on ? t("musicOff") : t("musicOn"); b.setAttribute("aria-label", b.title); }
+  return { start, toggle, paint };
+})();
+$("#musicBtn").addEventListener("click", Music.toggle);
+// O som só pode começar depois de um toque no ecrã
+document.addEventListener("pointerdown", () => Music.start(), { once: true });
+// Pausa quando a app vai para segundo plano (chamado também pelo Android)
+function appPause() { if (audio && audio.state === "running") audio.suspend(); }
+function appResume() { if (audio && audio.state === "suspended") audio.resume(); }
+document.addEventListener("visibilitychange", () => document.hidden ? appPause() : appResume());
+
+/* ---------- Línguas ---------- */
+const LANGS = [
+  ["pt", "PT", "Português (Portugal)", "pt-PT"],
+  ["br", "BR", "Português (Brasil)", "pt-BR"],
+  ["es", "ES", "Español (España)", "es-ES"],
+  ["en", "EN", "English", "en"]
+];
+const L10N = {};
+L10N.pt = {
+  lives: "Vidas", level: "Nível", language: "Língua", chooseLang: "Escolhe a língua",
+  musicOn: "Ligar música", musicOff: "Desligar música",
+  wrong: "Errado!", noLives: "Sem vidas!", lostLife: "Perdeste uma vida.",
+  homeEyebrow: "12 problemas · 3 vidas", title: "Sala dos Enigmas",
+  homeText: "Estás fechado numa sala com 12 portas. Cada porta só abre quando resolves o problema que a guarda. Erras, perdes uma vida. Perdes as três, ficas preso.",
+  pickLevel: "Toca num nível para começar logo nessa porta.",
+  best: n => `Melhor pontuação: ${n}`, start: "Começar", achievements: "Conquistas",
+  door: (n, tag) => `Porta ${n} · ${tag}`, openDoor: "Abrir a porta", doorOpened: n => `Porta ${n} aberta`,
+  perfect: "Perfeito!", great: "Muito bem!", done: "Conseguiste!", youHave: n => `Tens ${n} pontos.`,
+  leave: "Sair da sala", nextDoor: "Próxima porta",
+  starsLine: (s, t) => `Estrelas: ${s} de ${t}`, livesBonus: n => ` · Bónus de vidas: ${n}`,
+  newRecord: "Novo recorde!", record: n => `Recorde: ${n}`, playAgain: "Jogar outra vez", mainMenu: "Menu inicial",
+  winTitle: "Estás livre!", winText: "Resolveste todos os problemas e saíste da Sala dos Enigmas.",
+  winFromText: n => `Saíste da sala a partir da porta ${n}. Começa na porta 1 para contar para o recorde e para as conquistas do jogo completo.`,
+  loseTitle: "Ficaste preso", loseText: (n, t) => `Chegaste à porta ${n} de ${t}. Tenta outra vez, os problemas mudam a cada jogo.`,
+  back: "‹ Voltar", secretName: "Conquista secreta", secretDesc: "Continua a jogar para a descobrir.",
+  resetAch: "Repor conquistas", resetAsk: "Apagar todas as conquistas? Isto não pode ser desfeito.", resetYes: "Sim, apagar", cancel: "Cancelar", resetDone: "Conquistas repostas.",
+  restartGame: "Recomeçar o jogo", restartAsk: "Recomeçar desde a porta 1? Perdes os pontos e as vidas deste jogo.", restartYes: "Sim, recomeçar",
+  rarity: { comum: "Comum", incomum: "Incomum", raro: "Rara", epico: "Épica", especial: "Especial", lendaria: "Lendária" },
+  achToast: r => "Conquista " + r.toLowerCase(),
+  findOdd: "Qual é o diferente?", timeUp: "Acabou o tempo!",
+  clue: "Pista: ", erase: "Apagar", hint: "Pista", wrongWord: "Não é essa palavra.",
+  right: "certo", near: "noutro lugar", miss: "não existe", triesLeft: n => `Tentativas restantes: ${n}`, codeWas: c => `O código era ${c}.`,
+  moves: n => `Jogadas: ${n}`, restart: "Recomeçar", lightOn: "acesa", lightOff: "apagada",
+  switchLights: "Jogar o nível antigo: Apaga as luzes", switchPipes: "Voltar aos tubos", lightsName: "Apaga as luzes",
+  lightsHow: "Toca numa luz para trocar o estado dela e das vizinhas. Apaga todas.",
+  watch: n => `Observa… (${n} cores)`, yourTurn: "A tua vez!", wrongSeq: "Sequência errada.", color: n => `cor ${n}`,
+  movesMin: (n, m) => `Jogadas: ${n} (mínimo ${m})`, tower: n => `torre ${n}`,
+  tries: (n, m) => `Tentativas: ${n} de ${m}`, tooManyTries: "Demasiadas tentativas.",
+  memorize: "Memoriza o desenho…", paintNow: "Agora pinta-o de memória!", check: "Verificar", wrongDrawing: "O desenho não está igual.",
+  levels: {
+    contas: ["Encontra o diferente", "Observação", "Todos os símbolos são iguais menos um. Toca no diferente antes que o tempo acabe. São 5 rondas, cada vez mais difíceis. Quanto mais rápido, mais pontos."],
+    seq: ["Padrões de formas", "Padrões", "Observa as formas e as cores e descobre a regra. Escolhe a peça que vem a seguir. São 4 padrões, 25 pontos cada."],
+    anag: ["Letras baralhadas", "Anagramas", "Toca nas letras pela ordem certa para formar a palavra. Uma pista ajuda, mas custa 10 pontos."],
+    adiv: ["Adivinhas", "Pensamento lateral", "Lê com atenção, a resposta óbvia nem sempre é a certa. São 4 adivinhas, 25 pontos cada."],
+    cofre: ["O cofre", "Lógica", "O cofre tem um código de 3 algarismos diferentes. Tens 8 tentativas. Verde: algarismo certo no lugar certo. Amarelo: existe, mas noutro lugar. Cinzento: não existe."],
+    luzes: ["Os tubos", "Puzzle", "Toca nos tubos para os rodar. Liga a entrada da água, à esquerda, à saída, à direita. Com menos toques ganhas mais pontos."],
+    mem: ["Memória de cores", "Memória", "Observa a sequência de cores e repete-a pela mesma ordem. Chega a 6 cores para passar."],
+    hanoi: ["O labirinto", "Orientação", "Leva a peça dourada até à saída verde. Usa as setas ou desliza o dedo no labirinto. Pelo caminho mais curto ganhas mais pontos."],
+    pares: ["Pares escondidos", "Concentração", "Vira duas cartas de cada vez e encontra os 6 pares. Se passares das 16 tentativas, perdes uma vida e as cartas são baralhadas outra vez."],
+    slide: ["O puzzle deslizante", "Raciocínio", "Toca numa peça ao lado do espaço vazio para a deslizar. Põe os números de 1 a 8 por ordem, com o espaço no fim."],
+    pinta: ["Copia o desenho", "Memória visual", "Memoriza o desenho, que desaparece passados uns segundos. Depois pinta as mesmas casas e toca em Verificar. São 3 desenhos."],
+    torre: ["Torre de Hanói", "Estratégia", "O último enigma. Leva todos os discos para a última torre. Só podes mover um disco de cada vez e nunca pôr um disco maior em cima de um menor. Toca numa torre para pegar e noutra para largar. O mínimo são 15 jogadas."]
+  },
+  words: [["SEGREDO", "Algo que não se conta a ninguém"], ["TESOURO", "Os piratas enterram-no"], ["PISTA", "Ajuda o detetive"],
+    ["ENIGMA", "Um problema misterioso"], ["CHAVE", "Abre uma porta"], ["JANELA", "Vê-se a rua através dela"],
+    ["CAMINHO", "Leva-te a algum lado"], ["RESPOSTA", "Vem depois da pergunta"], ["DETETIVE", "Resolve casos"], ["LANTERNA", "Ilumina o escuro"]],
+  riddles: [
+    ["O que é que tem dentes mas não morde?", "Um pente", ["Um tubarão", "Um garfo", "Um bebé"]],
+    ["Quanto mais se tira, maior fica. O que é?", "Um buraco", ["Uma fotografia", "Uma dívida", "Uma sombra"]],
+    ["O que é que sobe e desce mas não sai do lugar?", "As escadas", ["Um elevador", "Um balão", "A maré"]],
+    ["Tem pescoço mas não tem cabeça. O que é?", "Uma garrafa", ["Uma girafa", "Uma camisola", "Um cisne"]],
+    ["A mãe do Rui tem 3 filhos: Janeiro, Fevereiro e…?", "Rui", ["Março", "Abril", "Dezembro"]],
+    ["O que é que se parte só de dizer o seu nome?", "O silêncio", ["Um vidro", "Um segredo", "Uma promessa"]],
+    ["Quantos meses do ano têm 28 dias?", "Todos", ["Um", "Dois", "Nenhum"]],
+    ["Um avião cai na fronteira entre Portugal e Espanha. Onde se enterram os sobreviventes?", "Não se enterram", ["Em Portugal", "Em Espanha", "Na fronteira"]],
+    ["Estás numa corrida e ultrapassas o segundo. Em que lugar ficas?", "Em segundo", ["Em primeiro", "Em terceiro", "Em último"]],
+    ["O que fica molhado enquanto seca?", "Uma toalha", ["O cabelo", "A roupa", "Uma esponja"]]
+  ],
+  ach: {
+    primeira: ["Primeira porta", "Abre a primeira porta."],
+    persistente: ["Persistente", "Começa 3 jogos."],
+    preso: ["Ficaste preso", "Perde as três vidas."],
+    maestro: ["Maestro", "Liga ou desliga a música."],
+    calculadora: ["Olho de lince", "Encontra os 5 diferentes sem errar."],
+    padroes: ["Leitor de padrões", "Acerta todos os padrões de formas."],
+    sempistas: ["Sem pistas", "Forma as 3 palavras sem pistas e sem erros."],
+    adivinho: ["Adivinho", "Acerta todas as adivinhas."],
+    meio: ["Meio caminho", "Chega à porta 7 num jogo começado na porta 1."],
+    livre: ["Livre!", "Abre as 12 portas e sai da sala."],
+    arrombador: ["Arrombador", "Abre o cofre em 4 tentativas ou menos."],
+    eletricista: ["Canalizador", "Liga os tubos com o mínimo de toques, ou apaga as luzes em 5 jogadas."],
+    elefante: ["Memória de elefante", "Repete as cores sem nenhum erro."],
+    fotografica: ["Memória fotográfica", "Encontra os 6 pares em 8 tentativas ou menos."],
+    arranhao: ["Sem um arranhão", "Sai da sala sem perder nenhuma vida."],
+    monge: ["Caminho perfeito", "Sai do labirinto pelo caminho mais curto."],
+    brilhante: ["Mente brilhante", "Faz 1300 pontos num jogo."],
+    torre: ["Monge de Hanói", "Resolve a torre no mínimo de 15 jogadas."],
+    sorte: ["Sorte grande", "Abre o cofre à primeira tentativa."],
+    fio: ["Por um fio", "Sai da sala só com uma vida."],
+    colecionador: ["Colecionador", "Desbloqueia 10 conquistas."],
+    mestre: ["Mestre dos Enigmas", "Sai da sala com as 36 estrelas."],
+    lenda: ["Lenda da Sala", "Desbloqueia todas as outras conquistas."]
+  }
+};
+L10N.br = {
+  ...L10N.pt,
+  language: "Idioma", chooseLang: "Escolha o idioma",
+  lostLife: "Você perdeu uma vida.",
+  homeText: "Você está trancado numa sala com 12 portas. Cada porta só abre quando você resolve o problema que a guarda. Errou, perde uma vida. Perdeu as três, fica preso.",
+  pickLevel: "Toque num nível para começar direto nessa porta.",
+  done: "Você conseguiu!", youHave: n => `Você tem ${n} pontos.`,
+  livesBonus: n => ` · Bônus de vidas: ${n}`, playAgain: "Jogar de novo",
+  winTitle: "Você está livre!", winText: "Você resolveu todos os problemas e saiu da Sala dos Enigmas.",
+  winFromText: n => `Você saiu da sala a partir da porta ${n}. Comece na porta 1 para contar para o recorde e para as conquistas do jogo completo.`,
+  loseTitle: "Você ficou preso", loseText: (n, t) => `Você chegou à porta ${n} de ${t}. Tente de novo, os problemas mudam a cada jogo.`,
+  secretDesc: "Continue jogando para descobrir.",
+  resetAch: "Zerar conquistas", resetAsk: "Apagar todas as conquistas? Isso não pode ser desfeito.", resetDone: "Conquistas zeradas.",
+  restartAsk: "Recomeçar desde a porta 1? Você perde os pontos e as vidas deste jogo.",
+  hint: "Dica", clue: "Dica: ", near: "em outro lugar",
+  switchLights: "Jogar o nível antigo: Apague as luzes", switchPipes: "Voltar aos canos", lightsName: "Apague as luzes",
+  lightsHow: "Toque numa luz para trocar o estado dela e das vizinhas. Apague todas.",
+  watch: n => `Observe… (${n} cores)`, yourTurn: "Sua vez!",
+  tooManyTries: "Tentativas demais.", memorize: "Memorize o desenho…", paintNow: "Agora pinte de memória!",
+  levels: {
+    contas: ["Encontre o diferente", "Observação", "Todos os símbolos são iguais menos um. Toque no diferente antes que o tempo acabe. São 5 rodadas, cada vez mais difíceis. Quanto mais rápido, mais pontos."],
+    seq: ["Padrões de formas", "Padrões", "Observe as formas e as cores e descubra a regra. Escolha a peça que vem a seguir. São 4 padrões, 25 pontos cada."],
+    anag: ["Letras embaralhadas", "Anagramas", "Toque nas letras na ordem certa para formar a palavra. Uma dica ajuda, mas custa 10 pontos."],
+    adiv: ["Charadas", "Pensamento lateral", "Leia com atenção, a resposta óbvia nem sempre é a certa. São 4 charadas, 25 pontos cada."],
+    cofre: ["O cofre", "Lógica", "O cofre tem um código de 3 algarismos diferentes. Você tem 8 tentativas. Verde: algarismo certo no lugar certo. Amarelo: existe, mas em outro lugar. Cinza: não existe."],
+    luzes: ["Os canos", "Quebra-cabeça", "Toque nos canos para girá-los. Ligue a entrada da água, à esquerda, à saída, à direita. Com menos toques você ganha mais pontos."],
+    mem: ["Memória de cores", "Memória", "Observe a sequência de cores e repita na mesma ordem. Chegue a 6 cores para passar."],
+    hanoi: ["O labirinto", "Orientação", "Leve a peça dourada até a saída verde. Use as setas ou deslize o dedo no labirinto. Pelo caminho mais curto você ganha mais pontos."],
+    pares: ["Pares escondidos", "Concentração", "Vire duas cartas por vez e encontre os 6 pares. Se passar de 16 tentativas, você perde uma vida e as cartas são embaralhadas de novo."],
+    slide: ["O quebra-cabeça deslizante", "Raciocínio", "Toque numa peça ao lado do espaço vazio para deslizá-la. Coloque os números de 1 a 8 em ordem, com o espaço no final."],
+    pinta: ["Copie o desenho", "Memória visual", "Memorize o desenho, que some depois de alguns segundos. Depois pinte as mesmas casas e toque em Verificar. São 3 desenhos."],
+    torre: ["Torre de Hanói", "Estratégia", "O último enigma. Leve todos os discos para a última torre. Você só pode mover um disco por vez e nunca colocar um disco maior em cima de um menor. Toque numa torre para pegar e em outra para soltar. O mínimo são 15 jogadas."]
+  },
+  words: [["SEGREDO", "Algo que não se conta para ninguém"], ["TESOURO", "Os piratas o enterram"], ["PISTA", "Ajuda o detetive"],
+    ["ENIGMA", "Um problema misterioso"], ["CHAVE", "Abre uma porta"], ["JANELA", "Dá para ver a rua por ela"],
+    ["CAMINHO", "Leva você a algum lugar"], ["RESPOSTA", "Vem depois da pergunta"], ["DETETIVE", "Resolve casos"], ["LANTERNA", "Ilumina o escuro"]],
+  riddles: [
+    ["O que é que tem dentes mas não morde?", "Um pente", ["Um tubarão", "Um garfo", "Um bebê"]],
+    ["Quanto mais se tira, maior fica. O que é?", "Um buraco", ["Uma fotografia", "Uma dívida", "Uma sombra"]],
+    ["O que é que sobe e desce mas não sai do lugar?", "A escada", ["Um elevador", "Um balão", "A maré"]],
+    ["Tem pescoço mas não tem cabeça. O que é?", "Uma garrafa", ["Uma girafa", "Uma blusa", "Um cisne"]],
+    ["A mãe do Rui tem 3 filhos: Janeiro, Fevereiro e…?", "Rui", ["Março", "Abril", "Dezembro"]],
+    ["O que é que se quebra só de dizer o seu nome?", "O silêncio", ["Um vidro", "Um segredo", "Uma promessa"]],
+    ["Quantos meses do ano têm 28 dias?", "Todos", ["Um", "Dois", "Nenhum"]],
+    ["Um avião cai na fronteira entre o Brasil e a Argentina. Onde enterram os sobreviventes?", "Não se enterram", ["No Brasil", "Na Argentina", "Na fronteira"]],
+    ["Você está numa corrida e ultrapassa o segundo colocado. Em que lugar você fica?", "Em segundo", ["Em primeiro", "Em terceiro", "Em último"]],
+    ["O que fica molhado enquanto seca?", "Uma toalha", ["O cabelo", "A roupa", "Uma esponja"]]
+  ],
+  ach: {
+    primeira: ["Primeira porta", "Abra a primeira porta."],
+    persistente: ["Persistente", "Comece 3 jogos."],
+    preso: ["Ficou preso", "Perca as três vidas."],
+    maestro: ["Maestro", "Ligue ou desligue a música."],
+    calculadora: ["Olho de lince", "Encontre os 5 diferentes sem errar."],
+    padroes: ["Leitor de padrões", "Acerte todos os padrões de formas."],
+    sempistas: ["Sem dicas", "Forme as 3 palavras sem dicas e sem erros."],
+    adivinho: ["Adivinho", "Acerte todas as charadas."],
+    meio: ["Meio caminho", "Chegue à porta 7 num jogo começado na porta 1."],
+    livre: ["Livre!", "Abra as 12 portas e saia da sala."],
+    arrombador: ["Arrombador", "Abra o cofre em 4 tentativas ou menos."],
+    eletricista: ["Encanador", "Ligue os canos com o mínimo de toques, ou apague as luzes em 5 jogadas."],
+    elefante: ["Memória de elefante", "Repita as cores sem nenhum erro."],
+    fotografica: ["Memória fotográfica", "Encontre os 6 pares em 8 tentativas ou menos."],
+    arranhao: ["Sem um arranhão", "Saia da sala sem perder nenhuma vida."],
+    monge: ["Caminho perfeito", "Saia do labirinto pelo caminho mais curto."],
+    brilhante: ["Mente brilhante", "Faça 1300 pontos num jogo."],
+    torre: ["Monge de Hanói", "Resolva a torre no mínimo de 15 jogadas."],
+    sorte: ["Sorte grande", "Abra o cofre na primeira tentativa."],
+    fio: ["Por um fio", "Saia da sala com só uma vida."],
+    colecionador: ["Colecionador", "Desbloqueie 10 conquistas."],
+    mestre: ["Mestre dos Enigmas", "Saia da sala com as 36 estrelas."],
+    lenda: ["Lenda da Sala", "Desbloqueie todas as outras conquistas."]
+  }
+};
+L10N.es = {
+  lives: "Vidas", level: "Nivel", language: "Idioma", chooseLang: "Elige el idioma",
+  musicOn: "Activar música", musicOff: "Desactivar música",
+  wrong: "¡Incorrecto!", noLives: "¡Sin vidas!", lostLife: "Has perdido una vida.",
+  homeEyebrow: "12 problemas · 3 vidas", title: "La Sala de los Enigmas",
+  homeText: "Estás encerrado en una sala con 12 puertas. Cada puerta solo se abre cuando resuelves el problema que la protege. Si fallas, pierdes una vida. Si pierdes las tres, te quedas atrapado.",
+  pickLevel: "Toca un nivel para empezar directamente en esa puerta.",
+  best: n => `Mejor puntuación: ${n}`, start: "Empezar", achievements: "Logros",
+  door: (n, tag) => `Puerta ${n} · ${tag}`, openDoor: "Abrir la puerta", doorOpened: n => `Puerta ${n} abierta`,
+  perfect: "¡Perfecto!", great: "¡Muy bien!", done: "¡Lo has conseguido!", youHave: n => `Tienes ${n} puntos.`,
+  leave: "Salir de la sala", nextDoor: "Siguiente puerta",
+  starsLine: (s, t) => `Estrellas: ${s} de ${t}`, livesBonus: n => ` · Bonus de vidas: ${n}`,
+  newRecord: "¡Nuevo récord!", record: n => `Récord: ${n}`, playAgain: "Jugar otra vez", mainMenu: "Menú principal",
+  winTitle: "¡Eres libre!", winText: "Has resuelto todos los problemas y has salido de la Sala de los Enigmas.",
+  winFromText: n => `Has salido de la sala desde la puerta ${n}. Empieza en la puerta 1 para que cuente para el récord y para los logros de la partida completa.`,
+  loseTitle: "Te has quedado atrapado", loseText: (n, t) => `Llegaste a la puerta ${n} de ${t}. Inténtalo otra vez, los problemas cambian en cada partida.`,
+  back: "‹ Volver", secretName: "Logro secreto", secretDesc: "Sigue jugando para descubrirlo.",
+  resetAch: "Reiniciar logros", resetAsk: "¿Borrar todos los logros? No se puede deshacer.", resetYes: "Sí, borrar", cancel: "Cancelar", resetDone: "Logros reiniciados.",
+  restartGame: "Reiniciar la partida", restartAsk: "¿Empezar de nuevo desde la puerta 1? Pierdes los puntos y las vidas de esta partida.", restartYes: "Sí, reiniciar",
+  rarity: { comum: "Común", incomum: "Poco común", raro: "Raro", epico: "Épico", especial: "Especial", lendaria: "Legendario" },
+  achToast: r => "Logro " + r.toLowerCase(),
+  findOdd: "¿Cuál es el diferente?", timeUp: "¡Se acabó el tiempo!",
+  clue: "Pista: ", erase: "Borrar", hint: "Pista", wrongWord: "No es esa palabra.",
+  right: "correcto", near: "en otro sitio", miss: "no está", triesLeft: n => `Intentos restantes: ${n}`, codeWas: c => `El código era ${c}.`,
+  moves: n => `Movimientos: ${n}`, restart: "Reiniciar", lightOn: "encendida", lightOff: "apagada",
+  switchLights: "Jugar el nivel antiguo: Apaga las luces", switchPipes: "Volver a las tuberías", lightsName: "Apaga las luces",
+  lightsHow: "Toca una luz para cambiar su estado y el de sus vecinas. Apágalas todas.",
+  watch: n => `Observa… (${n} colores)`, yourTurn: "¡Tu turno!", wrongSeq: "Secuencia incorrecta.", color: n => `color ${n}`,
+  movesMin: (n, m) => `Movimientos: ${n} (mínimo ${m})`, tower: n => `torre ${n}`,
+  tries: (n, m) => `Intentos: ${n} de ${m}`, tooManyTries: "Demasiados intentos.",
+  memorize: "Memoriza el dibujo…", paintNow: "¡Ahora píntalo de memoria!", check: "Comprobar", wrongDrawing: "El dibujo no es igual.",
+  levels: {
+    contas: ["Encuentra el diferente", "Observación", "Todos los símbolos son iguales menos uno. Toca el diferente antes de que se acabe el tiempo. Son 5 rondas, cada vez más difíciles. Cuanto más rápido, más puntos."],
+    seq: ["Patrones de formas", "Patrones", "Observa las formas y los colores y descubre la regla. Elige la pieza que viene después. Son 4 patrones, 25 puntos cada uno."],
+    anag: ["Letras revueltas", "Anagramas", "Toca las letras en el orden correcto para formar la palabra. Una pista ayuda, pero cuesta 10 puntos."],
+    adiv: ["Acertijos", "Pensamiento lateral", "Lee con atención, la respuesta obvia no siempre es la correcta. Son 4 acertijos, 25 puntos cada uno."],
+    cofre: ["La caja fuerte", "Lógica", "La caja fuerte tiene un código de 3 cifras distintas. Tienes 8 intentos. Verde: cifra correcta en su sitio. Amarillo: está, pero en otro sitio. Gris: no está."],
+    luzes: ["Las tuberías", "Puzle", "Toca las tuberías para girarlas. Conecta la entrada del agua, a la izquierda, con la salida, a la derecha. Con menos toques ganas más puntos."],
+    mem: ["Memoria de colores", "Memoria", "Observa la secuencia de colores y repítela en el mismo orden. Llega a 6 colores para pasar."],
+    hanoi: ["El laberinto", "Orientación", "Lleva la pieza dorada hasta la salida verde. Usa las flechas o desliza el dedo por el laberinto. Por el camino más corto ganas más puntos."],
+    pares: ["Parejas escondidas", "Concentración", "Gira dos cartas cada vez y encuentra las 6 parejas. Si pasas de 16 intentos, pierdes una vida y las cartas se vuelven a barajar."],
+    slide: ["El puzle deslizante", "Razonamiento", "Toca una pieza junto al hueco para deslizarla. Ordena los números del 1 al 8, con el hueco al final."],
+    pinta: ["Copia el dibujo", "Memoria visual", "Memoriza el dibujo, que desaparece a los pocos segundos. Después pinta las mismas casillas y pulsa Comprobar. Son 3 dibujos."],
+    torre: ["Torre de Hanói", "Estrategia", "El último enigma. Lleva todos los discos a la última torre. Solo puedes mover un disco cada vez y nunca poner uno grande encima de uno pequeño. Toca una torre para coger y otra para soltar. El mínimo son 15 movimientos."]
+  },
+  words: [["SECRETO", "Algo que no se cuenta a nadie"], ["TESORO", "Los piratas lo entierran"], ["PISTA", "Ayuda al detective"],
+    ["ENIGMA", "Un problema misterioso"], ["LLAVE", "Abre una puerta"], ["VENTANA", "Por ella se ve la calle"],
+    ["CAMINO", "Te lleva a algún sitio"], ["RESPUESTA", "Viene después de la pregunta"], ["DETECTIVE", "Resuelve casos"], ["LINTERNA", "Ilumina la oscuridad"]],
+  riddles: [
+    ["¿Qué tiene dientes pero no muerde?", "Un peine", ["Un tiburón", "Un tenedor", "Un bebé"]],
+    ["Cuanto más le quitas, más grande se hace. ¿Qué es?", "Un agujero", ["Una foto", "Una deuda", "Una sombra"]],
+    ["¿Qué sube y baja pero no se mueve de su sitio?", "La escalera", ["Un ascensor", "Un globo", "La marea"]],
+    ["Tiene cuello pero no tiene cabeza. ¿Qué es?", "Una botella", ["Una jirafa", "Un jersey", "Un cisne"]],
+    ["La madre de Luis tiene 3 hijos: Enero, Febrero y…?", "Luis", ["Marzo", "Abril", "Diciembre"]],
+    ["¿Qué se rompe solo con decir su nombre?", "El silencio", ["Un cristal", "Un secreto", "Una promesa"]],
+    ["¿Cuántos meses del año tienen 28 días?", "Todos", ["Uno", "Dos", "Ninguno"]],
+    ["Un avión se estrella en la frontera entre España y Francia. ¿Dónde entierran a los supervivientes?", "No se entierran", ["En España", "En Francia", "En la frontera"]],
+    ["Estás en una carrera y adelantas al segundo. ¿En qué puesto quedas?", "Segundo", ["Primero", "Tercero", "Último"]],
+    ["¿Qué se moja mientras seca?", "Una toalla", ["El pelo", "La ropa", "Una esponja"]]
+  ],
+  ach: {
+    primeira: ["Primera puerta", "Abre la primera puerta."],
+    persistente: ["Persistente", "Empieza 3 partidas."],
+    preso: ["Atrapado", "Pierde las tres vidas."],
+    maestro: ["Maestro", "Activa o desactiva la música."],
+    calculadora: ["Ojo de lince", "Encuentra los 5 diferentes sin fallar."],
+    padroes: ["Lector de patrones", "Acierta todos los patrones de formas."],
+    sempistas: ["Sin pistas", "Forma las 3 palabras sin pistas ni errores."],
+    adivinho: ["Adivino", "Acierta todos los acertijos."],
+    meio: ["A medio camino", "Llega a la puerta 7 en una partida empezada en la puerta 1."],
+    livre: ["¡Libre!", "Abre las 12 puertas y sal de la sala."],
+    arrombador: ["Revientacajas", "Abre la caja fuerte en 4 intentos o menos."],
+    eletricista: ["Fontanero", "Conecta las tuberías con el mínimo de toques, o apaga las luces en 5 movimientos."],
+    elefante: ["Memoria de elefante", "Repite los colores sin ningún error."],
+    fotografica: ["Memoria fotográfica", "Encuentra las 6 parejas en 8 intentos o menos."],
+    arranhao: ["Sin un rasguño", "Sal de la sala sin perder ninguna vida."],
+    monge: ["Camino perfecto", "Sal del laberinto por el camino más corto."],
+    brilhante: ["Mente brillante", "Haz 1300 puntos en una partida."],
+    torre: ["Monje de Hanói", "Resuelve la torre en el mínimo de 15 movimientos."],
+    sorte: ["Golpe de suerte", "Abre la caja fuerte al primer intento."],
+    fio: ["Por los pelos", "Sal de la sala con una sola vida."],
+    colecionador: ["Coleccionista", "Desbloquea 10 logros."],
+    mestre: ["Maestro de los Enigmas", "Sal de la sala con las 36 estrellas."],
+    lenda: ["Leyenda de la Sala", "Desbloquea todos los demás logros."]
+  }
+};
+L10N.en = {
+  lives: "Lives", level: "Level", language: "Language", chooseLang: "Choose your language",
+  musicOn: "Turn music on", musicOff: "Turn music off",
+  wrong: "Wrong!", noLives: "Out of lives!", lostLife: "You lost a life.",
+  homeEyebrow: "12 puzzles · 3 lives", title: "The Puzzle Room",
+  homeText: "You're locked in a room with 12 doors. Each door only opens when you solve the puzzle guarding it. Get one wrong and you lose a life. Lose all three and you're stuck.",
+  pickLevel: "Tap a level to start straight at that door.",
+  best: n => `Best score: ${n}`, start: "Start", achievements: "Achievements",
+  door: (n, tag) => `Door ${n} · ${tag}`, openDoor: "Open the door", doorOpened: n => `Door ${n} open`,
+  perfect: "Perfect!", great: "Well done!", done: "You made it!", youHave: n => `You have ${n} points.`,
+  leave: "Leave the room", nextDoor: "Next door",
+  starsLine: (s, t) => `Stars: ${s} of ${t}`, livesBonus: n => ` · Lives bonus: ${n}`,
+  newRecord: "New record!", record: n => `Record: ${n}`, playAgain: "Play again", mainMenu: "Main menu",
+  winTitle: "You're free!", winText: "You solved every puzzle and escaped the Puzzle Room.",
+  winFromText: n => `You left the room starting from door ${n}. Start at door 1 for it to count towards your record and the full-game achievements.`,
+  loseTitle: "You're stuck", loseText: (n, t) => `You reached door ${n} of ${t}. Try again, the puzzles change every game.`,
+  back: "‹ Back", secretName: "Secret achievement", secretDesc: "Keep playing to discover it.",
+  resetAch: "Reset achievements", resetAsk: "Delete all achievements? This can't be undone.", resetYes: "Yes, delete", cancel: "Cancel", resetDone: "Achievements reset.",
+  restartGame: "Restart game", restartAsk: "Start again from door 1? You'll lose this game's points and lives.", restartYes: "Yes, restart",
+  rarity: { comum: "Common", incomum: "Uncommon", raro: "Rare", epico: "Epic", especial: "Special", lendaria: "Legendary" },
+  achToast: r => r + " achievement",
+  findOdd: "Which one is different?", timeUp: "Time's up!",
+  clue: "Clue: ", erase: "Delete", hint: "Hint", wrongWord: "That's not the word.",
+  right: "right", near: "wrong spot", miss: "not in code", triesLeft: n => `Tries left: ${n}`, codeWas: c => `The code was ${c}.`,
+  moves: n => `Moves: ${n}`, restart: "Restart", lightOn: "on", lightOff: "off",
+  switchLights: "Play the old level: Lights out", switchPipes: "Back to the pipes", lightsName: "Lights out",
+  lightsHow: "Tap a light to flip it and its neighbours. Turn them all off.",
+  watch: n => `Watch… (${n} colors)`, yourTurn: "Your turn!", wrongSeq: "Wrong sequence.", color: n => `color ${n}`,
+  movesMin: (n, m) => `Moves: ${n} (minimum ${m})`, tower: n => `tower ${n}`,
+  tries: (n, m) => `Tries: ${n} of ${m}`, tooManyTries: "Too many tries.",
+  memorize: "Memorize the drawing…", paintNow: "Now paint it from memory!", check: "Check", wrongDrawing: "That's not the same drawing.",
+  levels: {
+    contas: ["Spot the odd one", "Observation", "Every symbol is the same except one. Tap the odd one before time runs out. There are 5 rounds, each harder than the last. The faster you are, the more points."],
+    seq: ["Shape patterns", "Patterns", "Look at the shapes and colors and find the rule. Pick the piece that comes next. There are 4 patterns, 25 points each."],
+    anag: ["Scrambled letters", "Anagrams", "Tap the letters in the right order to spell the word. A hint helps, but it costs 10 points."],
+    adiv: ["Riddles", "Lateral thinking", "Read carefully, the obvious answer isn't always right. There are 4 riddles, 25 points each."],
+    cofre: ["The safe", "Logic", "The safe has a code of 3 different digits. You have 8 tries. Green: right digit, right spot. Yellow: in the code, wrong spot. Grey: not in the code."],
+    luzes: ["The pipes", "Puzzle", "Tap the pipes to turn them. Connect the water inlet on the left to the outlet on the right. Fewer taps score more points."],
+    mem: ["Color memory", "Memory", "Watch the color sequence and repeat it in the same order. Reach 6 colors to pass."],
+    hanoi: ["The maze", "Navigation", "Guide the gold piece to the green exit. Use the arrows or swipe on the maze. The shortest path scores the most points."],
+    pares: ["Hidden pairs", "Concentration", "Flip two cards at a time and find all 6 pairs. Go over 16 tries and you lose a life and the cards are reshuffled."],
+    slide: ["Sliding puzzle", "Reasoning", "Tap a tile next to the gap to slide it. Put the numbers 1 to 8 in order, with the gap at the end."],
+    pinta: ["Copy the drawing", "Visual memory", "Memorize the drawing before it disappears. Then paint the same squares and tap Check. There are 3 drawings."],
+    torre: ["Tower of Hanoi", "Strategy", "The final puzzle. Move every disc to the last tower. You can only move one disc at a time and never put a bigger disc on a smaller one. Tap a tower to pick up and another to drop. The minimum is 15 moves."]
+  },
+  words: [["SECRET", "Something you tell no one"], ["TREASURE", "Pirates bury it"], ["CLUE", "Helps a detective"],
+    ["PUZZLE", "A problem you solve for fun"], ["WINDOW", "You see the street through it"], ["ANSWER", "Comes after the question"],
+    ["DETECTIVE", "Solves cases"], ["LANTERN", "Lights up the dark"], ["JOURNEY", "A long trip"], ["MYSTERY", "Something no one can explain"]],
+  riddles: [
+    ["What has teeth but can't bite?", "A comb", ["A shark", "A fork", "A baby"]],
+    ["The more you take away, the bigger it gets. What is it?", "A hole", ["A photo", "A debt", "A shadow"]],
+    ["What goes up and down but never moves?", "Stairs", ["An elevator", "A balloon", "The tide"]],
+    ["It has a neck but no head. What is it?", "A bottle", ["A giraffe", "A sweater", "A swan"]],
+    ["Tom's mother has 3 children: April, May and…?", "Tom", ["June", "July", "March"]],
+    ["What breaks as soon as you say its name?", "Silence", ["Glass", "A secret", "A promise"]],
+    ["How many months have 28 days?", "All of them", ["One", "Two", "None"]],
+    ["A plane crashes on the border between the US and Canada. Where do they bury the survivors?", "You don't bury survivors", ["In the US", "In Canada", "On the border"]],
+    ["You're in a race and pass the person in second place. What place are you in?", "Second", ["First", "Third", "Last"]],
+    ["What gets wetter the more it dries?", "A towel", ["Hair", "Clothes", "A sponge"]]
+  ],
+  ach: {
+    primeira: ["First door", "Open the first door."],
+    persistente: ["Persistent", "Start 3 games."],
+    preso: ["Trapped", "Lose all three lives."],
+    maestro: ["Maestro", "Turn the music on or off."],
+    calculadora: ["Eagle eye", "Spot all 5 odd ones without a mistake."],
+    padroes: ["Pattern reader", "Get every shape pattern right."],
+    sempistas: ["No hints", "Spell all 3 words with no hints and no mistakes."],
+    adivinho: ["Mind reader", "Get every riddle right."],
+    meio: ["Halfway there", "Reach door 7 in a game started at door 1."],
+    livre: ["Free!", "Open all 12 doors and leave the room."],
+    arrombador: ["Safecracker", "Open the safe in 4 tries or fewer."],
+    eletricista: ["Plumber", "Connect the pipes in the fewest taps, or turn off the lights in 5 moves."],
+    elefante: ["Elephant memory", "Repeat the colors without a single mistake."],
+    fotografica: ["Photographic memory", "Find all 6 pairs in 8 tries or fewer."],
+    arranhao: ["Not a scratch", "Leave the room without losing a life."],
+    monge: ["Perfect path", "Escape the maze by the shortest path."],
+    brilhante: ["Brilliant mind", "Score 1300 points in one game."],
+    torre: ["Monk of Hanoi", "Solve the tower in the minimum 15 moves."],
+    sorte: ["Lucky break", "Open the safe on the first try."],
+    fio: ["By a thread", "Leave the room with only one life."],
+    colecionador: ["Collector", "Unlock 10 achievements."],
+    mestre: ["Puzzle Master", "Leave the room with all 36 stars."],
+    lenda: ["Legend of the Room", "Unlock every other achievement."]
+  }
+};
+
+let LANG = "pt", T = L10N.pt;
+try {
+  const saved = localStorage.getItem("enigmas-lang");
+  if (L10N[saved]) LANG = saved;
+  else {
+    const nav = (navigator.language || "pt").toLowerCase();
+    LANG = nav.startsWith("pt-br") ? "br" : nav.startsWith("pt") ? "pt" : nav.startsWith("es") ? "es" : nav.startsWith("en") ? "en" : "pt";
+  }
+} catch (e) {}
+const t = (k, ...a) => { const v = T[k] ?? L10N.pt[k]; return typeof v === "function" ? v(...a) : v; };
+
+function applyLang() {
+  T = L10N[LANG];
+  const meta = LANGS.find(l => l[0] === LANG);
+  document.documentElement.lang = meta[3];
+  document.title = t("title");
+  $("#langBtn").textContent = meta[1];
+  $("#langBtn").setAttribute("aria-label", t("language"));
+  $("#restartBtn").setAttribute("aria-label", t("restartGame")); $("#restartBtn").title = t("restartGame");
+  $("#lives").setAttribute("aria-label", t("lives"));
+  $("#lvlLabel").textContent = t("level");
+  Music.paint();
+}
+function setLang(code) {
+  LANG = code;
+  try { localStorage.setItem("enigmas-lang", code); } catch (e) {}
+  applyLang();
+  if (S.view) S.view();
+}
+function sheetMenu(title, content) {
+  const close = () => sheet.remove();
+  const sheet = h("div", { class: "sheet", onclick: e => { if (e.target === sheet) close(); } },
+    h("div", { class: "sheet-panel", role: "dialog", "aria-label": title }, h("h2", {}, title), ...content(close)));
+  document.body.append(sheet);
+}
+function langMenu() {
+  sheetMenu(t("chooseLang"), close => LANGS.map(([code, short, name]) =>
+    h("button", { class: "opt lang-opt" + (code === LANG ? " right" : ""), onclick: () => { close(); setLang(code); } }, h("b", {}, short), name)));
+}
+/* Recomeçar o jogo, com confirmação numa folha por baixo */
+function restartMenu() {
+  sheetMenu(t("restartGame"), close => [
+    h("p", {}, t("restartAsk")),
+    h("div", { class: "row" },
+      h("button", { class: "btn ghost", onclick: close }, t("cancel")),
+      h("button", { class: "btn", onclick: () => { close(); $("#achToasts").replaceChildren(); start(0); } }, t("restartYes")))
+  ]);
+}
+$("#langBtn").addEventListener("click", langMenu);
+$("#restartBtn").addEventListener("click", restartMenu);
+// Durante um jogo o topo mostra Recomeçar em vez da língua (a língua muda-se no menu)
+const showRestart = on => { $("#restartBtn").hidden = !on; $("#langBtn").hidden = !!on; };
+
+/* ---------- Estado ---------- */
+const S = { level: 0, score: 0, lives: 3, stars: [], view: null, result: null, from: 0, gameId: 0 };
+const best = { get() { try { return +localStorage.getItem("enigmas-best") || 0; } catch (e) { return 0; } },
+               set(v) { try { localStorage.setItem("enigmas-best", v); } catch (e) {} } };
+const fullGame = () => S.from === 0;
+
+function hud() {
+  $("#hud").hidden = false;
+  showRestart(!S.result);
+  $("#lives").innerHTML = [0, 1, 2].map(i => i < S.lives ? "♥" : '<span class="off">♥</span>').join("");
+  $("#lvl").textContent = S.level + 1;
+  $("#lvlTotal").textContent = LEVELS.length;
+  $("#score").textContent = S.score;
+}
+function toast(msg, kind = "good", ms = 1100) {
+  const el = h("div", { class: "toast pop " + kind }, msg);
+  document.body.append(el); setTimeout(() => el.remove(), ms);
+}
+function shake(el) { el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
+function addPoints(n) { S.score += n; hud(); }
+
+/* Perde uma vida. Devolve true se o jogo acabou. */
+function loseLife(msg = t("wrong")) {
+  S.lives--; sBad(); hud();
+  const gid = S.gameId;
+  if (S.lives <= 0) { setTimeout(() => { if (gid === S.gameId) gameOver(); }, 700); toast(t("noLives"), "bad"); return true; }
+  toast(msg + " " + t("lostLife"), "bad", 1400);
+  return false;
+}
+function show(...nodes) { screen.replaceChildren(...nodes.filter(n => n != null)); screen.style.animation = "none"; void screen.offsetWidth; screen.style.animation = ""; window.scrollTo(0, 0); }
+/* Ecrãs que podem ser redesenhados quando se muda de língua */
+function view(fn) { S.view = fn; $("#langBtn").hidden = !$("#restartBtn").hidden; fn(); }
+
+/* ---------- Conquistas ---------- */
+const RARITY = ["comum", "incomum", "raro", "epico", "especial", "lendaria"];
+const ACH = [
+  { id: "primeira", r: "comum", icon: "1" }, { id: "persistente", r: "comum", icon: "3" },
+  { id: "preso", r: "comum", icon: "✕" }, { id: "maestro", r: "comum", icon: "♪" },
+  { id: "calculadora", r: "incomum", icon: "◉" }, { id: "padroes", r: "incomum", icon: "…" },
+  { id: "sempistas", r: "incomum", icon: "A" }, { id: "adivinho", r: "incomum", icon: "?" },
+  { id: "meio", r: "incomum", icon: "½" },
+  { id: "livre", r: "raro", icon: "↗" }, { id: "arrombador", r: "raro", icon: "#" },
+  { id: "eletricista", r: "raro", icon: "┼" }, { id: "elefante", r: "raro", icon: "◆" }, { id: "fotografica", r: "raro", icon: "▣" },
+  { id: "arranhao", r: "epico", icon: "♥" }, { id: "monge", r: "epico", icon: "⇲" }, { id: "brilhante", r: "epico", icon: "✦" }, { id: "torre", r: "epico", icon: "≡" },
+  { id: "sorte", r: "especial", icon: "☘", secret: true }, { id: "fio", r: "especial", icon: "!", secret: true },
+  { id: "colecionador", r: "especial", icon: "10" },
+  { id: "mestre", r: "lendaria", icon: "★" }, { id: "lenda", r: "lendaria", icon: "♛" }
+];
+const achName = a => T.ach[a.id][0], achDesc = a => T.ach[a.id][1];
+const Ach = (() => {
+  let d = { got: {}, games: 0 };
+  try { d = Object.assign(d, JSON.parse(localStorage.getItem("enigmas-ach")) || {}); } catch (e) {}
+  const save = () => { try { localStorage.setItem("enigmas-ach", JSON.stringify(d)); } catch (e) {} };
+  const count = () => ACH.filter(a => d.got[a.id]).length;
+  let delay = 0;
+  function notify(a) {
+    // Mostra uma de cada vez, com um pequeno intervalo
+    const wait = delay; delay += 900; setTimeout(() => delay = Math.max(0, delay - 900), 900);
+    setTimeout(() => {
+      const el = h("div", { class: "ach-toast r-" + a.r }, h("div", { class: "medal" }, a.icon),
+        h("div", {}, h("small", {}, t("achToast", T.rarity[a.r])), h("b", {}, achName(a))));
+      $("#achToasts").append(el);
+      const notes = { comum: [523], incomum: [523, 659], raro: [523, 659, 784], epico: [523, 659, 784, 1047], especial: [784, 988, 1175], lendaria: [523, 659, 784, 1047, 1319] }[a.r];
+      notes.forEach((f, k) => setTimeout(() => beep(f, .14, "triangle"), k * 90));
+      setTimeout(() => el.remove(), 3000);
+    }, wait);
+  }
+  function unlock(id) {
+    if (d.got[id]) return;
+    d.got[id] = Date.now(); save();
+    notify(ACH.find(a => a.id === id));
+    if (count() >= 10) unlock("colecionador");
+    if (ACH.every(a => a.id === "lenda" || d.got[a.id])) unlock("lenda");
+  }
+  function gameStarted() { d.games++; save(); if (d.games >= 3) unlock("persistente"); }
+  function reset() { d = { got: {}, games: 0 }; save(); }
+  return { unlock, gameStarted, reset, has: id => !!d.got[id], count };
+})();
+
+function levelAchievements(id, stars, info = {}) {
+  const u = Ach.unlock;
+  if (S.level === 0) u("primeira");
+  if (S.level >= 5 && fullGame()) u("meio"); // a porta 7 fica aberta depois de passar a 6
+  if (id === "contas" && stars === 3) u("calculadora");
+  if (id === "seq" && stars === 3) u("padroes");
+  if (id === "anag" && !info.hints && !info.errs) u("sempistas");
+  if (id === "adiv" && stars === 3) u("adivinho");
+  if (id === "cofre" && info.tries <= 4) u("arrombador");
+  if (id === "cofre" && info.tries === 1) u("sorte");
+  if (id === "luzes" && info.moves <= info.min) u("eletricista");
+  if (id === "mem" && stars === 3) u("elefante");
+  if (id === "hanoi" && info.moves === info.min) u("monge");
+  if (id === "pares" && info.tries <= 8) u("fotografica");
+  if (id === "torre" && info.moves === info.min) u("torre");
+}
+
+function achievements(back) {
+  view(() => {
+    const got = Ach.count();
+    show(
+      h("div", { class: "ach-head" },
+        h("button", { class: "btn ghost", style: "padding:10px 14px;font-size:16px", onclick: back }, t("back")),
+        h("div", { class: "spacer" }),
+        h("div", { class: "chip" }, h("b", {}, String(got)), ` / ${ACH.length}`)),
+      h("h1", {}, t("achievements")),
+      h("div", { class: "ach-bar" }, h("i", { style: `width:${Math.round(got / ACH.length * 100)}%` })),
+      h("div", { class: "ach-list" }, RARITY.map(r => {
+        const list = ACH.filter(a => a.r === r);
+        return h("section", { class: "ach-group r-" + r },
+          h("h3", {}, T.rarity[r], h("span", {}, `${list.filter(a => Ach.has(a.id)).length}/${list.length}`)),
+          list.map(a => {
+            const ok = Ach.has(a.id), hide = a.secret && !ok;
+            return h("div", { class: `ach r-${r} ${ok ? "got" : "locked"}` },
+              h("div", { class: "medal" }, hide ? "?" : a.icon),
+              h("div", { class: "ach-text" }, h("b", {}, hide ? t("secretName") : achName(a)), h("small", {}, hide ? t("secretDesc") : achDesc(a))));
+          }));
+      })),
+      resetBox(back)
+    );
+  });
+}
+/* Repor conquistas, com confirmação no próprio ecrã */
+function resetBox(back) {
+  const box = h("div", { class: "reset-box" });
+  const ask = () => box.replaceChildren(
+    h("p", { class: "center" }, t("resetAsk")),
+    h("div", { class: "row" },
+      h("button", { class: "btn ghost", onclick: idle }, t("cancel")),
+      h("button", { class: "btn danger", onclick: () => { Ach.reset(); sBad(); toast(t("resetDone"), "bad"); achievements(back); } }, t("resetYes"))));
+  const idle = () => box.replaceChildren(
+    h("button", Object.assign({ class: "btn ghost danger-text", onclick: ask }, Ach.count() ? {} : { disabled: "" }), t("resetAch")));
+  idle();
+  return box;
+}
+const achBtn = () => h("button", { class: "btn ghost", onclick: () => achievements(home) }, `${t("achievements")}  ${Ach.count()}/${ACH.length}`);
+
+/* ---------- Níveis ---------- */
+const keypadKeys = ["1","2","3","4","5","6","7","8","9","⌫","0","OK"];
+const progress = (prog, i) => [...prog.children].forEach((el, j) => el.className = j < i ? "done" : j === i ? "now" : "");
+const LEVELS = [
+  {
+    id: "contas",
+    play(done) {
+      // Encontra o diferente: uma grelha de símbolos iguais, menos um
+      const ARROW = '<path d="M20 4 L34 20 L25 20 L25 36 L15 36 L15 20 L6 20 Z"/>';
+      const KEY = '<circle cx="12" cy="20" r="8"/><rect x="18" y="17" width="18" height="6" rx="2"/><rect x="28" y="23" width="4" height="8"/>';
+      const icon = (path, color, rot = 0, flip = false) => {
+        const el = h("span", { class: "odd-ic" });
+        el.innerHTML = `<svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden="true"><g fill="${color}" transform="rotate(${rot} 20 20)${flip ? " translate(40 0) scale(-1 1)" : ""}">${path}</g></svg>`;
+        return el;
+      };
+      const letter = c => h("span", { class: "odd-ch" }, c);
+      const LETTERS = [["E", "F"], ["b", "d"], ["O", "Q"], ["p", "q"], ["M", "N"], ["C", "G"]];
+      const COLORS = [["#5aa9f2", "#ef6a5b"], ["#4fc98a", "#f2b544"]];
+      const SUBTLE = [["#5aa9f2", "#3f86cf"], ["#4fc98a", "#35a86c"], ["#f2b544", "#d99a22"]];
+      const rounds = [
+        { n: 4, secs: 10, make: () => { const [a, b] = pick(COLORS, 1)[0]; return [() => icon(ARROW, a), () => icon(ARROW, b)]; } },
+        { n: 4, secs: 10, make: () => { const r = pick([0, 90, 180, 270], 1)[0]; return [() => icon(KEY, "#eef3f1", r), () => icon(KEY, "#eef3f1", r + 180)]; } },
+        { n: 5, secs: 10, make: () => { const [a, b] = pick(LETTERS, 1)[0]; return [() => letter(a), () => letter(b)]; } },
+        { n: 5, secs: 9, make: () => { const r = pick([0, 90, 180, 270], 1)[0]; return [() => icon(KEY, "#f2b544", r), () => icon(KEY, "#f2b544", r, true)]; } },
+        { n: 6, secs: 9, make: () => { const [a, b] = pick(SUBTLE, 1)[0]; const r = pick([0, 90, 180, 270], 1)[0]; return [() => icon(ARROW, a, r), () => icon(ARROW, b, r)]; } }
+      ];
+      let i = 0, errs = 0, timer = null, left = 0, locked = false;
+      const prog = h("div", { class: "progress" }, rounds.map(() => h("i")));
+      const bar = h("div", { class: "time-bar" }, h("i"));
+      const grid = h("div", { class: "odd-grid" });
+      const info = h("p", { class: "center" }, t("findOdd"));
+      const card = h("div", { class: "card" }, prog, bar, grid, info);
+      function render() {
+        progress(prog, i);
+        const R = rounds[i], [same, diff] = R.make(), odd = rnd(0, R.n * R.n - 1);
+        grid.style.gridTemplateColumns = `repeat(${R.n}, minmax(0, 1fr))`;
+        grid.replaceChildren(...Array.from({ length: R.n * R.n }, (_, k) =>
+          h("button", { class: "odd-cell", "data-odd": k === odd ? "1" : "", onclick: e => tap(e.currentTarget, k === odd) }, k === odd ? diff() : same())));
+        locked = false; left = R.secs * 10;
+        const fill = bar.firstChild; fill.style.width = "100%";
+        clearInterval(timer);
+        timer = setInterval(() => {
+          if (!document.body.contains(grid)) return clearInterval(timer);
+          left--; fill.style.width = (left / (R.secs * 10) * 100) + "%";
+          fill.className = left < R.secs * 3 ? "low" : "";
+          if (left <= 0) { clearInterval(timer); miss(t("timeUp")); }
+        }, 100);
+      }
+      function reveal() { grid.querySelector('[data-odd="1"]').classList.add("found"); }
+      function next() { setTimeout(() => { i++; i === rounds.length ? done(errs ? (errs > 1 ? 1 : 2) : 3) : render(); }, 1000); }
+      function miss(msg) {
+        if (locked) return; locked = true; clearInterval(timer);
+        errs++; reveal(); shake(grid);
+        if (!loseLife(msg)) next();
+      }
+      function tap(btn, isOdd) {
+        if (locked) return;
+        if (!isOdd) { btn.classList.add("nope"); return miss(); }
+        locked = true; clearInterval(timer);
+        reveal(); sGood(); addPoints(10 + Math.ceil(left / 10) * 2);
+        next();
+      }
+      render();
+      return [card];
+    }
+  },
+  {
+    id: "seq",
+    play(done) {
+      // Padrões de formas: a forma e a cor seguem cada uma o seu ciclo
+      const SHAPES = ["circle", "triangle", "square", "diamond", "star"];
+      const COLORS = ["#ef6a5b", "#5aa9f2", "#4fc98a", "#f2b544", "#b77cf2"];
+      const svg = (shape, color) => {
+        const p = {
+          circle: '<circle cx="20" cy="20" r="15"/>',
+          triangle: '<polygon points="20,4 37,35 3,35"/>',
+          square: '<rect x="6" y="6" width="28" height="28" rx="3"/>',
+          diamond: '<polygon points="20,2 38,20 20,38 2,20"/>',
+          star: '<polygon points="20,2 25,15 39,15 28,24 32,38 20,30 8,38 12,24 1,15 15,15"/>'
+        }[shape];
+        const el = h("span", { class: "shape" });
+        el.innerHTML = `<svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden="true"><g fill="${color}">${p}</g></svg>`;
+        return el;
+      };
+      const unitOf = (pool, len) => { let u; do { u = Array.from({ length: len }, () => pick(pool, 1)[0]); } while (len > 1 && u.every(x => x === u[0])); return u; };
+      const qs = [[2, 1, 6], [3, 2, 6], [2, 3, 7], [4, 3, 8]].map(([ps, pc, shown]) => {
+        const su = unitOf(pick(SHAPES, Math.min(ps, 3)), ps), cu = unitOf(pick(COLORS, Math.min(pc, 3)), pc);
+        const item = n => ({ s: su[n % ps], c: cu[n % pc] });
+        const seq = Array.from({ length: shown }, (_, n) => item(n));
+        const ans = item(shown);
+        const key = o => o.s + o.c;
+        const set = new Map([[key(ans), ans]]);
+        [
+          { s: ans.s, c: pick(COLORS.filter(c => c !== ans.c), 1)[0] },
+          { s: pick(SHAPES.filter(s => s !== ans.s), 1)[0], c: ans.c },
+          { s: pick(SHAPES.filter(s => s !== ans.s), 1)[0], c: pick(COLORS.filter(c => c !== ans.c), 1)[0] }
+        ].forEach(o => set.set(key(o), o));
+        while (set.size < 4) { const o = { s: pick(SHAPES, 1)[0], c: pick(COLORS, 1)[0] }; set.set(key(o), o); }
+        return { seq, ans, opts: shuffle([...set.values()]), key };
+      });
+      let i = 0, errs = 0;
+      const prog = h("div", { class: "progress" }, qs.map(() => h("i")));
+      const row = h("div", { class: "shapes" });
+      const card = h("div", { class: "card" }, prog, row);
+      const opts = h("div", { class: "opts four" });
+      function render() {
+        progress(prog, i);
+        const Q = qs[i];
+        row.replaceChildren(...Q.seq.map(o => svg(o.s, o.c)), h("span", { class: "shape slot-q" }, "?"));
+        opts.replaceChildren(...Q.opts.map(o => h("button", { class: "opt shape-opt", "data-k": Q.key(o), onclick: e => answer(e.currentTarget, o) }, svg(o.s, o.c))));
+      }
+      function answer(btn, o) {
+        const Q = qs[i];
+        [...opts.children].forEach(b => b.disabled = true);
+        row.lastChild.replaceWith(svg(Q.ans.s, Q.ans.c));
+        if (Q.key(o) === Q.key(Q.ans)) { btn.classList.add("right"); sGood(); addPoints(25); }
+        else {
+          btn.classList.add("wrong"); errs++;
+          opts.querySelector(`[data-k="${Q.key(Q.ans)}"]`).classList.add("right");
+          if (loseLife()) return;
+        }
+        setTimeout(() => { i++; i === qs.length ? done(errs ? (errs > 1 ? 1 : 2) : 3) : render(); }, 1100);
+      }
+      render();
+      return [card, opts];
+    }
+  },
+  {
+    id: "anag",
+    play(done) {
+      const qs = pick(T.words, 3); let i = 0, hints = 0, errs = 0;
+      const prog = h("div", { class: "progress" }, qs.map(() => h("i")));
+      const clue = h("p", { class: "center" });
+      const slots = h("div", { class: "slots" });
+      const tiles = h("div", { class: "tiles" });
+      const card = h("div", { class: "card" }, prog, clue, slots, tiles);
+      let word, picked;
+      const controls = h("div", { class: "row" },
+        h("button", { class: "btn ghost", onclick: undo }, t("erase")),
+        h("button", { class: "btn ghost", onclick: hint }, t("hint")));
+      function render() {
+        progress(prog, i);
+        word = qs[i][0]; picked = [];
+        clue.textContent = t("clue") + qs[i][1];
+        let mix; do { mix = shuffle(word.split("")); } while (mix.join("") === word);
+        tiles.replaceChildren(...mix.map((c, k) => h("button", { class: "tile", "data-k": k, onclick: e => tap(e.currentTarget) }, c)));
+        draw();
+      }
+      function draw() { slots.replaceChildren(...word.split("").map((_, k) => h("div", { class: "slot" }, picked[k] ? picked[k].textContent : ""))); }
+      function tap(btn) {
+        if (btn.disabled) return;
+        btn.disabled = true; picked.push(btn); beep(500 + picked.length * 40, .05); draw();
+        if (picked.length === word.length) {
+          if (picked.map(b => b.textContent).join("") === word) {
+            sGood(); addPoints(30); slots.classList.add("pop");
+            setTimeout(() => { slots.classList.remove("pop"); i++; i === qs.length ? done(errs || hints > 1 ? (errs > 1 ? 1 : 2) : 3, { hints, errs }) : render(); }, 700);
+          } else {
+            shake(slots); errs++;
+            if (!loseLife(t("wrongWord"))) setTimeout(() => { picked.forEach(b => b.disabled = false); picked = []; draw(); }, 400);
+          }
+        }
+      }
+      function undo() { const b = picked.pop(); if (b) { b.disabled = false; draw(); } }
+      function hint() {
+        // Coloca a próxima letra correta
+        while (picked.length && picked.some((b, k) => b.textContent !== word[k])) undo();
+        if (picked.length >= word.length - 1) return;
+        const need = word[picked.length];
+        const b = [...tiles.children].find(el => !el.disabled && el.textContent === need);
+        if (b) { hints++; S.score = Math.max(0, S.score - 10); hud(); tap(b); }
+      }
+      render();
+      return [card, controls];
+    }
+  },
+  {
+    id: "adiv",
+    play(done) {
+      const qs = pick(T.riddles, 4); let i = 0, errs = 0;
+      const prog = h("div", { class: "progress" }, qs.map(() => h("i")));
+      const q = h("h2");
+      const opts = h("div", { class: "opts one" });
+      const card = h("div", { class: "card" }, prog, q);
+      function render() {
+        progress(prog, i);
+        const [txt, r, wrong] = qs[i];
+        q.textContent = txt;
+        opts.replaceChildren(...shuffle([r, ...wrong]).map(v => h("button", { class: "opt", onclick: e => answer(e.currentTarget, v) }, v)));
+      }
+      function answer(btn, v) {
+        const r = qs[i][1];
+        [...opts.children].forEach(b => b.disabled = true);
+        if (v === r) { btn.classList.add("right"); sGood(); addPoints(25); }
+        else {
+          btn.classList.add("wrong"); errs++;
+          [...opts.children].find(b => b.textContent === r).classList.add("right");
+          if (loseLife()) return;
+        }
+        setTimeout(() => { i++; i === qs.length ? done(errs ? (errs > 1 ? 1 : 2) : 3) : render(); }, 1100);
+      }
+      render();
+      return [card, opts];
+    }
+  },
+  {
+    id: "cofre",
+    play(done) {
+      let code, tries, input;
+      const MAX = 8;
+      const list = h("div", { class: "guesses" });
+      const cur = h("div", { class: "guess" });
+      const left = h("p", { class: "center" });
+      const legend = h("div", { class: "legend" },
+        h("span", { style: "--c:var(--good)" }, t("right")), h("span", { style: "--c:var(--warn)" }, t("near")), h("span", { style: "--c:#34505f" }, t("miss")));
+      const card = h("div", { class: "card" }, legend, list, cur, left);
+      function reset() {
+        code = shuffle([0,1,2,3,4,5,6,7,8,9]).slice(0, 3); tries = 0; input = [];
+        list.replaceChildren(); draw();
+      }
+      function draw() {
+        cur.replaceChildren(...[0, 1, 2].map(k => h("div", { class: "g" }, input[k] ?? "")));
+        left.textContent = t("triesLeft", MAX - tries);
+      }
+      const press = k => {
+        if (k === "⌫") input.pop();
+        else if (k === "OK") return check();
+        else if (input.length < 3 && !input.includes(+k)) input.push(+k);
+        else if (input.includes(+k)) shake(cur);
+        draw();
+      };
+      function check() {
+        if (input.length < 3) return shake(cur);
+        tries++;
+        const row = h("div", { class: "guess" }, input.map((d, k) => h("div", { class: "g " + (code[k] === d ? "hit" : code.includes(d) ? "near" : "miss") }, d)));
+        list.append(row); list.scrollTop = list.scrollHeight;
+        const win = input.every((d, k) => code[k] === d);
+        input = []; draw();
+        if (win) { sGood(); addPoints(40 + (MAX - tries) * 10); return setTimeout(() => done(tries <= 4 ? 3 : tries <= 6 ? 2 : 1, { tries }), 600); }
+        beep(300, .06);
+        if (tries >= MAX) {
+          if (!loseLife(t("codeWas", code.join("")))) setTimeout(reset, 1200);
+        }
+      }
+      const keypad = h("div", { class: "keypad" },
+        keypadKeys.map(k => h("button", { class: "key" + (k === "OK" ? " ok" : ""), onclick: () => press(k) }, k)));
+      reset();
+      return [card, keypad];
+    }
+  },
+  {
+    id: "luzes",
+    // Os tubos são o nível normal; um botão em baixo troca para o nível antigo, Apaga as luzes
+    play(done) {
+      let mode = "pipes";
+      const box = h("div", { class: "screen-part" });
+      const toggle = h("button", { class: "btn ghost switch-btn", onclick: () => { mode = mode === "pipes" ? "lights" : "pipes"; render(); beep(600, .05); } });
+      const render = () => {
+        const title = screen.querySelector("h2");
+        if (title) title.textContent = mode === "pipes" ? lvName(this) : t("lightsName");
+        toggle.textContent = mode === "pipes" ? t("switchLights") : t("switchPipes");
+        box.replaceChildren(...(mode === "pipes" ? this.playPipes(done) : this.playLights(done)), toggle);
+      };
+      toggle.textContent = t("switchLights");
+      box.replaceChildren(...this.playPipes(done), toggle);
+      return [box];
+    },
+    playLights(done) {
+      let grid, start, moves = 0;
+      const N = 3;
+      const board = h("div", { class: "lights" });
+      const info = h("p", { class: "center" }, t("lightsHow"));
+      const count = h("p", { class: "center" });
+      const flip = (g, i) => { const r = Math.floor(i / N), c = i % N;
+        [[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr, dc]) => { const rr = r + dr, cc = c + dc; if (rr >= 0 && rr < N && cc >= 0 && cc < N) g[rr * N + cc] ^= 1; }); };
+      do { start = Array(N * N).fill(0); pick([...Array(N * N).keys()], rnd(3, 5)).forEach(i => flip(start, i)); } while (!start.some(Boolean));
+      function reset() { grid = start.slice(); moves = 0; draw(); }
+      function draw() {
+        board.replaceChildren(...grid.map((v, i) => h("button", { class: "light" + (v ? " on" : ""), "aria-label": v ? t("lightOn") : t("lightOff"), onclick: () => tap(i) })));
+        count.textContent = t("moves", moves);
+      }
+      function tap(i) {
+        if (!grid.some(Boolean)) return;
+        flip(grid, i); moves++; beep(grid[i] ? 700 : 400, .05); draw();
+        if (!grid.some(Boolean)) { sGood(); addPoints(Math.max(20, 90 - moves * 8)); board.classList.add("pop"); setTimeout(() => done(moves <= 5 ? 3 : moves <= 9 ? 2 : 1, { moves, min: 5 }), 700); }
+      }
+      reset();
+      return [h("div", { class: "card" }, info, board, count), h("button", { class: "btn ghost", onclick: reset }, t("restart"))];
+    },
+    playPipes(done) {
+      // Tubos: aberturas em bits N=1, E=2, S=4, W=8. Tocar roda a peça 90° no sentido do relógio.
+      const N = 5, DIRS = [[1, 0, -1, 4], [2, 1, 0, 8], [4, 0, 1, 1], [8, -1, 0, 2]]; // bit, dx, dy, bit oposto
+      const rot = (m, k) => { for (let j = 0; j < k; j++) m = ((m << 1) | (m >> 3)) & 15; return m; };
+      // Caminho aleatório da entrada (esquerda) até à última coluna (busca em profundidade)
+      const r0 = rnd(0, N - 1);
+      let path = null;
+      (function walk(p, seen) {
+        if (path) return;
+        const [x, y] = p[p.length - 1];
+        if (x === N - 1 && p.length >= N + 2) { path = p.slice(); return; }
+        for (const [, dx, dy] of shuffle(DIRS)) {
+          const nx = x + dx, ny = y + dy, k = ny * N + nx;
+          if (nx < 0 || ny < 0 || nx >= N || ny >= N || seen.has(k)) continue;
+          seen.add(k); p.push([nx, ny]); walk(p, seen); p.pop(); seen.delete(k);
+          if (path) return;
+        }
+      })([[0, r0]], new Set([r0 * N]));
+      const r1 = path[path.length - 1][1];
+      const need = Array(N * N).fill(0), base = Array(N * N).fill(0);
+      const bitTo = (a, b) => DIRS.find(([, dx, dy]) => a[0] + dx === b[0] && a[1] + dy === b[1])[0];
+      path.forEach((c, j) => {
+        const inBit = j ? bitTo(c, path[j - 1]) : 8, outBit = j < path.length - 1 ? bitTo(c, path[j + 1]) : 2;
+        need[c[1] * N + c[0]] = inBit | outBit;
+      });
+      const FILL = [5, 3, 3, 7, 5, 6];
+      for (let k = 0; k < N * N; k++) base[k] = need[k] || rot(pick(FILL, 1)[0], rnd(0, 3));
+      const start0 = Array.from({ length: N * N }, () => rnd(0, 3));
+      let turns, moves = 0, over = false, MIN = 0;
+      // Mínimo de toques: quantas rotações cada peça do caminho precisa (as retas servem em 2 posições)
+      const minMoves = () => need.reduce((sum, m, k) => {
+        if (!m) return sum;
+        let j = 0; while (j < 4 && rot(base[k], (start0[k] + j) % 4) !== m) j++;
+        return sum + j;
+      }, 0);
+      const board = h("div", { class: "pipes", style: `grid-template-columns:repeat(${N}, minmax(0, 1fr))` });
+      const inMark = h("span", { class: "pipe-mark in", style: `top:${(r0 + .5) / N * 100}%` }, "▶");
+      const outMark = h("span", { class: "pipe-mark out", style: `top:${(r1 + .5) / N * 100}%` }, "▶");
+      const wrap = h("div", { class: "pipes-wrap" }, inMark, board, outMark);
+      const info = h("p", { class: "center" });
+      const svgFor = m => {
+        const arms = DIRS.filter(([b]) => m & b).map(([, dx, dy]) => `<line x1="20" y1="20" x2="${20 + dx * 20}" y2="${20 + dy * 20}"/>`).join("");
+        return `<svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden="true"><g stroke-width="11" stroke-linecap="butt">${arms}</g><circle cx="20" cy="20" r="5.5"/></svg>`;
+      };
+      const cells = base.map((m, k) => h("button", { class: "pipe-cell", onclick: () => tap(k) }, h("span", { class: "pipe", html: svgFor(m) })));
+      board.replaceChildren(...cells);
+      const cur = k => rot(base[k], turns[k] % 4);
+      function flow() {
+        // Água entra pela esquerda na linha r0 e segue pelas ligações
+        const wet = new Set(); let out = false;
+        if (cur(r0 * N) & 8) {
+          const q = [r0 * N]; wet.add(r0 * N);
+          while (q.length) {
+            const k = q.shift(), x = k % N, y = Math.floor(k / N), m = cur(k);
+            if (x === N - 1 && y === r1 && (m & 2)) out = true;
+            for (const [b, dx, dy, opp] of DIRS) {
+              if (!(m & b)) continue;
+              const nx = x + dx, ny = y + dy, n = ny * N + nx;
+              if (nx < 0 || ny < 0 || nx >= N || ny >= N || wet.has(n) || !(cur(n) & opp)) continue;
+              wet.add(n); q.push(n);
+            }
+          }
+        }
+        return { wet, out };
+      }
+      function draw() {
+        const { wet, out } = flow();
+        cells.forEach((c, k) => {
+          c.firstChild.style.transform = `rotate(${turns[k] * 90}deg)`;
+          c.classList.toggle("wet", wet.has(k));
+        });
+        inMark.classList.toggle("wet", wet.size > 0);
+        outMark.classList.toggle("wet", out);
+        info.textContent = t("moves", moves);
+        return out;
+      }
+      function reset() { turns = start0.slice(); moves = 0; over = false; draw(); }
+      function tap(k) {
+        if (over) return;
+        turns[k]++; moves++; beep(420 + (turns[k] % 4) * 60, .04);
+        if (draw()) {
+          over = true; sGood(); addPoints(Math.max(20, 100 - Math.max(0, moves - MIN) * 5)); board.classList.add("pop");
+          setTimeout(() => done(moves <= MIN + 3 ? 3 : moves <= MIN * 2 + 4 ? 2 : 1, { moves, min: MIN }), 800);
+        }
+      }
+      // Garante que não começa já resolvido
+      turns = start0.slice();
+      if (flow().out) { const k = path[0][1] * N + path[0][0]; start0[k] = (start0[k] + 1) % 4; }
+      MIN = minMoves();
+      reset();
+      return [h("div", { class: "card" }, wrap, info), h("button", { class: "btn ghost", onclick: reset }, t("restart"))];
+    }
+  },
+  {
+    id: "mem",
+    play(done) {
+      const tones = [392, 523, 659, 784];
+      let seq = [], pos = 0, locked = true, errs = 0;
+      const pads = h("div", { class: "simon" }, [0, 1, 2, 3].map(i => h("button", { class: "pad", "aria-label": t("color", i + 1), onclick: () => tap(i) })));
+      const info = h("p", { class: "center" });
+      const flash = (i, ms = 380) => { const p = pads.children[i]; p.classList.add("lit"); beep(tones[i], ms / 1000); setTimeout(() => p.classList.remove("lit"), ms); };
+      const alive = () => document.body.contains(pads);
+      function playSeq() {
+        if (!alive()) return;
+        locked = true; pos = 0; info.textContent = t("watch", seq.length);
+        seq.forEach((c, k) => setTimeout(() => alive() && flash(c), 700 + k * 600));
+        setTimeout(() => { locked = false; info.textContent = t("yourTurn"); }, 700 + seq.length * 600);
+      }
+      function next() { seq.push(rnd(0, 3)); playSeq(); }
+      function tap(i) {
+        if (locked) return;
+        flash(i, 220);
+        if (seq[pos] !== i) {
+          locked = true; errs++; shake(pads);
+          if (!loseLife(t("wrongSeq"))) setTimeout(playSeq, 1500);
+          return;
+        }
+        pos++;
+        if (pos === seq.length) {
+          locked = true; addPoints(10 * seq.length);
+          if (seq.length >= 6) { sGood(); return setTimeout(() => done(errs ? (errs > 1 ? 1 : 2) : 3), 600); }
+          setTimeout(next, 700);
+        }
+      }
+      seq = [rnd(0, 3), rnd(0, 3)]; setTimeout(next, 300);
+      return [h("div", { class: "card" }, pads, info)];
+    }
+  },
+  {
+    id: "hanoi",
+    play(done) {
+      // Labirinto perfeito (só há um caminho até à saída), gerado com busca em profundidade
+      const W = 8, H = 8;
+      const cells = Array.from({ length: W * H }, () => ({ n: 1, e: 1, s: 1, w: 1 }));
+      const DIRS = { n: [0, -1, "s"], e: [1, 0, "w"], s: [0, 1, "n"], w: [-1, 0, "e"] };
+      const seen = new Set([0]), stack = [0];
+      while (stack.length) {
+        const c = stack[stack.length - 1], x = c % W, y = Math.floor(c / W);
+        const nb = Object.entries(DIRS).map(([d, [dx, dy, o]]) => [d, x + dx, y + dy, o])
+          .filter(([, nx, ny]) => nx >= 0 && ny >= 0 && nx < W && ny < H && !seen.has(ny * W + nx));
+        if (!nb.length) { stack.pop(); continue; }
+        const [d, nx, ny, o] = pick(nb, 1)[0], n = ny * W + nx;
+        cells[c][d] = 0; cells[n][o] = 0; seen.add(n); stack.push(n);
+      }
+      // Caminho mais curto (BFS)
+      const dist = new Map([[0, 0]]), q = [0];
+      while (q.length) {
+        const c = q.shift(), x = c % W, y = Math.floor(c / W);
+        for (const [d, [dx, dy]] of Object.entries(DIRS)) if (!cells[c][d]) { const n = (y + dy) * W + x + dx; if (!dist.has(n)) { dist.set(n, dist.get(c) + 1); q.push(n); } }
+      }
+      const EXIT = W * H - 1, MIN = dist.get(EXIT);
+      let pos = 0, moves = 0, over = false;
+      const trail = new Set([0]);
+      const board = h("div", { class: "maze", style: `grid-template-columns:repeat(${W},1fr)` });
+      const info = h("p", { class: "center" });
+      function draw() {
+        board.replaceChildren(...cells.map((c, i) => h("div", {
+          class: "mc" + (c.n ? " wn" : "") + (c.e ? " we" : "") + (c.s ? " ws" : "") + (c.w ? " ww" : "") +
+            (trail.has(i) ? " trail" : "") + (i === EXIT ? " exit" : "")
+        }, i === pos ? h("span", { class: "me" }) : null)));
+        info.textContent = t("movesMin", moves, MIN);
+      }
+      function move(d) {
+        if (over) return;
+        if (cells[pos][d]) { shake(board); beep(180, .06, "square"); return; }
+        const [dx, dy] = DIRS[d];
+        pos = (Math.floor(pos / W) + dy) * W + (pos % W) + dx;
+        moves++; trail.add(pos); beep(520 + (moves % 4) * 40, .04); draw();
+        if (pos === EXIT) {
+          over = true; sGood(); addPoints(Math.max(40, 150 - (moves - MIN) * 4));
+          document.removeEventListener("keydown", onKey);
+          setTimeout(() => done(moves <= MIN + 4 ? 3 : moves <= MIN * 1.6 ? 2 : 1, { moves, min: MIN }), 700);
+        }
+      }
+      // Deslizar o dedo no labirinto
+      let sx = null, sy = null;
+      board.addEventListener("pointerdown", e => { sx = e.clientX; sy = e.clientY; });
+      board.addEventListener("pointerup", e => {
+        if (sx === null) return;
+        const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+        move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "e" : "w") : (dy > 0 ? "s" : "n"));
+      });
+      const onKey = e => { const d = { ArrowUp: "n", ArrowRight: "e", ArrowDown: "s", ArrowLeft: "w" }[e.key]; if (d && document.body.contains(board)) { e.preventDefault(); move(d); } else if (!document.body.contains(board)) document.removeEventListener("keydown", onKey); };
+      document.addEventListener("keydown", onKey);
+      const pad = h("div", { class: "dpad" },
+        h("button", { class: "key up", "aria-label": "↑", onclick: () => move("n") }, "▲"),
+        h("button", { class: "key left", "aria-label": "←", onclick: () => move("w") }, "◀"),
+        h("button", { class: "key right", "aria-label": "→", onclick: () => move("e") }, "▶"),
+        h("button", { class: "key down", "aria-label": "↓", onclick: () => move("s") }, "▼"));
+      draw();
+      return [h("div", { class: "card" }, board, info), pad];
+    }
+  },
+  {
+    id: "pares",
+    play(done) {
+      // Pares escondidos: 12 cartas, 6 pares de formas coloridas
+      const FACES = [["circle", "#ef6a5b"], ["triangle", "#5aa9f2"], ["square", "#4fc98a"], ["diamond", "#f2b544"], ["star", "#b77cf2"], ["circle", "#5aa9f2"], ["triangle", "#f2b544"], ["star", "#4fc98a"]];
+      const PATHS = {
+        circle: '<circle cx="20" cy="20" r="14"/>', triangle: '<polygon points="20,5 36,34 4,34"/>',
+        square: '<rect x="7" y="7" width="26" height="26" rx="3"/>', diamond: '<polygon points="20,3 37,20 20,37 3,20"/>',
+        star: '<polygon points="20,3 25,15 38,15 28,24 32,37 20,29 8,37 12,24 2,15 15,15"/>'
+      };
+      const MAX = 16;
+      let cards, open, tries, found, busy, errs = 0;
+      const grid = h("div", { class: "cards" });
+      const info = h("p", { class: "center" });
+      function deal() {
+        const faces = pick(FACES, 6);
+        cards = shuffle([...faces, ...faces]).map(f => ({ f, up: false, done: false }));
+        open = []; tries = 0; found = 0; busy = false; draw();
+      }
+      function draw() {
+        grid.replaceChildren(...cards.map((c, i) => {
+          const b = h("button", { class: "card-t" + (c.up || c.done ? " up" : "") + (c.done ? " done" : ""), "aria-label": String(i + 1), onclick: () => tap(i) });
+          b.innerHTML = c.up || c.done ? `<svg viewBox="0 0 40 40" width="70%" height="70%" aria-hidden="true"><g fill="${c.f[1]}">${PATHS[c.f[0]]}</g></svg>` : "?";
+          return b;
+        }));
+        info.textContent = t("tries", tries, MAX);
+      }
+      function tap(i) {
+        const c = cards[i];
+        if (busy || c.up || c.done) return;
+        c.up = true; open.push(i); beep(520, .04); draw();
+        if (open.length < 2) return;
+        tries++; busy = true;
+        const [a, b] = open.map(k => cards[k]);
+        if (a.f === b.f) {
+          a.done = b.done = true; a.up = b.up = false; open = []; found++; busy = false; beep(780, .08); draw();
+          if (found === 6) { sGood(); addPoints(Math.max(30, 120 - Math.max(0, tries - 6) * 6)); setTimeout(() => done(tries <= 8 ? 3 : tries <= 11 ? 2 : 1, { tries, errs }), 700); }
+          return;
+        }
+        draw();
+        setTimeout(() => {
+          a.up = b.up = false; open = []; busy = false; draw();
+          if (tries >= MAX) { errs++; shake(grid); if (!loseLife(t("tooManyTries"))) setTimeout(deal, 900); }
+        }, 750);
+      }
+      deal();
+      return [h("div", { class: "card" }, grid, info)];
+    }
+  },
+  {
+    id: "slide",
+    play(done) {
+      // Puzzle deslizante 3x3. O mínimo é calculado com uma pesquisa em largura (no máximo 181 440 estados).
+      const N = 3, GOAL = "123456780";
+      const nbrs = i => [i - N, i + N, i % N ? i - 1 : -1, i % N < N - 1 ? i + 1 : -1].filter(j => j >= 0 && j < N * N);
+      const swap = (s, i, j) => { const a = s.split(""); [a[i], a[j]] = [a[j], a[i]]; return a.join(""); };
+      let start = GOAL, e = 8, prev = -1;
+      for (let k = 0; k < 40; k++) { const opts = nbrs(e).filter(j => j !== prev); const j = pick(opts, 1)[0]; start = swap(start, e, j); prev = e; e = j; }
+      if (start === GOAL) start = swap(start, 7, 8);
+      const minMoves = (() => {
+        const seen = new Map([[start, 0]]); let q = [start];
+        while (q.length) {
+          const nq = [];
+          for (const s of q) {
+            if (s === GOAL) return seen.get(s);
+            const z = s.indexOf("0");
+            for (const j of nbrs(z)) { const n = swap(s, z, j); if (!seen.has(n)) { seen.set(n, seen.get(s) + 1); nq.push(n); } }
+          }
+          q = nq;
+        }
+        return 0;
+      })();
+      let state, moves;
+      const board = h("div", { class: "slide" });
+      const info = h("p", { class: "center" });
+      function reset() { state = start; moves = 0; draw(); }
+      function draw() {
+        board.replaceChildren(...state.split("").map((ch, i) => ch === "0"
+          ? h("div", { class: "tile-s empty" })
+          : h("button", { class: "tile-s" + (ch === GOAL[i] ? " ok" : ""), onclick: () => tap(i) }, ch)));
+        info.textContent = t("movesMin", moves, minMoves);
+      }
+      function tap(i) {
+        if (state === GOAL) return;
+        const z = state.indexOf("0");
+        if (!nbrs(z).includes(i)) { beep(180, .05, "square"); return; }
+        state = swap(state, z, i); moves++; beep(560, .04); draw();
+        if (state === GOAL) {
+          sGood(); addPoints(Math.max(30, 150 - Math.max(0, moves - minMoves) * 3)); board.classList.add("pop");
+          setTimeout(() => done(moves <= minMoves + 4 ? 3 : moves <= minMoves * 2 + 6 ? 2 : 1, { moves, min: minMoves }), 700);
+        }
+      }
+      reset();
+      return [h("div", { class: "card" }, board, info), h("button", { class: "btn ghost", onclick: reset }, t("restart"))];
+    }
+  },
+  {
+    id: "pinta",
+    play(done) {
+      // Copia o desenho: memoriza, o desenho esconde-se, pinta de memória
+      const rounds = [{ n: 4, k: 5, secs: 3 }, { n: 5, k: 7, secs: 3 }, { n: 5, k: 10, secs: 4 }];
+      let i = 0, errs = 0, target, paint, phase;
+      const prog = h("div", { class: "progress" }, rounds.map(() => h("i")));
+      const grid = h("div", { class: "paint" });
+      const info = h("p", { class: "center" });
+      const check = h("button", { class: "btn", onclick: verify }, t("check"));
+      function newRound() {
+        const R = rounds[i];
+        target = new Set(pick([...Array(R.n * R.n).keys()], R.k));
+        reveal();
+      }
+      function reveal() {
+        const R = rounds[i];
+        progress(prog, i);
+        phase = "show"; paint = new Set(); check.disabled = true;
+        info.textContent = t("memorize");
+        draw();
+        setTimeout(() => { if (!document.body.contains(grid)) return; phase = "paint"; check.disabled = false; info.textContent = t("paintNow"); draw(); }, R.secs * 1000);
+      }
+      function draw(mark) {
+        const R = rounds[i];
+        grid.style.gridTemplateColumns = `repeat(${R.n}, minmax(0, 1fr))`;
+        grid.replaceChildren(...Array.from({ length: R.n * R.n }, (_, k) => {
+          let cls = "px";
+          if (phase === "show" ? target.has(k) : paint.has(k)) cls += " on";
+          if (mark && target.has(k) !== paint.has(k)) cls += target.has(k) ? " miss" : " bad";
+          return h("button", { class: cls, "aria-label": String(k + 1), onclick: () => tap(k) });
+        }));
+      }
+      function tap(k) {
+        if (phase !== "paint") return;
+        paint.has(k) ? paint.delete(k) : paint.add(k); beep(paint.has(k) ? 640 : 420, .04); draw();
+      }
+      function verify() {
+        if (phase !== "paint") return;
+        phase = "wait"; check.disabled = true;
+        const ok = paint.size === target.size && [...target].every(k => paint.has(k));
+        if (ok) {
+          sGood(); addPoints(40); grid.classList.add("pop");
+          setTimeout(() => { grid.classList.remove("pop"); i++; i === rounds.length ? done(errs ? (errs > 1 ? 1 : 2) : 3) : newRound(); }, 800);
+        } else {
+          errs++; draw(true); shake(grid);
+          if (!loseLife(t("wrongDrawing"))) setTimeout(reveal, 1800);
+        }
+      }
+      newRound();
+      return [h("div", { class: "card" }, prog, grid, info), check];
+    }
+  },
+  {
+    id: "torre",
+    play(done) {
+      const D = 4, MIN = 2 ** D - 1;
+      let pegs, sel = null, moves = 0;
+      const wrap = h("div", { class: "hanoi" });
+      const info = h("p", { class: "center" });
+      function reset() { pegs = [[...Array(D)].map((_, k) => D - k), [], []]; sel = null; moves = 0; draw(); }
+      function draw() {
+        wrap.replaceChildren(...pegs.map((p, i) => h("button", { class: "peg" + (sel === i ? " sel" : ""), "aria-label": t("tower", i + 1), onclick: () => tap(i) },
+          p.map((d, k) => h("div", { class: `disc d${d}` + (sel === i && k === p.length - 1 ? " up" : "") })))));
+        info.textContent = t("movesMin", moves, MIN);
+      }
+      function tap(i) {
+        if (pegs[2].length === D) return;
+        if (sel === null) { if (pegs[i].length) { sel = i; beep(500, .05); } draw(); return; }
+        if (sel === i) { sel = null; draw(); return; }
+        const from = pegs[sel], to = pegs[i], d = from[from.length - 1];
+        if (to.length && to[to.length - 1] < d) { shake(wrap); beep(200, .1, "square"); sel = null; draw(); return; }
+        to.push(from.pop()); sel = null; moves++; beep(600, .05); draw();
+        if (pegs[2].length === D) { sGood(); addPoints(Math.max(30, 150 - (moves - MIN) * 5)); setTimeout(() => done(moves <= MIN + 2 ? 3 : moves <= MIN + 10 ? 2 : 1, { moves, min: MIN }), 700); }
+      }
+      reset();
+      return [h("div", { class: "card" }, wrap, info), h("button", { class: "btn ghost", onclick: reset }, t("restart"))];
+    }
+  }
+];
+const lvName = L => T.levels[L.id][0], lvTag = L => T.levels[L.id][1], lvIntro = L => T.levels[L.id][2];
+
+/* ---------- Ecrãs ---------- */
+function home() {
+  $("#hud").hidden = true;
+  showRestart(false);
+  view(() => {
+    const b = best.get();
+    show(
+      h("div", { class: "eyebrow" }, t("homeEyebrow")),
+      h("h1", {}, t("title")),
+      h("p", {}, t("homeText")),
+      h("div", { class: "levels" }, LEVELS.map((l, i) =>
+        h("button", { class: "lv", "aria-label": `${i + 1}. ${lvName(l)}`, onclick: () => start(i) }, h("b", {}, String(i + 1)), lvTag(l)))),
+      h("p", { class: "hint-small" }, t("pickLevel")),
+      b ? h("p", { class: "center" }, t("best", b)) : null,
+      h("div", { class: "spacer" }),
+      h("button", { class: "btn", onclick: () => start(0) }, t("start")),
+      achBtn()
+    );
+  });
+}
+/* Começa um jogo na porta indicada (0 = desde o início) */
+function start(from = 0) {
+  S.gameId++; S.from = from; S.level = from; S.score = 0; S.lives = 3; S.stars = []; S.result = null;
+  beep(520, .08); Ach.gameStarted(); intro();
+}
+function intro() {
+  hud();
+  view(() => {
+    const L = LEVELS[S.level];
+    show(
+      h("div", { class: "spacer" }),
+      h("div", { class: "eyebrow" }, t("door", S.level + 1, lvTag(L))),
+      h("h1", {}, lvName(L)),
+      h("p", {}, lvIntro(L)),
+      h("div", { class: "spacer" }),
+      h("button", { class: "btn", onclick: play }, t("openDoor"))
+    );
+  });
+}
+function play() {
+  // Durante um nível não se muda de língua (o conteúdo já foi sorteado)
+  S.view = null; $("#langBtn").hidden = true;
+  const L = LEVELS[S.level];
+  let finished = false;
+  const gid = S.gameId;
+  show(h("div", { class: "eyebrow" }, lvTag(L)), h("h2", {}, lvName(L)));
+  const nodes = L.play((stars, info) => { if (finished || S.lives <= 0 || gid !== S.gameId) return; finished = true; S.stars[S.level] = stars; levelDone(stars); levelAchievements(L.id, stars, info); });
+  screen.append(...nodes);
+}
+function levelDone(stars) {
+  const last = S.level === LEVELS.length - 1;
+  view(() => show(
+    h("div", { class: "spacer" }),
+    h("div", { class: "eyebrow center" }, t("doorOpened", S.level + 1)),
+    h("div", { class: "stars pop" }, "★".repeat(stars) + "☆".repeat(3 - stars)),
+    h("h1", { class: "center" }, stars === 3 ? t("perfect") : stars === 2 ? t("great") : t("done")),
+    h("p", { class: "center" }, t("youHave", S.score)),
+    h("div", { class: "spacer" }),
+    h("button", { class: "btn", onclick: () => { if (last) win(); else { S.level++; intro(); } } }, last ? t("leave") : t("nextDoor"))
+  ));
+}
+/* Calcula o resultado uma vez; o ecrã pode ser redesenhado noutra língua.
+   Só um jogo começado na porta 1 conta para o recorde. */
+function finale(won) {
+  const total = S.score + (S.lives > 0 ? S.lives * 50 : 0);
+  const prev = best.get(); if (fullGame() && total > prev) best.set(total);
+  S.score = total; hud();
+  S.result = { won, total, prev, full: fullGame(), from: S.from + 1, lives: S.lives, door: S.level + 1, stars: S.stars.reduce((a, b) => a + (b || 0), 0) };
+  showRestart(false);
+  view(renderFinale);
+}
+function renderFinale() {
+  const R = S.result;
+  show(
+    h("div", { class: "spacer" }),
+    h("h1", { class: "center" }, R.won ? t("winTitle") : t("loseTitle")),
+    h("p", { class: "center" }, R.won ? (R.full ? t("winText") : t("winFromText", R.from)) : t("loseText", R.door, LEVELS.length)),
+    h("div", { class: "card" },
+      h("div", { class: "big" }, `${R.total} pts`),
+      h("p", { class: "center" }, t("starsLine", R.stars, LEVELS.length * 3) + (R.lives > 0 ? t("livesBonus", R.lives * 50) : "")),
+      R.full && R.total > R.prev ? h("p", { class: "center", style: "color:var(--accent);font-weight:700" }, t("newRecord")) : h("p", { class: "center" }, t("record", Math.max(R.prev, best.get())))),
+    h("div", { class: "spacer" }),
+    h("button", { class: "btn", onclick: () => start(0) }, t("playAgain")),
+    h("button", { class: "btn ghost", onclick: home }, t("mainMenu")),
+    achBtn()
+  );
+}
+function win() {
+  sGood(); setTimeout(sGood, 250);
+  const lives = S.lives, stars = S.stars.reduce((a, b) => a + (b || 0), 0), full = fullGame();
+  finale(true);
+  if (!full) return; // as conquistas do jogo completo só contam começando na porta 1
+  Ach.unlock("livre");
+  if (lives === 3) Ach.unlock("arranhao");
+  if (lives === 1) Ach.unlock("fio");
+  if (stars === LEVELS.length * 3) Ach.unlock("mestre");
+  if (S.score >= 1300) Ach.unlock("brilhante");
+}
+function gameOver() { Ach.unlock("preso"); if (fullGame() && S.score >= 1300) Ach.unlock("brilhante"); finale(false); }
+
+applyLang();
+home();
+</script>
+</body>
+</html>
