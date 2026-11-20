@@ -11,6 +11,7 @@ NAVY_TOP, NAVY_BOT = (31, 54, 69), (12, 22, 29)
 DOOR, DOOR_DARK = (36, 64, 80), (27, 47, 60)
 GOLD, GOLD_DEEP = (242, 181, 68), (214, 148, 38)
 SS = 4  # supersampling
+SCALE = 0.78  # tamanho da porta em relação ao ícone
 
 
 def gradient(size, top, bot):
@@ -77,7 +78,13 @@ def foreground(size, mono=False):
     d.ellipse([qx - qs * 0.62, dy - qs * 0.62, qx + qs * 0.62, dy + qs * 0.62], fill=gold)
     if not mono:
         d.ellipse([x1 - 8 * u, (top + bot) / 2 + 3 * u, x1 - 4 * u, (top + bot) / 2 + 7 * u], fill=gold)
-    return im.resize((size, size), Image.LANCZOS)
+    # Encolhe a porta para ficar bem dentro da zona segura: alguns telemóveis (ex.: Xiaomi/MIUI)
+    # recortam e ampliam o ícone adaptativo mais do que o Android normal.
+    small = im.resize((int(S * SCALE), int(S * SCALE)), Image.LANCZOS)
+    out = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    off = (S - small.size[0]) // 2
+    out.alpha_composite(small, (off, off - int(S * 0.01)))
+    return out.resize((size, size), Image.LANCZOS)
 
 
 def full(size, rounded):
