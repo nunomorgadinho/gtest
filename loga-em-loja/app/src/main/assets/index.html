@@ -175,7 +175,9 @@ let P=load("le_products",P0);
 let cart=load("le_cart",{}), favs=load("le_favs",[]), orders=load("le_orders",[]), user=load("le_user",{nome:"",email:"",tel:"",morada:"",cp:"",cidade:""});
 let contas=load("le_accounts",[]), sessao=load("le_session",null);
 let cat="Todos", hist=[], cur="loja", curProd=null, cupao=null;
-let contaModo="entrar", painelTab="resumo", editProd=null;
+let contaModo="entrar", painelTab="resumo", editProd=null, clienteTab="compras";
+const primeiroNome=n=>String(n||"").trim().split(/\s+/)[0];
+function podeEditar(p){if(!sessao||!p)return false;if(sessao.tipo!=="cliente")return true;return !!(p.vendedor&&p.vendedor.email===sessao.email)}
 
 /* --- Autenticação --- */
 function sha256(s){
@@ -245,7 +247,7 @@ function card(p){
   return `<div class="card rel" onclick="abrir(${p.id})">
     <div class="thumb" style="background:${BG[p.c]}">${p.e}</div>
     <button class="fav" onclick="toggleFav(${p.id},event)" aria-label="Favorito">${favs.includes(p.id)?"❤️":"🤍"}</button>
-    <div class="b"><div class="n">${esc(p.n)}</div><div class="c">${p.c}</div>
+    <div class="b"><div class="n">${esc(p.n)}</div><div class="c">${p.c}${p.vendedor?` · 👤 ${esc(primeiroNome(p.vendedor.nome))}`:""}</div>
       <div class="row"><span class="price">${eur(p.p)}${p.o?`<span class="old">${eur(p.o)}</span>`:""}</span>
       <button class="add" onclick="event.stopPropagation();addCart(${p.id})" aria-label="Adicionar">+</button></div></div></div>`;
 }
@@ -269,6 +271,7 @@ function renderProduto(){
     <h2>${esc(p.n)}</h2><div class="c" style="color:var(--mut)">${p.c} · ⭐ ${(4+((p.id*7)%10)/10).toFixed(1)}</div>
     <p class="price" style="margin:10px 0">${eur(p.p)}${p.o?`<span class="old">${eur(p.o)}</span>`:""}</p>
     <p>${esc(p.d)}</p>
+    <div class="info-card" style="padding:10px 14px">${p.vendedor?`👤 Vendido por <b>${esc(p.vendedor.nome)}</b>`:`🏬 Vendido por <b>Loga em Loja</b>`}</div>
     <p style="font-size:13px;color:var(--ok);font-weight:600">✓ Em stock · Entrega em 24-48 h</p>
     <div style="display:flex;gap:12px;align-items:center;margin:16px 0">
       <div class="qty"><button onclick="dq=Math.max(1,dq-1);document.getElementById('dqv').textContent=dq">−</button><span id="dqv">1</span><button onclick="dq++;document.getElementById('dqv').textContent=dq">+</button></div>
@@ -350,7 +353,7 @@ function encomendar(ev){
   if(ca){Object.assign(ca,{nome:f.nome,tel:f.tel,morada:f.morada,cp:f.cp,cidade:f.cidade});save("le_accounts",contas)}
   const t=totals();
   const num="LE"+String(Date.now()).slice(-6);
-  const itens=Object.entries(cart).map(([id,q])=>{const p=byId(+id);return p?{id:p.id,n:p.n,e:p.e,p:p.p,q}:null}).filter(Boolean);
+  const itens=Object.entries(cart).map(([id,q])=>{const p=byId(+id);return p?{id:p.id,n:p.n,e:p.e,p:p.p,q,v:p.vendedor?p.vendedor.email:null}:null}).filter(Boolean);
   orders.unshift({num,data:new Date().toISOString(),itens,total:t.tot,pag:f.pag,estado:"Confirmada",
     cliente:{nome:f.nome,email:norm(ca?ca.email:f.email),tel:f.tel,morada:`${f.morada}, ${f.cp} ${f.cidade}`},conta:!!ca,notas:f.notas||""});
   save("le_orders",orders);
@@ -381,7 +384,7 @@ function htmlLogin(){
       <div class="field"><label>Email</label><input name="email" type="email" required autocomplete="email"></div>
       <div class="field"><label>Palavra-passe</label><input name="senha" type="password" required autocomplete="current-password"></div>
       <button class="btn" type="submit">Entrar</button>
-      <p class="hint">Ainda não tem conta? <a href="#" onclick="contaModo='criar';renderConta();return false">Criar conta</a></p></form>`;
+      <p class="hint">Ainda não tem conta? <a href="#" onclick="contaModo='criar';renderConta();return false">Criar conta</a><br>Com conta pode comprar <b>e vender</b> os seus produtos.</p></form>`;
   else if(m==="criar") form=`<form onsubmit="return criarConta(event)">
       <div class="field"><label>Nome completo</label><input name="nome" required autocomplete="name"></div>
       <div class="field"><label>Email</label><input name="email" type="email" required autocomplete="email"></div>
@@ -449,11 +452,38 @@ function mudarEstado(num,e){const o=orders.find(o=>o.num===num);if(o){o.estado=e
 function htmlCliente(){
   const c=contaAtual();
   if(!c){setSessao(null);return htmlLogin()}
-  const minhas=orders.filter(o=>o.cliente&&o.cliente.email===c.email);
+  let body="";
+  if(clienteTab==="compras"){
+    const minhas=orders.filter(o=>o.cliente&&o.cliente.email===c.email);
+    body=minhas.length?minhas.map(o=>orderHtml(o,false)).join(""):`<div class="empty">Ainda não fez encomendas.</div>`;
+  } else if(editProd!==null){
+    body=htmlProdForm();
+  } else {
+    const meus=P.filter(p=>p.vendedor&&p.vendedor.email===c.email);
+    const vendas=[];
+    orders.filter(o=>o.estado!=="Cancelada").forEach(o=>orderItems(o).forEach(i=>{if(i.v===c.email)vendas.push({...i,num:o.num,data:o.data,estado:o.estado,comprador:o.cliente?o.cliente.nome:""})}));
+    const total=vendas.reduce((a,i)=>a+i.p*i.q,0);
+    body=`<div class="stats">
+        <div><b>${meus.length}</b><span>Produtos à venda</span></div>
+        <div><b>${vendas.reduce((a,i)=>a+i.q,0)}</b><span>Unidades vendidas</span></div>
+        <div><b>${eur(total)}</b><span>Total vendido</span></div></div>
+      <button class="btn" style="margin-bottom:12px" onclick="editProd='novo';renderConta()">+ Pôr um produto à venda</button>
+      <div class="sec-t"><h3>Os meus produtos</h3></div>
+      ${meus.length?meus.map(p=>`<div class="prow"><span class="pe" style="background:${BG[p.c]||"#eee"}">${p.e}</span>
+        <div class="pi"><b>${esc(p.n)}</b><span>${p.c} · ${eur(p.p)}</span></div>
+        <button class="mini" onclick="editProd=${p.id};renderConta()">Editar</button>
+        <button class="mini del" onclick="removerProd(${p.id})">✕</button></div>`).join(""):`<div class="empty">Ainda não tem produtos à venda.<br>Toque em "Pôr um produto à venda" para começar.</div>`}
+      <div class="sec-t" style="margin-top:12px"><h3>As minhas vendas</h3></div>
+      ${vendas.length?vendas.map(i=>`<div class="prow"><span class="pe">${i.e}</span><div class="pi"><b>${esc(i.n)} ×${i.q}</b>
+        <span>${esc(i.num)} · ${new Date(i.data).toLocaleDateString("pt-PT")} · comprado por ${esc(primeiroNome(i.comprador))}</span></div>
+        <span class="price">${eur(i.p*i.q)}</span></div>`).join(""):`<div class="empty">Ainda não vendeu nada.</div>`}`;
+  }
   return `<div class="info-card" style="display:flex;gap:12px;align-items:center"><div style="font-size:40px">😊</div>
       <div style="flex:1;min-width:0"><b>${esc(c.nome)}</b><br><span style="color:var(--mut)">${esc(c.email)}</span></div></div>
-    <div class="sec-t"><h3>As minhas encomendas</h3></div>
-    ${minhas.length?minhas.map(o=>orderHtml(o,false)).join(""):`<div class="empty">Ainda não fez encomendas.</div>`}
+    <div class="seg">
+      <button class="${clienteTab==="compras"?"on":""}" onclick="clienteTab='compras';editProd=null;renderConta()">🛍️ Compras</button>
+      <button class="${clienteTab==="vender"?"on":""}" onclick="clienteTab='vender';editProd=null;renderConta()">🏷️ Vender</button></div>
+    ${body}
     ${sobre}
     <button class="btn sec" onclick="sair()">Terminar sessão</button>`;
 }
@@ -484,7 +514,7 @@ function htmlPainel(){
   } else if(painelTab==="produtos"){
     body=editProd!==null?htmlProdForm():`<button class="btn" style="margin-bottom:12px" onclick="editProd='novo';renderConta()">+ Novo produto</button>
       ${P.map(p=>`<div class="prow"><span class="pe" style="background:${BG[p.c]||"#eee"}">${p.e}</span>
-        <div class="pi"><b>${esc(p.n)}</b><span>${p.c} · ${eur(p.p)}${p.o?` <s>${eur(p.o)}</s>`:""}</span></div>
+        <div class="pi"><b>${esc(p.n)}</b><span>${p.c} · ${eur(p.p)}${p.o?` <s>${eur(p.o)}</s>`:""}</span><span>${p.vendedor?`👤 ${esc(p.vendedor.nome)}`:"🏬 Loja"}</span></div>
         <button class="mini" onclick="editProd=${p.id};renderConta()">Editar</button>
         <button class="mini del" onclick="removerProd(${p.id})">✕</button></div>`).join("")}
       ${chefe?`<button class="btn sec" style="margin-top:12px" onclick="repor()">Repor catálogo original</button>`:""}`;
@@ -502,6 +532,7 @@ function htmlPainel(){
 }
 function htmlProdForm(){
   const p=editProd==="novo"?{n:"",c:"Mercearia",p:"",o:"",e:"📦",d:""}:byId(editProd);
+  if(!p||(editProd!=="novo"&&!podeEditar(p))){editProd=null;return `<div class="empty">Produto não encontrado.</div>`}
   return `<form onsubmit="return guardarProd(event)">
     <div class="sec-t"><h3>${editProd==="novo"?"Novo produto":"Editar produto"}</h3></div>
     <div class="field"><label>Nome</label><input name="n" required value="${esc(p.n)}"></div>
@@ -518,16 +549,23 @@ function guardarProd(ev){
   const f=fdata(ev);
   const dados={n:f.n.trim(),c:f.c,p:Math.round(parseFloat(f.p)*100)/100,e:f.e.trim()||"📦",d:f.d.trim()};
   const o=parseFloat(f.o); if(o>dados.p) dados.o=Math.round(o*100)/100;
-  if(editProd==="novo"){dados.id=Math.max(0,...P.map(p=>p.id))+1;P.push(dados)}
-  else{const i=P.findIndex(p=>p.id===editProd);dados.id=editProd;P[i]=dados}
+  if(editProd==="novo"){
+    dados.id=Math.max(0,...P.map(p=>p.id),...P0.map(p=>p.id))+1;
+    if(sessao&&sessao.tipo==="cliente")dados.vendedor={email:sessao.email,nome:contaAtual().nome};
+    P.push(dados);
+  } else {
+    const i=P.findIndex(p=>p.id===editProd);
+    if(i<0||!podeEditar(P[i])){toast("Sem permissão");return false}
+    dados.id=editProd; if(P[i].vendedor)dados.vendedor=P[i].vendedor; P[i]=dados;
+  }
   save("le_products",P); editProd=null; toast("Produto guardado ✓"); renderConta(); return false;
 }
 function removerProd(id){
-  const p=byId(id); if(!p||!confirm(`Remover "${p.n}" da loja?`))return;
+  const p=byId(id); if(!p||!podeEditar(p)){toast("Sem permissão");return} if(!confirm(`Remover "${p.n}" da loja?`))return;
   P=P.filter(x=>x.id!==id); delete cart[id]; favs=favs.filter(x=>x!==id);
   save("le_products",P); save("le_cart",cart); save("le_favs",favs); updBadges(); toast("Produto removido"); renderConta();
 }
-function repor(){if(confirm("Repor os produtos originais? As alterações ao catálogo serão perdidas.")){P=JSON.parse(JSON.stringify(P0));save("le_products",P);toast("Catálogo reposto");renderConta()}}
+function repor(){if(confirm("Repor os produtos originais da loja? Os produtos dos clientes mantêm-se.")){P=JSON.parse(JSON.stringify(P0)).concat(P.filter(p=>p.vendedor));save("le_products",P);toast("Catálogo reposto");renderConta()}}
 
 Object.keys(cart).forEach(id=>{if(!byId(+id))delete cart[id]});
 updNav(); updBadges(); renderLoja();

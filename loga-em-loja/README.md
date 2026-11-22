@@ -14,7 +14,7 @@ echo "sdk.dir=/caminho/para/android-sdk" > local.properties
 APK: `app/build/outputs/apk/release/app-release.apk` (já compilado em `../LogaEmLoja.apk`).
 
 ## Contas
-- **Cliente:** "Criar conta" (nome, email, palavra-passe) e "Entrar". Vê as suas encomendas.
+- **Cliente:** "Criar conta" e "Entrar". Vê as suas compras e, no separador "Vender", põe os seus produtos à venda e acompanha as vendas.
 - **Chefe:** entra com o email do chefe. Painel com resumo de vendas, encomendas, produtos e clientes.
 - **Administrador:** entra com o nome da empresa e o nome do chefe. Gere encomendas (estado) e produtos.
 
