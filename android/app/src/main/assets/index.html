@@ -1,0 +1,363 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Eu brinco ao...</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap">
+
+<style>
+  /*
+   * Layout: centrado, uma frase animada por palavra
+   * Cores: fundo quente, letras escuras e destaque brilhante
+   */
+  :root {
+    --bg: #FFF8F0;
+    --fg: #1A1208;
+    --muted: #8A7360;
+    --accent: #FF5533;
+    --accent2: #FFB800;
+    --card: #FFF0E0;
+
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1A1208;
+      --fg: #FFF8F0;
+      --muted: #B09A82;
+      --accent: #FF6644;
+      --accent2: #FFC820;
+      --card: #2A2010;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #1A1208;
+    --fg: #FFF8F0;
+    --muted: #B09A82;
+    --accent: #FF6644;
+    --accent2: #FFC820;
+    --card: #2A2010;
+    color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-block: 3rem;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    text-align: center;
+    overflow-x: hidden;
+  }
+
+  .scene {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+  }
+
+  .frase {
+    font-size: clamp(2.5rem, 10vw, 5rem);
+    font-weight: 900;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.5rem;
+  }
+
+  .frase .eu {
+    color: var(--muted);
+    display: block;
+    font-size: 0.55em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 0.1em;
+    opacity: 0;
+    animation: slidein 0.6s ease forwards 0.1s;
+  }
+
+  .frase .brinco {
+    color: var(--fg);
+    display: block;
+    opacity: 0;
+    animation: slidein 0.7s ease forwards 0.35s;
+  }
+
+  .frase .ao {
+    color: var(--accent);
+    display: block;
+    opacity: 0;
+    animation: slidein 0.7s ease forwards 0.65s;
+  }
+
+  .frase .reticencias {
+    color: var(--accent2);
+    display: inline-block;
+    opacity: 0;
+    animation: pulse-in 1s ease forwards 1s;
+  }
+
+  .sugestoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    justify-content: center;
+    margin-top: 2.5rem;
+    opacity: 0;
+    animation: fadein 0.6s ease forwards 1.6s;
+  }
+
+  .sugestao {
+    background: var(--card);
+    color: var(--fg);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    padding: 0.45em 1.1em;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+
+  .sugestao:hover, .sugestao:focus-visible {
+    border-color: var(--accent);
+    background: var(--bg);
+    transform: scale(1.07);
+    outline: none;
+  }
+
+  .sugestao:active {
+    transform: scale(0.97);
+  }
+
+  .resposta {
+    margin-top: 2rem;
+    background: var(--card);
+    border-radius: 1.2rem;
+    padding: 1.4rem 1.6rem;
+    text-align: left;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .resposta.visivel {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .resposta-titulo {
+    font-size: clamp(1.3rem, 4vw, 1.8rem);
+    font-weight: 900;
+    color: var(--accent);
+    margin: 0 0 0.6rem;
+    letter-spacing: -0.01em;
+  }
+
+  .regras-lista {
+    margin: 0;
+    padding-left: 1.3em;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--fg);
+  }
+
+  .regras-lista li + li {
+    margin-top: 0.3em;
+  }
+
+  .dica {
+    margin-top: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    opacity: 0;
+    animation: fadein 0.6s ease forwards 2s;
+    letter-spacing: 0.03em;
+  }
+
+  /* Decoração de fundo */
+  .bolha {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .bolha1 {
+    width: 220px;
+    height: 220px;
+    background: var(--accent2);
+    opacity: 0.12;
+    top: -60px;
+    right: -40px;
+    animation: flutuar 6s ease-in-out infinite;
+  }
+
+  .bolha2 {
+    width: 140px;
+    height: 140px;
+    background: var(--accent);
+    opacity: 0.1;
+    bottom: -30px;
+    left: -20px;
+    animation: flutuar 8s ease-in-out infinite reverse;
+  }
+
+  @keyframes slidein {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadein {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes pulse-in {
+    0%   { opacity: 0; transform: scale(0.5); }
+    70%  { opacity: 1; transform: scale(1.15); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes flutuar {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-18px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; animation-delay: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+
+<div class="scene">
+  <div class="bolha bolha1"></div>
+  <div class="bolha bolha2"></div>
+
+  <p class="frase" aria-label="Eu brinco ao...">
+    <span class="eu">Eu</span>
+    <span class="brinco">brinco ao</span>
+    <span class="ao"><span class="reticencias">...</span></span>
+  </p>
+
+  <div class="sugestoes" role="group" aria-label="Escolhe um jogo">
+    <button class="sugestao" data-jogo="escondidas">🙈 escondidas</button>
+    <button class="sugestao" data-jogo="apanhada">🏃 apanhada</button>
+    <button class="sugestao" data-jogo="berlinde">🔵 berlinde</button>
+    <button class="sugestao" data-jogo="macaquinho do chinês">🐒 macaquinho do chinês</button>
+    <button class="sugestao" data-jogo="polícias e ladrões">🚔 polícias e ladrões</button>
+    <button class="sugestao" data-jogo="stop">✋ stop</button>
+  </div>
+
+  <div class="resposta" id="resposta" aria-live="polite" hidden></div>
+
+  <p class="dica">Escolhe um jogo ou clica numa sugestão ↑</p>
+</div>
+
+<script>
+  const jogos = {
+    'escondidas': {
+      emoji: '🙈',
+      regras: [
+        'Um jogador é o "contador" — fecha os olhos e conta até 20 em voz alta.',
+        'Os outros jogadores escondem-se enquanto o contador conta.',
+        'Quando terminar de contar, diz "Prontos ou não, lá vou eu!" e vai à procura.',
+        'Quem for encontrado sai do jogo nessa ronda.',
+        'O primeiro a ser encontrado é o próximo contador.',
+        'Se um escondido chegar à base sem ser apanhado, salva todos!'
+      ]
+    },
+    'apanhada': {
+      emoji: '🏃',
+      regras: [
+        'Um jogador é o "apanhador" — tem de apanhar os outros.',
+        'Quando o apanhador toca em alguém, essa pessoa passa a ser o novo apanhador.',
+        'Ninguém pode ficar parado — há sempre alguém a correr.',
+        'Define uma zona de jogo para ninguém fugir demasiado longe.',
+        'Variante: "apanhada com gelo" — quem é tocado fica estático até outro colega o "desgelar".'
+      ]
+    },
+    'berlinde': {
+      emoji: '🔵',
+      regras: [
+        'Cada jogador começa com um número igual de berlindes.',
+        'Desenha-se um círculo no chão (a "cova").',
+        'Os jogadores atiram berlindes para dentro do círculo, à vez.',
+        'Ganha os berlindes do adversário quem conseguir bater no berlinde dele.',
+        'O jogador que ficar sem berlindes é eliminado.',
+        'O vencedor é quem tiver mais berlindes no final!'
+      ]
+    },
+    'macaquinho do chinês': {
+      emoji: '🐒',
+      regras: [
+        'Um jogador fica de costas para o grupo, encostado a uma parede — é o "macaquinho".',
+        'Os outros tentam aproximar-se em silêncio.',
+        'O macaquinho pode virar-se a qualquer momento dizendo "macaquinho do chinês!"',
+        'Quem for apanhado a mover-se tem de voltar ao início.',
+        'O primeiro a chegar à parede toca no ombro do macaquinho e ganha.',
+        'Quem ganhar passa a ser o novo macaquinho.'
+      ]
+    },
+    'polícias e ladrões': {
+      emoji: '🚔',
+      regras: [
+        'Divide o grupo em dois: polícias e ladrões.',
+        'Os ladrões têm um tempo para fugir antes de os polícias os perseguirem.',
+        'Os polícias capturam os ladrões tocando neles.',
+        'Os ladrões capturados vão para a "prisão" (uma zona delimitada).',
+        'Os ladrões livres podem libertar os presos passando pela prisão sem serem apanhados.',
+        'Os polícias ganham quando todos os ladrões estão presos.'
+      ]
+    },
+    'stop': {
+      emoji: '✋',
+      regras: [
+        'Escolhe-se uma letra do alfabeto e definem-se categorias (nomes, animais, países, coisas…).',
+        'Todos escrevem uma palavra que começa com essa letra para cada categoria.',
+        'O primeiro a terminar grita "STOP!" — todos param de escrever.',
+        'Pontuação: 10 pontos por resposta única, 5 pontos se outro jogador tiver a mesma.',
+        'Respostas inválidas valem 0 pontos.',
+        'Joga-se várias rondas com letras diferentes e ganha quem tiver mais pontos.'
+      ]
+    }
+  };
+
+  const botoes = document.querySelectorAll('.sugestao');
+  const resposta = document.getElementById('resposta');
+
+  botoes.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const jogo = btn.dataset.jogo;
+      const info = jogos[jogo];
+      if (!info) return;
+
+      resposta.classList.remove('visivel');
+      resposta.hidden = false;
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const itens = info.regras.map(r => `<li>${r}</li>`).join('');
+          resposta.innerHTML = `
+            <div class="resposta-titulo">${info.emoji} Eu brinco ao ${jogo}!</div>
+            <ol class="regras-lista">${itens}</ol>
+          `;
+          resposta.classList.add('visivel');
+          resposta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      });
+    });
+  });
+</script>
+
+</body></html>
