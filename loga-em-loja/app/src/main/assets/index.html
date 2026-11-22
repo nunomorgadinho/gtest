@@ -92,6 +92,24 @@ nav .badge{top:0;right:calc(50% - 22px)}
 .rel{position:relative}
 .info-card{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;font-size:14px;line-height:1.5}
 .info-card h4{margin:0 0 6px}
+.hint{text-align:center;font-size:14px;color:var(--mut)}.hint a{color:var(--pri);font-weight:700}
+.seg{display:flex;background:#fff;border:1px solid var(--ln);border-radius:14px;padding:4px;margin-bottom:16px}
+.seg button{flex:1;background:none;padding:10px;border-radius:10px;font-weight:600;color:var(--mut)}
+.seg button.on{background:var(--pri);color:#fff}
+.team{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.team button{background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:14px 8px;font-weight:600;font-size:14px;color:var(--tx)}
+.team button span{display:block;font-size:28px;margin-bottom:4px}
+.team button.on{border-color:var(--pri);background:#FFF7ED;color:var(--pri)}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.stats div{background:#fff;border-radius:14px;padding:14px}
+.stats b{display:block;font-size:20px;color:var(--pri)}.stats span{font-size:12px;color:var(--mut)}
+.prow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:10px;margin-bottom:8px}
+.prow .pe{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;font-size:24px;background:#F5F5F4;flex:none}
+.prow .pi{flex:1;min-width:0;display:flex;flex-direction:column;font-size:14px}
+.prow .pi span{font-size:12px;color:var(--mut)}
+.mini{background:#fff;border:1.5px solid var(--pri);color:var(--pri);border-radius:10px;padding:7px 10px;font-size:13px;font-weight:600}
+.mini.del{border-color:#FCA5A5;color:#B91C1C}
+.mini-sel{border:1px solid var(--ln);border-radius:10px;padding:7px;background:#fff;font-size:13px}
 </style>
 </head>
 <body>
@@ -123,7 +141,7 @@ nav .badge{top:0;right:calc(50% - 22px)}
 <script>
 const CATS = ["Todos","Mercearia","Casa","Moda","Tecnologia","Beleza","Desporto"];
 const BG = {Mercearia:"#DCFCE7",Casa:"#E0F2FE",Moda:"#FCE7F3",Tecnologia:"#EDE9FE",Beleza:"#FEF3C7",Desporto:"#FFE4E6"};
-const P = [
+const P0 = [
  {id:1,n:"Azeite Extra Virgem 75cl",c:"Mercearia",p:7.49,o:8.99,e:"🫒",d:"Azeite português de primeira pressão a frio, sabor frutado e equilibrado."},
  {id:2,n:"Café em Grão 1kg",c:"Mercearia",p:14.90,e:"☕",d:"Blend de arábica e robusta, torra média, ideal para expresso."},
  {id:3,n:"Pastéis de Nata (6 un.)",c:"Mercearia",p:5.40,e:"🥧",d:"Feitos diariamente, massa folhada estaladiça e creme aveludado."},
@@ -153,8 +171,51 @@ const PORTES_GRATIS = 50, PORTES = 3.99;
 
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let P=load("le_products",P0);
 let cart=load("le_cart",{}), favs=load("le_favs",[]), orders=load("le_orders",[]), user=load("le_user",{nome:"",email:"",tel:"",morada:"",cp:"",cidade:""});
+let contas=load("le_accounts",[]), sessao=load("le_session",null);
 let cat="Todos", hist=[], cur="loja", curProd=null, cupao=null;
+let contaModo="entrar", painelTab="resumo", editProd=null;
+
+/* --- Autenticação --- */
+function sha256(s){
+  const K=[],H=[];let n=2,c=0;
+  const pr=x=>{for(let i=2;i*i<=x;i++)if(x%i==0)return false;return true};
+  while(c<64){if(pr(n)){if(c<8)H[c]=(Math.pow(n,1/2)*4294967296)|0;K[c++]=(Math.pow(n,1/3)*4294967296)|0}n++}
+  const b=unescape(encodeURIComponent(s)),l=b.length,w=[];
+  for(let i=0;i<l;i++)w[i>>2]|=b.charCodeAt(i)<<(24-(i%4)*8);
+  w[l>>2]|=0x80<<(24-(l%4)*8); w[(((l+8)>>6)+1)*16-1]=l*8;
+  const r=(x,y)=>(x>>>y)|(x<<(32-y));
+  for(let j=0;j<w.length;j+=16){
+    const W=[];for(let i=0;i<16;i++)W[i]=w[j+i]|0;
+    let [a,bb,cc,d,e,f,g,h]=H;
+    for(let i=0;i<64;i++){
+      if(i>=16){const x=W[i-15],y=W[i-2];W[i]=(W[i-16]+(r(x,7)^r(x,18)^(x>>>3))+W[i-7]+(r(y,17)^r(y,19)^(y>>>10)))|0}
+      const t1=(h+(r(e,6)^r(e,11)^r(e,25))+((e&f)^(~e&g))+K[i]+W[i])|0;
+      const t2=((r(a,2)^r(a,13)^r(a,22))+((a&bb)^(a&cc)^(bb&cc)))|0;
+      h=g;g=f;f=e;e=(d+t1)|0;d=cc;cc=bb;bb=a;a=(t1+t2)|0;
+    }
+    [a,bb,cc,d,e,f,g,h].forEach((v,i)=>H[i]=(H[i]+v)|0);
+  }
+  return H.map(v=>(v>>>0).toString(16).padStart(8,"0")).join("");
+}
+const norm=s=>String(s||"").trim().toLowerCase().replace(/\s+/g," ");
+// Credenciais da equipa guardadas apenas como hash (não aparecem em texto no código)
+const CHEFE_H="828017677fe3dfc3a0a6502fe804ad05acccad8ee06768971b1435b69a245294";
+const ADMIN_H="f74b45d638bfa01cf536449333ba09aca7800b575a65f50059c5470563e25878";
+function setSessao(s){sessao=s;save("le_session",s);updNav()}
+function sair(){setSessao(null);contaModo="entrar";toast("Sessão terminada");renderConta()}
+function updNav(){
+  const b=document.querySelector('nav button[data-v="conta"]');
+  const ic=!sessao?"👤":sessao.tipo==="chefe"?"👑":sessao.tipo==="admin"?"🛠️":"😊";
+  const lb=!sessao?"Entrar":sessao.tipo==="chefe"?"Chefe":sessao.tipo==="admin"?"Admin":"Conta";
+  b.innerHTML=`<span class="ic">${ic}</span>${lb}`;
+}
+function contaAtual(){return sessao&&sessao.tipo==="cliente"?contas.find(c=>c.email===sessao.email):null}
+const orderItems=o=>Array.isArray(o.itens)?o.itens:Object.entries(o.itens).map(([id,q])=>{const p=byId(+id)||{};return {id:+id,n:p.n||"Produto removido",e:p.e||"📦",p:p.p||0,q}});
+const ESTADOS=["Confirmada","Em preparação","Enviada","Entregue","Cancelada"];
+const ESTADO_COR={"Confirmada":"#DCFCE7|#15803D","Em preparação":"#FEF3C7|#B45309","Enviada":"#E0F2FE|#0369A1","Entregue":"#EDE9FE|#6D28D9","Cancelada":"#FEE2E2|#B91C1C"};
+function estadoTag(e){e=e||"Confirmada";const [bg,fg]=(ESTADO_COR[e]||ESTADO_COR.Confirmada).split("|");return `<span class="s" style="background:${bg};color:${fg}">${e}</span>`}
 
 const eur = v => v.toLocaleString("pt-PT",{style:"currency",currency:"EUR"});
 const byId = id => P.find(p=>p.id===id);
@@ -222,7 +283,7 @@ function renderFavs(){
 }
 
 function totals(){
-  const sub=Object.entries(cart).reduce((a,[id,q])=>a+byId(+id).p*q,0);
+  const sub=Object.entries(cart).reduce((a,[id,q])=>a+(byId(+id)?.p||0)*q,0);
   const desc=cupao==="BEMVINDO"?sub*0.10:0;
   const portes=sub===0||sub-desc>=PORTES_GRATIS?0:PORTES;
   return {sub,desc,portes,tot:sub-desc+portes};
@@ -257,9 +318,10 @@ function renderCart(){
 }
 
 function renderCheckout(){
-  const u=user;
+  const u=contaAtual()||user;
   document.getElementById("v-checkout").innerHTML=`<button class="back" onclick="voltar()">← Carrinho</button>
     <div class="sec-t"><h3>Finalizar compra</h3></div>
+    ${!sessao?`<div class="info-card" style="background:#FEF3C7">Já tem conta? <a href="#" onclick="contaModo='entrar';go('conta');return false" style="color:var(--pri);font-weight:700">Entrar</a> ou <a href="#" onclick="contaModo='criar';go('conta');return false" style="color:var(--pri);font-weight:700">criar conta</a> para acompanhar as suas encomendas.</div>`:""}
     <form id="fc" onsubmit="return encomendar(event)">
       <div class="field"><label>Nome completo</label><input name="nome" required value="${esc(u.nome)}"></div>
       <div class="field"><label>Email</label><input name="email" type="email" required value="${esc(u.email)}"></div>
@@ -284,9 +346,13 @@ function encomendar(ev){
   ev.preventDefault();
   const f=Object.fromEntries(new FormData(ev.target));
   user={nome:f.nome,email:f.email,tel:f.tel,morada:f.morada,cp:f.cp,cidade:f.cidade}; save("le_user",user);
+  const ca=contaAtual();
+  if(ca){Object.assign(ca,{nome:f.nome,tel:f.tel,morada:f.morada,cp:f.cp,cidade:f.cidade});save("le_accounts",contas)}
   const t=totals();
   const num="LE"+String(Date.now()).slice(-6);
-  orders.unshift({num,data:new Date().toISOString(),itens:{...cart},total:t.tot,pag:f.pag});
+  const itens=Object.entries(cart).map(([id,q])=>{const p=byId(+id);return p?{id:p.id,n:p.n,e:p.e,p:p.p,q}:null}).filter(Boolean);
+  orders.unshift({num,data:new Date().toISOString(),itens,total:t.tot,pag:f.pag,estado:"Confirmada",
+    cliente:{nome:f.nome,email:norm(ca?ca.email:f.email),tel:f.tel,morada:`${f.morada}, ${f.cp} ${f.cidade}`},conta:!!ca,notas:f.notas||""});
   save("le_orders",orders);
   cart={}; cupao=null; save("le_cart",cart); updBadges();
   hist=["loja"]; cur="checkout";
@@ -299,21 +365,172 @@ function encomendar(ev){
 }
 
 function renderConta(){
-  const u=user;
-  document.getElementById("v-conta").innerHTML=`
-    <div class="info-card" style="display:flex;gap:12px;align-items:center"><div style="font-size:40px">👤</div><div><b>${esc(u.nome||"Visitante")}</b><br><span style="color:var(--mut)">${esc(u.email||"Ainda sem dados guardados")}</span></div></div>
-    <div class="sec-t"><h3>As minhas encomendas</h3></div>
-    ${orders.length?orders.map(o=>`<div class="order"><div class="h"><span>${o.num}</span><span class="s">Confirmada</span></div>
-      <div class="d">${new Date(o.data).toLocaleDateString("pt-PT")} · ${Object.values(o.itens).reduce((a,b)=>a+b,0)} artigos · ${esc(o.pag)}</div>
-      <div class="d">${Object.keys(o.itens).map(id=>byId(+id)?.e||"").join(" ")}</div>
-      <div class="price" style="margin-top:6px">${eur(o.total)}</div></div>`).join(""):`<div class="empty">Ainda não fez encomendas.</div>`}
-    <div class="sec-t" style="margin-top:16px"><h3>Sobre a loja</h3></div>
-    <div class="info-card"><h4>📍 Loga em Loja</h4>Entregas em todo o território nacional em 24-48 h.<br>Devoluções gratuitas até 30 dias.</div>
-    <div class="info-card"><h4>📞 Apoio ao cliente</h4>Segunda a sábado, das 9h às 20h.</div>
-    ${orders.length||u.nome?`<button class="btn sec" onclick="if(confirm('Apagar os dados guardados neste dispositivo?')){localStorage.clear();location.reload()}">Apagar os meus dados</button>`:""}`;
+  const el=document.getElementById("v-conta");
+  if(!sessao) el.innerHTML=htmlLogin();
+  else if(sessao.tipo==="cliente") el.innerHTML=htmlCliente();
+  else el.innerHTML=htmlPainel();
+}
+const sobre=`<div class="sec-t" style="margin-top:16px"><h3>Sobre a loja</h3></div>
+  <div class="info-card"><h4>📍 Loga em Loja</h4>Entregas em todo o território nacional em 24-48 h.<br>Devoluções gratuitas até 30 dias.</div>
+  <div class="info-card"><h4>📞 Apoio ao cliente</h4>Segunda a sábado, das 9h às 20h.</div>`;
+
+function htmlLogin(){
+  const m=contaModo;
+  let form="";
+  if(m==="entrar") form=`<form onsubmit="return entrarCliente(event)">
+      <div class="field"><label>Email</label><input name="email" type="email" required autocomplete="email"></div>
+      <div class="field"><label>Palavra-passe</label><input name="senha" type="password" required autocomplete="current-password"></div>
+      <button class="btn" type="submit">Entrar</button>
+      <p class="hint">Ainda não tem conta? <a href="#" onclick="contaModo='criar';renderConta();return false">Criar conta</a></p></form>`;
+  else if(m==="criar") form=`<form onsubmit="return criarConta(event)">
+      <div class="field"><label>Nome completo</label><input name="nome" required autocomplete="name"></div>
+      <div class="field"><label>Email</label><input name="email" type="email" required autocomplete="email"></div>
+      <div class="field"><label>Telemóvel (opcional)</label><input name="tel" type="tel" pattern="[0-9 +]{9,}"></div>
+      <div class="field"><label>Palavra-passe (mínimo 6 caracteres)</label><input name="senha" type="password" minlength="6" required autocomplete="new-password"></div>
+      <div class="field"><label>Repetir palavra-passe</label><input name="senha2" type="password" minlength="6" required autocomplete="new-password"></div>
+      <button class="btn" type="submit">Criar conta</button>
+      <p class="hint">Já tem conta? <a href="#" onclick="contaModo='entrar';renderConta();return false">Entrar</a></p></form>`;
+  else if(m==="chefe") form=`<form onsubmit="return entrarChefe(event)">
+      <div class="info-card" style="background:#FEF3C7">👑 <b>Acesso do Chefe</b><br>Introduza o email do chefe para entrar.</div>
+      <div class="field"><label>Email do chefe</label><input name="email" type="email" required autocomplete="off"></div>
+      <button class="btn" type="submit">Entrar como Chefe</button></form>`;
+  else if(m==="admin") form=`<form onsubmit="return entrarAdmin(event)">
+      <div class="info-card" style="background:#E0F2FE">🛠️ <b>Acesso de Administrador</b><br>Indique o nome da empresa e o nome do chefe.</div>
+      <div class="field"><label>Nome da empresa</label><input name="empresa" required autocomplete="off"></div>
+      <div class="field"><label>Nome do chefe</label><input name="chefe" required autocomplete="off"></div>
+      <button class="btn" type="submit">Entrar como Administrador</button></form>`;
+  return `<div class="seg">
+      <button class="${m==="entrar"?"on":""}" onclick="contaModo='entrar';renderConta()">Entrar</button>
+      <button class="${m==="criar"?"on":""}" onclick="contaModo='criar';renderConta()">Criar conta</button></div>
+    ${form}
+    <div class="sec-t" style="margin-top:22px"><h3>Acesso da equipa</h3></div>
+    <div class="team">
+      <button class="${m==="chefe"?"on":""}" onclick="contaModo='chefe';renderConta()"><span>👑</span>Conta de Chefe</button>
+      <button class="${m==="admin"?"on":""}" onclick="contaModo='admin';renderConta()"><span>🛠️</span>Conta de Admin</button>
+    </div>${sobre}`;
+}
+function fdata(ev){ev.preventDefault();return Object.fromEntries(new FormData(ev.target))}
+function entrarCliente(ev){
+  const f=fdata(ev); const c=contas.find(c=>c.email===norm(f.email));
+  if(!c||c.senha!==sha256(c.email+"|"+f.senha)){toast("Email ou palavra-passe incorretos");return false}
+  setSessao({tipo:"cliente",email:c.email,nome:c.nome}); toast("Olá, "+c.nome.split(" ")[0]+"!"); renderConta(); return false;
+}
+function criarConta(ev){
+  const f=fdata(ev); const email=norm(f.email);
+  if(f.senha!==f.senha2){toast("As palavras-passe não coincidem");return false}
+  if(contas.some(c=>c.email===email)){toast("Já existe uma conta com este email");return false}
+  if(sha256(email)===CHEFE_H){toast("Este email está reservado");return false}
+  const c={nome:f.nome.trim(),email,tel:f.tel||"",morada:"",cp:"",cidade:"",senha:sha256(email+"|"+f.senha),criada:new Date().toISOString()};
+  contas.push(c); save("le_accounts",contas);
+  setSessao({tipo:"cliente",email,nome:c.nome}); toast("Conta criada com sucesso ✓"); renderConta(); return false;
+}
+function entrarChefe(ev){
+  const f=fdata(ev);
+  if(sha256(norm(f.email))!==CHEFE_H){toast("Email do chefe incorreto");return false}
+  painelTab="resumo"; setSessao({tipo:"chefe",nome:"Chefe"}); toast("Bem-vindo, Chefe 👑"); renderConta(); return false;
+}
+function entrarAdmin(ev){
+  const f=fdata(ev);
+  if(sha256(norm(f.empresa)+"|"+norm(f.chefe))!==ADMIN_H){toast("Empresa ou nome do chefe incorretos");return false}
+  painelTab="encomendas"; setSessao({tipo:"admin",nome:"Administrador"}); toast("Bem-vindo, Administrador 🛠️"); renderConta(); return false;
 }
 
-updBadges(); renderLoja();
+function orderHtml(o,gerir){
+  const it=orderItems(o);
+  return `<div class="order"><div class="h"><span>${esc(o.num)}</span>${estadoTag(o.estado)}</div>
+    <div class="d">${new Date(o.data).toLocaleString("pt-PT",{dateStyle:"short",timeStyle:"short"})} · ${it.reduce((a,b)=>a+b.q,0)} artigos · ${esc(o.pag)}</div>
+    ${gerir&&o.cliente?`<div class="d">👤 ${esc(o.cliente.nome)} · ${esc(o.cliente.email)}${o.cliente.tel?" · "+esc(o.cliente.tel):""}<br>📍 ${esc(o.cliente.morada||"")}${o.notas?`<br>📝 ${esc(o.notas)}`:""}</div>`:""}
+    <div class="d">${it.map(i=>`${i.e} ${esc(i.n)} ×${i.q}`).join("<br>")}</div>
+    <div class="row" style="padding-top:8px"><span class="price">${eur(o.total)}</span>
+    ${gerir?`<select class="mini-sel" onchange="mudarEstado('${esc(o.num)}',this.value)">${ESTADOS.map(e=>`<option ${e===(o.estado||"Confirmada")?"selected":""}>${e}</option>`).join("")}</select>`:""}</div></div>`;
+}
+function mudarEstado(num,e){const o=orders.find(o=>o.num===num);if(o){o.estado=e;save("le_orders",orders);toast("Estado: "+e);renderConta()}}
+
+function htmlCliente(){
+  const c=contaAtual();
+  if(!c){setSessao(null);return htmlLogin()}
+  const minhas=orders.filter(o=>o.cliente&&o.cliente.email===c.email);
+  return `<div class="info-card" style="display:flex;gap:12px;align-items:center"><div style="font-size:40px">😊</div>
+      <div style="flex:1;min-width:0"><b>${esc(c.nome)}</b><br><span style="color:var(--mut)">${esc(c.email)}</span></div></div>
+    <div class="sec-t"><h3>As minhas encomendas</h3></div>
+    ${minhas.length?minhas.map(o=>orderHtml(o,false)).join(""):`<div class="empty">Ainda não fez encomendas.</div>`}
+    ${sobre}
+    <button class="btn sec" onclick="sair()">Terminar sessão</button>`;
+}
+
+function htmlPainel(){
+  const chefe=sessao.tipo==="chefe";
+  const tabs=chefe?[["resumo","📊 Resumo"],["encomendas","📦 Encomendas"],["produtos","🏷️ Produtos"],["clientes","👥 Clientes"]]
+                  :[["encomendas","📦 Encomendas"],["produtos","🏷️ Produtos"]];
+  if(!tabs.some(t=>t[0]===painelTab)) painelTab=tabs[0][0];
+  let body="";
+  if(painelTab==="resumo"){
+    const val=orders.filter(o=>o.estado!=="Cancelada");
+    const fat=val.reduce((a,o)=>a+o.total,0);
+    const vend={}; val.forEach(o=>orderItems(o).forEach(i=>{vend[i.n]=(vend[i.n]||{e:i.e,q:0,v:0});vend[i.n].q+=i.q;vend[i.n].v+=i.p*i.q}));
+    const top=Object.entries(vend).sort((a,b)=>b[1].q-a[1].q).slice(0,5);
+    const pend=orders.filter(o=>["Confirmada","Em preparação"].includes(o.estado||"Confirmada")).length;
+    body=`<div class="stats">
+        <div><b>${eur(fat)}</b><span>Faturação</span></div>
+        <div><b>${val.length}</b><span>Encomendas</span></div>
+        <div><b>${val.length?eur(fat/val.length):eur(0)}</b><span>Valor médio</span></div>
+        <div><b>${contas.length}</b><span>Clientes registados</span></div>
+        <div><b>${pend}</b><span>Por enviar</span></div>
+        <div><b>${P.length}</b><span>Produtos</span></div></div>
+      <div class="sec-t"><h3>Mais vendidos</h3></div>
+      ${top.length?top.map(([n,v],i)=>`<div class="prow"><span class="pe">${v.e}</span><div class="pi"><b>${i+1}. ${esc(n)}</b><span>${v.q} vendidos · ${eur(v.v)}</span></div></div>`).join(""):`<div class="empty">Ainda sem vendas.</div>`}`;
+  } else if(painelTab==="encomendas"){
+    body=orders.length?orders.map(o=>orderHtml(o,true)).join(""):`<div class="empty">Ainda não há encomendas.</div>`;
+  } else if(painelTab==="produtos"){
+    body=editProd!==null?htmlProdForm():`<button class="btn" style="margin-bottom:12px" onclick="editProd='novo';renderConta()">+ Novo produto</button>
+      ${P.map(p=>`<div class="prow"><span class="pe" style="background:${BG[p.c]||"#eee"}">${p.e}</span>
+        <div class="pi"><b>${esc(p.n)}</b><span>${p.c} · ${eur(p.p)}${p.o?` <s>${eur(p.o)}</s>`:""}</span></div>
+        <button class="mini" onclick="editProd=${p.id};renderConta()">Editar</button>
+        <button class="mini del" onclick="removerProd(${p.id})">✕</button></div>`).join("")}
+      ${chefe?`<button class="btn sec" style="margin-top:12px" onclick="repor()">Repor catálogo original</button>`:""}`;
+  } else if(painelTab==="clientes"){
+    body=contas.length?contas.map(c=>{const os=orders.filter(o=>o.cliente&&o.cliente.email===c.email&&o.estado!=="Cancelada");
+      return `<div class="prow"><span class="pe">👤</span><div class="pi"><b>${esc(c.nome)}</b><span>${esc(c.email)}${c.tel?" · "+esc(c.tel):""}</span>
+        <span>${os.length} encomendas · ${eur(os.reduce((a,o)=>a+o.total,0))}</span></div></div>`}).join(""):`<div class="empty">Ainda não há clientes registados.</div>`;
+  }
+  return `<div class="info-card" style="display:flex;gap:12px;align-items:center;background:${chefe?"#FEF3C7":"#E0F2FE"}">
+      <div style="font-size:40px">${chefe?"👑":"🛠️"}</div><div style="flex:1"><b>${chefe?"Painel do Chefe":"Painel de Administração"}</b><br>
+      <span style="color:var(--mut);font-size:13px">${chefe?"Acesso total à loja":"Gestão de encomendas e produtos"}</span></div>
+      <button class="mini" onclick="sair()">Sair</button></div>
+    <div class="chips">${tabs.map(([k,l])=>`<button class="chip ${k===painelTab?"on":""}" onclick="painelTab='${k}';editProd=null;renderConta()">${l}</button>`).join("")}</div>
+    ${body}`;
+}
+function htmlProdForm(){
+  const p=editProd==="novo"?{n:"",c:"Mercearia",p:"",o:"",e:"📦",d:""}:byId(editProd);
+  return `<form onsubmit="return guardarProd(event)">
+    <div class="sec-t"><h3>${editProd==="novo"?"Novo produto":"Editar produto"}</h3></div>
+    <div class="field"><label>Nome</label><input name="n" required value="${esc(p.n)}"></div>
+    <div style="display:flex;gap:10px">
+      <div class="field" style="flex:1"><label>Ícone (emoji)</label><input name="e" required maxlength="4" value="${esc(p.e)}"></div>
+      <div class="field" style="flex:2"><label>Categoria</label><select name="c">${CATS.slice(1).map(c=>`<option ${c===p.c?"selected":""}>${c}</option>`).join("")}</select></div></div>
+    <div style="display:flex;gap:10px">
+      <div class="field" style="flex:1"><label>Preço (€)</label><input name="p" type="number" step="0.01" min="0.01" required value="${p.p}"></div>
+      <div class="field" style="flex:1"><label>Preço antigo (opcional)</label><input name="o" type="number" step="0.01" min="0" value="${p.o||""}"></div></div>
+    <div class="field"><label>Descrição</label><textarea name="d" rows="3">${esc(p.d)}</textarea></div>
+    <div style="display:flex;gap:10px"><button type="button" class="btn sec" onclick="editProd=null;renderConta()">Cancelar</button><button class="btn" type="submit">Guardar</button></div></form>`;
+}
+function guardarProd(ev){
+  const f=fdata(ev);
+  const dados={n:f.n.trim(),c:f.c,p:Math.round(parseFloat(f.p)*100)/100,e:f.e.trim()||"📦",d:f.d.trim()};
+  const o=parseFloat(f.o); if(o>dados.p) dados.o=Math.round(o*100)/100;
+  if(editProd==="novo"){dados.id=Math.max(0,...P.map(p=>p.id))+1;P.push(dados)}
+  else{const i=P.findIndex(p=>p.id===editProd);dados.id=editProd;P[i]=dados}
+  save("le_products",P); editProd=null; toast("Produto guardado ✓"); renderConta(); return false;
+}
+function removerProd(id){
+  const p=byId(id); if(!p||!confirm(`Remover "${p.n}" da loja?`))return;
+  P=P.filter(x=>x.id!==id); delete cart[id]; favs=favs.filter(x=>x!==id);
+  save("le_products",P); save("le_cart",cart); save("le_favs",favs); updBadges(); toast("Produto removido"); renderConta();
+}
+function repor(){if(confirm("Repor os produtos originais? As alterações ao catálogo serão perdidas.")){P=JSON.parse(JSON.stringify(P0));save("le_products",P);toast("Catálogo reposto");renderConta()}}
+
+Object.keys(cart).forEach(id=>{if(!byId(+id))delete cart[id]});
+updNav(); updBadges(); renderLoja();
 </script>
 </body>
 </html>
