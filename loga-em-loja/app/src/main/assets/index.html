@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loga em Loja</title>
+<style>
+:root{
+  --pri:#C2410C; --pri-d:#7C2D12; --acc:#F59E0B; --bg:#FFF7ED; --card:#fff;
+  --tx:#1C1917; --mut:#78716C; --ln:#E7E5E4; --ok:#15803D;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,Roboto,sans-serif}
+button{font:inherit;cursor:pointer;border:0}
+input,select,textarea{font:inherit}
+header{position:sticky;top:0;z-index:10;background:linear-gradient(135deg,#EA580C,var(--pri-d));color:#fff;padding:14px 16px 12px}
+.top{display:flex;align-items:center;gap:10px}
+.logo{font-weight:800;font-size:22px;letter-spacing:-.5px;flex:1}
+.logo small{display:block;font-weight:500;font-size:11px;opacity:.85;letter-spacing:.3px}
+.iconbtn{position:relative;background:rgba(255,255,255,.18);color:#fff;width:42px;height:42px;border-radius:12px;display:grid;place-items:center}
+.badge{position:absolute;top:-4px;right:-4px;background:var(--acc);color:#1C1917;font-size:11px;font-weight:700;min-width:19px;height:19px;border-radius:10px;display:grid;place-items:center;padding:0 4px}
+.search{margin-top:12px;display:flex;background:#fff;border-radius:12px;padding:0 12px;align-items:center;gap:8px}
+.search input{flex:1;border:0;outline:0;padding:11px 0;background:transparent;color:var(--tx)}
+main{padding:14px 16px 96px}
+.hero{background:linear-gradient(120deg,#FDBA74,#FB923C);border-radius:18px;padding:18px;color:#431407;margin-bottom:16px;position:relative;overflow:hidden}
+.hero h2{margin:0 0 4px;font-size:20px}
+.hero p{margin:0;font-size:14px;padding-right:70px}
+.hero .tag{display:inline-block;margin-top:10px;background:#431407;color:#FED7AA;font-weight:700;font-size:13px;padding:6px 10px;border-radius:8px}
+.hero .big{position:absolute;right:-6px;bottom:-14px;font-size:84px;opacity:.9}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;background:#fff;border:1px solid var(--ln);padding:8px 14px;border-radius:20px;font-size:14px;color:var(--tx)}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.card{background:var(--card);border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;flex-direction:column}
+.thumb{height:110px;display:grid;place-items:center;font-size:56px}
+.card .b{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1}
+.card .n{font-weight:600;font-size:14px;line-height:1.25}
+.card .c{font-size:12px;color:var(--mut)}
+.row{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:6px}
+.price{font-weight:800;color:var(--pri)}
+.old{font-size:12px;color:var(--mut);text-decoration:line-through;margin-left:4px;font-weight:400}
+.add{background:var(--pri);color:#fff;width:34px;height:34px;border-radius:10px;font-size:20px;line-height:1}
+.empty{text-align:center;color:var(--mut);padding:40px 10px}
+.sec-t{display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 10px}
+.sec-t h3{margin:0;font-size:17px}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--ln);display:flex;padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
+nav button{flex:1;background:none;color:var(--mut);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;position:relative}
+nav button .ic{font-size:21px}
+nav button.on{color:var(--pri);font-weight:700}
+nav .badge{top:0;right:calc(50% - 22px)}
+.view{display:none}.view.on{display:block}
+/* detalhe */
+.det .thumb{height:220px;border-radius:18px;font-size:120px}
+.det h2{margin:16px 0 4px}
+.det .price{font-size:24px}
+.det p{color:#44403C;line-height:1.5}
+.qty{display:inline-flex;align-items:center;background:#fff;border:1px solid var(--ln);border-radius:12px}
+.qty button{background:none;width:38px;height:38px;font-size:20px;color:var(--pri)}
+.qty span{min-width:28px;text-align:center;font-weight:700}
+.btn{display:block;width:100%;background:var(--pri);color:#fff;padding:14px;border-radius:14px;font-weight:700;font-size:16px;text-align:center}
+.btn.sec{background:#fff;color:var(--pri);border:1.5px solid var(--pri)}
+.back{background:none;color:var(--pri);font-weight:600;padding:0;margin-bottom:10px}
+/* carrinho */
+.line{display:flex;gap:12px;background:#fff;border-radius:14px;padding:10px;margin-bottom:10px;align-items:center}
+.line .thumb{width:60px;height:60px;border-radius:12px;font-size:32px;flex:none}
+.line .info{flex:1;min-width:0}
+.line .n{font-weight:600;font-size:14px}
+.line .rm{background:none;color:var(--mut);font-size:12px;padding:4px 0}
+.sum{background:#fff;border-radius:14px;padding:14px;margin:14px 0}
+.sum div{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}
+.sum .tot{font-weight:800;font-size:18px;border-top:1px dashed var(--ln);margin-top:6px;padding-top:10px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:12px;border:1px solid var(--ln);border-radius:12px;background:#fff;outline-color:var(--pri)}
+.pay{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.pay label{background:#fff;border:1.5px solid var(--ln);border-radius:12px;padding:10px 4px;text-align:center;font-size:12px;font-weight:600}
+.pay input{display:none}
+.pay input:checked+span{color:var(--pri)}
+.pay label:has(input:checked){border-color:var(--pri);background:#FFF7ED}
+.pay .ic{display:block;font-size:22px}
+.order{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px}
+.order .h{display:flex;justify-content:space-between;font-weight:700}
+.order .s{font-size:12px;color:var(--ok);font-weight:700;background:#DCFCE7;padding:3px 8px;border-radius:8px}
+.order .d{font-size:13px;color:var(--mut);margin-top:4px}
+.ok{text-align:center;padding:30px 10px}
+.ok .big{font-size:72px}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(20px);background:#1C1917;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.fav{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.9);width:32px;height:32px;border-radius:50%;font-size:16px}
+.rel{position:relative}
+.info-card{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;font-size:14px;line-height:1.5}
+.info-card h4{margin:0 0 6px}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="logo">Loga em Loja<small>Tudo o que precisa, numa só loja</small></div>
+    <button class="iconbtn" onclick="go('carrinho')" aria-label="Carrinho">🛒<span class="badge" id="hb" hidden>0</span></button>
+  </div>
+  <div class="search" id="searchBox">🔍<input id="q" type="search" placeholder="Procurar produtos..." oninput="renderLoja()"></div>
+</header>
+
+<main>
+  <section class="view on" id="v-loja"></section>
+  <section class="view" id="v-produto"></section>
+  <section class="view" id="v-favoritos"></section>
+  <section class="view" id="v-carrinho"></section>
+  <section class="view" id="v-checkout"></section>
+  <section class="view" id="v-conta"></section>
+</main>
+
+<nav>
+  <button data-v="loja" class="on" onclick="go('loja')"><span class="ic">🏠</span>Loja</button>
+  <button data-v="favoritos" onclick="go('favoritos')"><span class="ic">♥</span>Favoritos</button>
+  <button data-v="carrinho" onclick="go('carrinho')"><span class="ic">🛒</span>Carrinho<span class="badge" id="nb" hidden>0</span></button>
+  <button data-v="conta" onclick="go('conta')"><span class="ic">👤</span>Conta</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+const CATS = ["Todos","Mercearia","Casa","Moda","Tecnologia","Beleza","Desporto"];
+const BG = {Mercearia:"#DCFCE7",Casa:"#E0F2FE",Moda:"#FCE7F3",Tecnologia:"#EDE9FE",Beleza:"#FEF3C7",Desporto:"#FFE4E6"};
+const P = [
+ {id:1,n:"Azeite Extra Virgem 75cl",c:"Mercearia",p:7.49,o:8.99,e:"🫒",d:"Azeite português de primeira pressão a frio, sabor frutado e equilibrado."},
+ {id:2,n:"Café em Grão 1kg",c:"Mercearia",p:14.90,e:"☕",d:"Blend de arábica e robusta, torra média, ideal para expresso."},
+ {id:3,n:"Pastéis de Nata (6 un.)",c:"Mercearia",p:5.40,e:"🥧",d:"Feitos diariamente, massa folhada estaladiça e creme aveludado."},
+ {id:4,n:"Vinho Tinto Douro",c:"Mercearia",p:9.95,e:"🍷",d:"Tinto encorpado do Douro, notas de frutos vermelhos maduros."},
+ {id:5,n:"Conjunto de Panelas 5 pç",c:"Casa",p:79.00,o:99.00,e:"🍳",d:"Aço inoxidável com fundo difusor, compatível com indução."},
+ {id:6,n:"Candeeiro de Mesa LED",c:"Casa",p:24.99,e:"💡",d:"Luz regulável em 3 tons, braço articulado, carregamento USB."},
+ {id:7,n:"Manta de Lã Natural",c:"Casa",p:39.50,e:"🧶",d:"Lã de ovelha portuguesa, 130×170 cm, tecida à mão."},
+ {id:8,n:"Planta Monstera",c:"Casa",p:19.90,e:"🪴",d:"Planta de interior fácil de cuidar, vaso de 17 cm incluído."},
+ {id:9,n:"T-shirt Algodão Orgânico",c:"Moda",p:15.00,e:"👕",d:"100% algodão orgânico, corte regular, disponível em várias cores."},
+ {id:10,n:"Ténis Urbanos",c:"Moda",p:59.90,o:74.90,e:"👟",d:"Confortáveis para o dia a dia, sola em borracha reciclada."},
+ {id:11,n:"Óculos de Sol",c:"Moda",p:29.00,e:"🕶️",d:"Lentes polarizadas com proteção UV400."},
+ {id:12,n:"Mochila Impermeável",c:"Moda",p:44.90,e:"🎒",d:"25 L, compartimento para portátil até 15\"."},
+ {id:13,n:"Auscultadores Bluetooth",c:"Tecnologia",p:69.99,o:89.99,e:"🎧",d:"Cancelamento de ruído ativo, 30 h de autonomia."},
+ {id:14,n:"Smartwatch Fit",c:"Tecnologia",p:99.00,e:"⌚",d:"Monitor de ritmo cardíaco, GPS e resistência à água."},
+ {id:15,n:"Powerbank 20 000 mAh",c:"Tecnologia",p:27.50,e:"🔋",d:"Carregamento rápido USB-C PD 20 W."},
+ {id:16,n:"Coluna Portátil",c:"Tecnologia",p:49.90,e:"🔊",d:"Som 360°, à prova de água IPX7."},
+ {id:17,n:"Creme Hidratante",c:"Beleza",p:12.90,e:"🧴",d:"Com ácido hialurónico, para todos os tipos de pele."},
+ {id:18,n:"Perfume Floral 50ml",c:"Beleza",p:45.00,e:"🌸",d:"Notas de jasmim, flor de laranjeira e baunilha."},
+ {id:19,n:"Sabonete Artesanal",c:"Beleza",p:4.50,e:"🧼",d:"Feito com azeite e lavanda, produção local."},
+ {id:20,n:"Tapete de Yoga",c:"Desporto",p:22.90,e:"🧘",d:"Antiderrapante, 6 mm de espessura, com alça."},
+ {id:21,n:"Bola de Futebol",c:"Desporto",p:18.00,e:"⚽",d:"Tamanho 5, costura térmica para maior durabilidade."},
+ {id:22,n:"Garrafa Térmica 750ml",c:"Desporto",p:16.90,o:21.90,e:"🥤",d:"Mantém frio 24 h e quente 12 h, sem BPA."},
+ {id:23,n:"Bicicleta Urbana",c:"Desporto",p:349.00,e:"🚲",d:"Quadro em alumínio, 7 velocidades, cesto incluído."},
+ {id:24,n:"Halteres 2×5 kg",c:"Desporto",p:34.90,e:"🏋️",d:"Revestimento em neopreno, pega antiderrapante."}
+];
+const PORTES_GRATIS = 50, PORTES = 3.99;
+
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let cart=load("le_cart",{}), favs=load("le_favs",[]), orders=load("le_orders",[]), user=load("le_user",{nome:"",email:"",tel:"",morada:"",cp:"",cidade:""});
+let cat="Todos", hist=[], cur="loja", curProd=null, cupao=null;
+
+const eur = v => v.toLocaleString("pt-PT",{style:"currency",currency:"EUR"});
+const byId = id => P.find(p=>p.id===id);
+const esc = s => String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+
+function toast(t){const el=document.getElementById("toast");el.textContent=t;el.classList.add("on");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("on"),1800)}
+
+function go(v,push=true){
+  if(push && v!==cur) hist.push(cur);
+  cur=v;
+  document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  document.getElementById("searchBox").style.display = v==="loja"?"flex":"none";
+  ({loja:renderLoja,produto:renderProduto,favoritos:renderFavs,carrinho:renderCart,checkout:renderCheckout,conta:renderConta})[v]();
+  window.scrollTo(0,0);
+}
+window.voltar=function(){ if(!hist.length) return false; go(hist.pop(),false); return true; };
+
+function count(){return Object.values(cart).reduce((a,b)=>a+b,0)}
+function updBadges(){const n=count();["hb","nb"].forEach(i=>{const b=document.getElementById(i);b.hidden=!n;b.textContent=n})}
+function addCart(id,q=1){cart[id]=(cart[id]||0)+q;save("le_cart",cart);updBadges();toast("Adicionado ao carrinho ✓")}
+function setQty(id,q){if(q<=0)delete cart[id];else cart[id]=q;save("le_cart",cart);updBadges();renderCart()}
+function toggleFav(id,ev){if(ev)ev.stopPropagation();const i=favs.indexOf(id);i<0?favs.push(id):favs.splice(i,1);save("le_favs",favs);toast(i<0?"Guardado nos favoritos ♥":"Removido dos favoritos");if(cur==="loja")renderLoja();else if(cur==="favoritos")renderFavs();else if(cur==="produto")renderProduto()}
+function abrir(id){curProd=id;go("produto")}
+
+function card(p){
+  return `<div class="card rel" onclick="abrir(${p.id})">
+    <div class="thumb" style="background:${BG[p.c]}">${p.e}</div>
+    <button class="fav" onclick="toggleFav(${p.id},event)" aria-label="Favorito">${favs.includes(p.id)?"❤️":"🤍"}</button>
+    <div class="b"><div class="n">${esc(p.n)}</div><div class="c">${p.c}</div>
+      <div class="row"><span class="price">${eur(p.p)}${p.o?`<span class="old">${eur(p.o)}</span>`:""}</span>
+      <button class="add" onclick="event.stopPropagation();addCart(${p.id})" aria-label="Adicionar">+</button></div></div></div>`;
+}
+
+function renderLoja(){
+  const q=document.getElementById("q").value.trim().toLowerCase();
+  const list=P.filter(p=>(cat==="Todos"||p.c===cat)&&(!q||p.n.toLowerCase().includes(q)||p.c.toLowerCase().includes(q)));
+  document.getElementById("v-loja").innerHTML=`
+    ${!q&&cat==="Todos"?`<div class="hero"><h2>Bem-vindo à Loga em Loja!</h2><p>Portes grátis em compras acima de ${eur(PORTES_GRATIS)}.</p><span class="tag">Código BEMVINDO = 10% desconto</span><div class="big">🛍️</div></div>`:""}
+    <div class="chips">${CATS.map(c=>`<button class="chip ${c===cat?"on":""}" onclick="cat='${c}';renderLoja()">${c}</button>`).join("")}</div>
+    <div class="sec-t"><h3>${q?"Resultados":cat==="Todos"?"Todos os produtos":cat}</h3><span class="c" style="color:var(--mut);font-size:13px">${list.length} artigos</span></div>
+    ${list.length?`<div class="grid">${list.map(card).join("")}</div>`:`<div class="empty">Nenhum produto encontrado 😕</div>`}`;
+}
+
+let dq=1;
+function renderProduto(){
+  const p=byId(curProd); dq=1;
+  document.getElementById("v-produto").innerHTML=`<div class="det">
+    <button class="back" onclick="voltar()">← Voltar</button>
+    <div class="thumb rel" style="background:${BG[p.c]}">${p.e}<button class="fav" onclick="toggleFav(${p.id})">${favs.includes(p.id)?"❤️":"🤍"}</button></div>
+    <h2>${esc(p.n)}</h2><div class="c" style="color:var(--mut)">${p.c} · ⭐ ${(4+((p.id*7)%10)/10).toFixed(1)}</div>
+    <p class="price" style="margin:10px 0">${eur(p.p)}${p.o?`<span class="old">${eur(p.o)}</span>`:""}</p>
+    <p>${esc(p.d)}</p>
+    <p style="font-size:13px;color:var(--ok);font-weight:600">✓ Em stock · Entrega em 24-48 h</p>
+    <div style="display:flex;gap:12px;align-items:center;margin:16px 0">
+      <div class="qty"><button onclick="dq=Math.max(1,dq-1);document.getElementById('dqv').textContent=dq">−</button><span id="dqv">1</span><button onclick="dq++;document.getElementById('dqv').textContent=dq">+</button></div>
+      <button class="btn" style="flex:1" onclick="addCart(${p.id},dq)">Adicionar ao carrinho</button>
+    </div></div>`;
+}
+
+function renderFavs(){
+  const list=favs.map(byId).filter(Boolean);
+  document.getElementById("v-favoritos").innerHTML=`<div class="sec-t"><h3>Os meus favoritos</h3></div>`+
+    (list.length?`<div class="grid">${list.map(card).join("")}</div>`:`<div class="empty">Ainda não tem favoritos.<br>Toque em 🤍 num produto para o guardar.</div>`);
+}
+
+function totals(){
+  const sub=Object.entries(cart).reduce((a,[id,q])=>a+byId(+id).p*q,0);
+  const desc=cupao==="BEMVINDO"?sub*0.10:0;
+  const portes=sub===0||sub-desc>=PORTES_GRATIS?0:PORTES;
+  return {sub,desc,portes,tot:sub-desc+portes};
+}
+function sumHtml(){
+  const t=totals();
+  return `<div class="sum"><div><span>Subtotal</span><span>${eur(t.sub)}</span></div>
+    ${t.desc?`<div style="color:var(--ok)"><span>Desconto (BEMVINDO)</span><span>−${eur(t.desc)}</span></div>`:""}
+    <div><span>Portes</span><span>${t.portes?eur(t.portes):"Grátis"}</span></div>
+    <div class="tot"><span>Total</span><span>${eur(t.tot)}</span></div></div>`;
+}
+function applyCupao(){
+  const v=document.getElementById("cp").value.trim().toUpperCase();
+  if(v==="BEMVINDO"){cupao=v;toast("Cupão aplicado: −10%")}else{cupao=null;toast("Cupão inválido")}
+  renderCart();
+}
+function renderCart(){
+  const items=Object.entries(cart);
+  const el=document.getElementById("v-carrinho");
+  if(!items.length){el.innerHTML=`<div class="sec-t"><h3>Carrinho</h3></div><div class="empty"><div style="font-size:60px">🛒</div>O seu carrinho está vazio.<br><br><button class="btn" onclick="go('loja')">Ir às compras</button></div>`;return}
+  const t=totals(); const falta=PORTES_GRATIS-(t.sub-t.desc);
+  el.innerHTML=`<div class="sec-t"><h3>Carrinho</h3><span style="color:var(--mut);font-size:13px">${count()} artigos</span></div>
+    ${items.map(([id,q])=>{const p=byId(+id);return `<div class="line">
+      <div class="thumb" style="background:${BG[p.c]}">${p.e}</div>
+      <div class="info"><div class="n">${esc(p.n)}</div><div class="price">${eur(p.p*q)}</div>
+      <button class="rm" onclick="setQty(${p.id},0)">Remover</button></div>
+      <div class="qty"><button onclick="setQty(${p.id},${q-1})">−</button><span>${q}</span><button onclick="setQty(${p.id},${q+1})">+</button></div></div>`}).join("")}
+    ${falta>0?`<div class="info-card" style="background:#FEF3C7">🚚 Faltam <b>${eur(falta)}</b> para portes grátis!</div>`:`<div class="info-card" style="background:#DCFCE7">🚚 Tem portes grátis!</div>`}
+    <div style="display:flex;gap:8px"><div class="field" style="flex:1;margin:0"><input id="cp" placeholder="Código de desconto" value="${cupao||""}"></div><button class="btn sec" style="width:auto;padding:0 18px" onclick="applyCupao()">Aplicar</button></div>
+    ${sumHtml()}
+    <button class="btn" onclick="go('checkout')">Finalizar compra</button>`;
+}
+
+function renderCheckout(){
+  const u=user;
+  document.getElementById("v-checkout").innerHTML=`<button class="back" onclick="voltar()">← Carrinho</button>
+    <div class="sec-t"><h3>Finalizar compra</h3></div>
+    <form id="fc" onsubmit="return encomendar(event)">
+      <div class="field"><label>Nome completo</label><input name="nome" required value="${esc(u.nome)}"></div>
+      <div class="field"><label>Email</label><input name="email" type="email" required value="${esc(u.email)}"></div>
+      <div class="field"><label>Telemóvel</label><input name="tel" type="tel" required pattern="[0-9 +]{9,}" value="${esc(u.tel)}"></div>
+      <div class="field"><label>Morada</label><input name="morada" required value="${esc(u.morada)}"></div>
+      <div style="display:flex;gap:10px">
+        <div class="field" style="flex:1"><label>Código postal</label><input name="cp" required pattern="[0-9]{4}-[0-9]{3}" placeholder="0000-000" value="${esc(u.cp)}"></div>
+        <div class="field" style="flex:1.4"><label>Localidade</label><input name="cidade" required value="${esc(u.cidade)}"></div>
+      </div>
+      <div class="field"><label>Pagamento</label></div>
+      <div class="pay">
+        <label><input type="radio" name="pag" value="MB WAY" checked><span><span class="ic">📱</span>MB WAY</span></label>
+        <label><input type="radio" name="pag" value="Multibanco"><span><span class="ic">🏧</span>Multibanco</span></label>
+        <label><input type="radio" name="pag" value="Cartão"><span><span class="ic">💳</span>Cartão</span></label>
+      </div>
+      <div class="field"><label>Notas (opcional)</label><textarea name="notas" rows="2"></textarea></div>
+      ${sumHtml()}
+      <button class="btn" type="submit">Confirmar encomenda</button>
+    </form>`;
+}
+function encomendar(ev){
+  ev.preventDefault();
+  const f=Object.fromEntries(new FormData(ev.target));
+  user={nome:f.nome,email:f.email,tel:f.tel,morada:f.morada,cp:f.cp,cidade:f.cidade}; save("le_user",user);
+  const t=totals();
+  const num="LE"+String(Date.now()).slice(-6);
+  orders.unshift({num,data:new Date().toISOString(),itens:{...cart},total:t.tot,pag:f.pag});
+  save("le_orders",orders);
+  cart={}; cupao=null; save("le_cart",cart); updBadges();
+  hist=["loja"]; cur="checkout";
+  document.getElementById("v-checkout").innerHTML=`<div class="ok"><div class="big">🎉</div><h2>Obrigado pela sua compra!</h2>
+    <p>Encomenda <b>${num}</b> confirmada.<br>Total: <b>${eur(t.tot)}</b> · ${esc(f.pag)}</p>
+    <p style="color:var(--mut);font-size:14px">${f.pag==="Multibanco"?"Entidade 12345 · Ref. "+num.slice(2)+" 000":f.pag==="MB WAY"?"Confirme o pagamento na app MB WAY.":"Pagamento processado."}</p>
+    <br><button class="btn" onclick="hist=[];go('loja',false)">Continuar a comprar</button></div>`;
+  window.scrollTo(0,0);
+  return false;
+}
+
+function renderConta(){
+  const u=user;
+  document.getElementById("v-conta").innerHTML=`
+    <div class="info-card" style="display:flex;gap:12px;align-items:center"><div style="font-size:40px">👤</div><div><b>${esc(u.nome||"Visitante")}</b><br><span style="color:var(--mut)">${esc(u.email||"Ainda sem dados guardados")}</span></div></div>
+    <div class="sec-t"><h3>As minhas encomendas</h3></div>
+    ${orders.length?orders.map(o=>`<div class="order"><div class="h"><span>${o.num}</span><span class="s">Confirmada</span></div>
+      <div class="d">${new Date(o.data).toLocaleDateString("pt-PT")} · ${Object.values(o.itens).reduce((a,b)=>a+b,0)} artigos · ${esc(o.pag)}</div>
+      <div class="d">${Object.keys(o.itens).map(id=>byId(+id)?.e||"").join(" ")}</div>
+      <div class="price" style="margin-top:6px">${eur(o.total)}</div></div>`).join(""):`<div class="empty">Ainda não fez encomendas.</div>`}
+    <div class="sec-t" style="margin-top:16px"><h3>Sobre a loja</h3></div>
+    <div class="info-card"><h4>📍 Loga em Loja</h4>Entregas em todo o território nacional em 24-48 h.<br>Devoluções gratuitas até 30 dias.</div>
+    <div class="info-card"><h4>📞 Apoio ao cliente</h4>Segunda a sábado, das 9h às 20h.</div>
+    ${orders.length||u.nome?`<button class="btn sec" onclick="if(confirm('Apagar os dados guardados neste dispositivo?')){localStorage.clear();location.reload()}">Apagar os meus dados</button>`:""}`;
+}
+
+updBadges(); renderLoja();
+</script>
+</body>
+</html>

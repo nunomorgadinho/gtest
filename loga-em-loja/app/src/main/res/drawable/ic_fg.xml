@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- saco de compras -->
+    <path android:fillColor="#FFFFFF" android:pathData="M34,44 L74,44 L71,78 Q70.5,82 66.5,82 L41.5,82 Q37.5,82 37,78 Z"/>
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="4" android:fillColor="#00000000"
+        android:pathData="M44,46 L44,38 Q44,28 54,28 Q64,28 64,38 L64,46"/>
+    <path android:fillColor="#C2410C" android:pathData="M47,56 L52,56 L52,70 L60,70 L60,74 L47,74 Z"/>
+</vector>
