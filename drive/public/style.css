@@ -338,3 +338,8 @@ details summary { cursor: pointer; font-weight: 600; margin: 4px 0 14px; }
   .toast { bottom: 90px; }
   .fab { display: grid; }
 }
+
+/* ---------- Arranque ---------- */
+.boot { position: fixed; inset: 0; display: grid; place-content: center; text-align: center; padding: 24px; color: var(--muted); gap: 8px; }
+.boot-late { max-width: 42ch; opacity: 0; animation: boot-late 0s 8s forwards; }
+@keyframes boot-late { to { opacity: 1; } }

@@ -156,6 +156,7 @@ function setAuthMode(reg) {
   $('#auth-error').textContent = '';
 }
 function showAuth() {
+  $('#boot')?.remove();
   state.user = null;
   $('#app').hidden = true;
   $('#auth').hidden = false;
@@ -185,6 +186,7 @@ async function boot() {
     showAuth();
     return;
   }
+  $('#boot')?.remove();
   $('#auth').hidden = true;
   $('#app').hidden = false;
   const a = $('#avatar-btn');
