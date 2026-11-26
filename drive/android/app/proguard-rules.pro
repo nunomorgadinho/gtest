@@ -1,0 +1,1 @@
+-keepclassmembers class pt.nuvem.app.MainActivity$Bridge { @android.webkit.JavascriptInterface <methods>; }

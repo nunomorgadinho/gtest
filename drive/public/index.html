@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuvem</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#17161c">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ecrã de autenticação -->
+  <section id="auth" class="auth" hidden>
+    <div class="auth-art">
+      <div class="tiles" aria-hidden="true"><span style="background:#ffd5c4"></span><span style="background:#cfe5c6"></span><span style="background:#d9d2f6"></span><span style="background:#fbe29b"></span><span style="background:#e8502c"></span><span style="background:#c6e3ef"></span></div>
+      <div class="brand"><span class="logo"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="9" y="4" width="24" height="24" rx="7" fill="#fbe29b" stroke="#17161c" stroke-width="2.5" transform="rotate(12 21 16)"/><rect x="4" y="11" width="26" height="25" rx="7" fill="#e8502c" stroke="#17161c" stroke-width="2.5"/><circle cx="17" cy="23.5" r="4.5" fill="#fffdf8" stroke="#17161c" stroke-width="2.5"/></svg></span>Nuvem</div>
+      <div><h2>Tudo o que é teu, <em>arrumado</em>.</h2>
+      <p>Guarda ficheiros, organiza pastas e partilha com quem quiseres. No computador ou no telemóvel.</p></div>
+    </div>
+    <div class="auth-panel"><div class="auth-card">
+      <h1 id="auth-title">Iniciar sessão</h1>
+      <p class="muted" id="auth-sub">Usa a tua conta Nuvem</p>
+      <form id="auth-form" autocomplete="on">
+        <label class="field" id="name-field" hidden><span>Nome</span><input name="name" autocomplete="name"></label>
+        <label class="field"><span>Email</span><input name="email" type="email" required autocomplete="email"></label>
+        <label class="field"><span>Palavra-passe</span><input name="password" type="password" required minlength="8" autocomplete="current-password"></label>
+        <p class="error" id="auth-error" role="alert"></p>
+        <div class="auth-actions">
+          <button type="button" class="btn text" id="auth-toggle">Criar conta</button>
+          <button type="submit" class="btn filled" id="auth-submit">Entrar</button>
+        </div>
+      </form>
+    </div></div>
+  </section>
+
+  <!-- Aplicação -->
+  <div id="app" class="app" hidden>
+    <header class="topbar">
+      <button class="icon-btn only-mobile" id="menu-btn" aria-label="Menu" data-icon="menu"></button>
+            <form class="search" id="search-form" role="search">
+        <span data-icon="search"></span>
+        <input id="search" type="search" placeholder="Procurar ficheiros e pastas" autocomplete="off">
+      </form>
+      <button class="avatar" id="avatar-btn" aria-label="Conta"></button>
+    </header>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><span class="logo"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="9" y="4" width="24" height="24" rx="7" fill="#fbe29b" stroke="#17161c" stroke-width="2.5" transform="rotate(12 21 16)"/><rect x="4" y="11" width="26" height="25" rx="7" fill="#e8502c" stroke="#17161c" stroke-width="2.5"/><circle cx="17" cy="23.5" r="4.5" fill="#fffdf8" stroke="#17161c" stroke-width="2.5"/></svg></span>Nuvem</div>
+      <button class="new-btn" id="new-btn"><span data-icon="plus"></span>Adicionar</button>
+      <nav class="nav">
+        <a href="#/mydrive" data-view="mydrive"><span data-icon="home"></span>Os meus ficheiros</a>
+        <a href="#/shared" data-view="shared"><span data-icon="people"></span>Partilhados comigo</a>
+        <a href="#/recent" data-view="recent"><span data-icon="clock"></span>Recentes</a>
+        <a href="#/starred" data-view="starred"><span data-icon="heart"></span>Favoritos</a>
+        <a href="#/trash" data-view="trash"><span data-icon="trash"></span>Reciclagem</a>
+      </nav>
+      <div class="storage">
+        <p class="storage-label">Espaço</p>
+        <div class="storage-bar"><div id="storage-fill"></div></div>
+        <p class="muted" id="storage-text"></p>
+      </div>
+    </aside>
+    <div class="scrim" id="scrim"></div>
+
+    <main class="main" id="main">
+      <div class="toolbar">
+        <nav class="crumbs" id="crumbs"></nav>
+        <div class="toolbar-actions">
+          <button class="btn tonal" id="empty-trash" hidden>Esvaziar reciclagem</button>
+          <button class="icon-btn" id="layout-btn" aria-label="Alternar vista" data-icon="grid"></button>
+        </div>
+      </div>
+      <div id="list" class="list"></div>
+      <div class="drop-hint" id="drop-hint"><div><span data-icon="upload"></span><p>Larga os ficheiros para os carregar</p></div></div>
+    </main>
+  </div>
+
+  <button class="fab" id="fab" aria-label="Adicionar" data-icon="plus"></button>
+
+  <!-- Menus e diálogos -->
+  <div class="menu" id="menu" role="menu" hidden></div>
+  <input type="file" id="file-input" multiple hidden>
+  <input type="file" id="folder-input" webkitdirectory multiple hidden>
+
+  <dialog id="prompt-dlg" class="dlg">
+    <form method="dialog">
+      <h2 id="prompt-title"></h2>
+      <input id="prompt-input" class="text-input" required>
+      <div class="dlg-actions">
+        <button class="btn text" value="cancel" formnovalidate>Cancelar</button>
+        <button class="btn filled" value="ok" id="prompt-ok">OK</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirm-dlg" class="dlg">
+    <form method="dialog">
+      <h2 id="confirm-title"></h2>
+      <p class="muted" id="confirm-text"></p>
+      <div class="dlg-actions">
+        <button class="btn text" value="cancel">Cancelar</button>
+        <button class="btn filled danger" value="ok" id="confirm-ok"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="share-dlg" class="dlg wide">
+    <h2 id="share-title"></h2>
+    <form id="share-form" class="share-form">
+      <input id="share-email" class="text-input" type="email" placeholder="Adicionar pessoas por email" required>
+      <select id="share-role" class="select"><option value="viewer">Leitor</option><option value="editor">Editor</option></select>
+      <button class="btn filled">Partilhar</button>
+    </form>
+    <p class="error" id="share-error" role="alert"></p>
+    <h3>Pessoas com acesso</h3>
+    <ul class="people" id="share-people"></ul>
+    <h3>Acesso geral</h3>
+    <div class="public-row">
+      <span data-icon="link" class="public-ico"></span>
+      <div class="grow">
+        <label class="switch"><input type="checkbox" id="public-toggle"><span>Qualquer pessoa com o link pode ver</span></label>
+        <div class="link-row" id="link-row" hidden>
+          <input id="public-link" class="text-input" readonly>
+          <button class="btn tonal" id="copy-link">Copiar link</button>
+        </div>
+      </div>
+    </div>
+    <div class="dlg-actions"><button class="btn filled" id="share-done">Concluído</button></div>
+  </dialog>
+
+  <dialog id="move-dlg" class="dlg">
+    <h2 id="move-title">Mover</h2>
+    <nav class="crumbs small" id="move-crumbs"></nav>
+    <ul class="folder-pick" id="move-list"></ul>
+    <div class="dlg-actions">
+      <button class="btn text" id="move-cancel">Cancelar</button>
+      <button class="btn filled" id="move-ok">Mover para aqui</button>
+    </div>
+  </dialog>
+
+  <dialog id="account-dlg" class="dlg">
+    <h2>A tua conta</h2>
+    <form id="account-form">
+      <label class="field"><span>Nome</span><input name="name" required></label>
+      <label class="field"><span>Email</span><input name="email" disabled></label>
+      <details>
+        <summary>Mudar palavra-passe</summary>
+        <label class="field"><span>Palavra-passe atual</span><input name="currentPassword" type="password" autocomplete="current-password"></label>
+        <label class="field"><span>Nova palavra-passe</span><input name="newPassword" type="password" minlength="8" autocomplete="new-password"></label>
+      </details>
+      <p class="error" id="account-error" role="alert"></p>
+      <div class="dlg-actions spread">
+        <span class="account-links" id="account-links"><button type="button" class="btn text danger-text" id="logout-btn">Terminar sessão</button></span>
+        <span>
+          <button type="button" class="btn text" id="account-cancel">Cancelar</button>
+          <button class="btn filled">Guardar</button>
+        </span>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="preview" id="preview" hidden>
+    <header class="preview-bar">
+      <button class="icon-btn light" id="preview-close" aria-label="Fechar" data-icon="close"></button>
+      <span class="preview-name" id="preview-name"></span>
+      <a class="icon-btn light" id="preview-download" aria-label="Transferir" data-icon="download"></a>
+    </header>
+    <button class="icon-btn light nav-prev" id="preview-prev" aria-label="Anterior" data-icon="left"></button>
+    <div class="preview-body" id="preview-body"></div>
+    <button class="icon-btn light nav-next" id="preview-next" aria-label="Seguinte" data-icon="right"></button>
+  </div>
+
+  <div class="uploads" id="uploads" hidden>
+    <header><span id="uploads-title"></span><button class="icon-btn light" id="uploads-close" data-icon="close" aria-label="Fechar"></button></header>
+    <ul id="uploads-list"></ul>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

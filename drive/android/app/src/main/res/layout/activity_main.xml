@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+
+    <WebView android:id="@+id/web" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone" />
+
+    <ProgressBar android:id="@+id/progress" style="@android:style/Widget.Material.ProgressBar.Horizontal"
+        android:layout_width="match_parent" android:layout_height="4dp" android:layout_gravity="top"
+        android:indeterminate="false" android:max="100" android:progressTint="@color/accent" android:visibility="gone" />
+
+    <!-- Ecrã de configuração do servidor -->
+    <ScrollView android:id="@+id/setup" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:fillViewport="true" android:background="@color/paper" android:visibility="gone">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:background="@drawable/hero" android:padding="28dp">
+                <ImageView android:layout_width="64dp" android:layout_height="64dp" android:layout_marginStart="-14dp"
+                    android:src="@drawable/ic_launcher_foreground" android:contentDescription="@null" android:scaleType="centerCrop" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="40dp"
+                    android:text="Tudo o que é teu,\narrumado." android:textColor="@color/paper" android:textSize="34sp"
+                    android:textStyle="bold" android:lineSpacingMultiplier="0.95" android:letterSpacing="-0.02" />
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Ligar ao teu servidor" android:textColor="@color/ink" android:textSize="22sp" android:textStyle="bold" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                    android:text="Escreve o endereço onde a Nuvem está instalada (por exemplo https://nuvem.exemplo.pt ou http://192.168.1.10:3000)."
+                    android:textColor="@color/muted" android:textSize="15sp" />
+                <EditText android:id="@+id/server" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="20dp"
+                    android:background="@drawable/field" android:paddingHorizontal="14dp" android:inputType="textUri" android:imeOptions="actionGo"
+                    android:hint="https://…" android:textColor="@color/ink" android:textColorHint="@color/muted" android:singleLine="true" />
+                <TextView android:id="@+id/setup_error" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp" android:textColor="#C2261B" android:textSize="14sp" android:visibility="gone" />
+                <Button android:id="@+id/connect" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="20dp"
+                    android:background="@drawable/btn_accent" android:text="Ligar" android:textAllCaps="false" android:textColor="#FFFFFF"
+                    android:textSize="16sp" android:textStyle="bold" android:stateListAnimator="@null" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

@@ -1,0 +1,20 @@
+{
+  "name": "nuvem",
+  "version": "1.0.0",
+  "description": "Nuvem: guarda, organiza e partilha ficheiros, com contas",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "test": "node --no-warnings --test test/*.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.22.3",
+    "multer": "^2.5.0"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

@@ -1,0 +1,51 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'pt.nuvem.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'pt.nuvem.app'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+        // Endereço sugerido no primeiro arranque (pode ser mudado na app).
+        buildConfigField 'String', 'DEFAULT_SERVER', "\"${project.findProperty('nuvemServer') ?: 'http://192.168.1.10:3000'}\""
+    }
+
+    buildFeatures { buildConfig true }
+
+    lint { checkReleaseBuilds false }
+
+    signingConfigs {
+        release {
+            // Usa a tua chave se existir keystore.properties; senão assina com a chave de debug.
+            def f = rootProject.file('keystore.properties')
+            if (f.exists()) {
+                def p = new Properties(); f.withInputStream { p.load(it) }
+                storeFile rootProject.file(p.storeFile)
+                storePassword p.storePassword
+                keyAlias p.keyAlias
+                keyPassword p.keyPassword
+            } else {
+                def d = signingConfigs.debug
+                storeFile d.storeFile; storePassword d.storePassword; keyAlias d.keyAlias; keyPassword d.keyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#17161C</color>
+    <color name="paper">#F4F1EA</color>
+    <color name="surface">#FFFDF8</color>
+    <color name="accent">#E8502C</color>
+    <color name="muted">#6D6A74</color>
+    <color name="tile_yellow">#FBE29B</color>
+</resources>

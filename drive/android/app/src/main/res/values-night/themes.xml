@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Nuvem" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorAccent">#FF7552</item>
+        <item name="android:colorPrimary">#F1EEE6</item>
+        <item name="android:statusBarColor">#111014</item>
+        <item name="android:navigationBarColor">#111014</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">#111014</item>
+    </style>
+</resources>
